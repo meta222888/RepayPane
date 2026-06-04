@@ -36,6 +36,8 @@ type App struct {
 	remotePane *FilePane
 
 	selectedServerID int // for my servers dialog
+
+	transfers *TransferQueue
 }
 
 func NewApp(a fyne.App, w fyne.Window) *App {
@@ -65,6 +67,7 @@ func NewApp(a fyne.App, w fyne.Window) *App {
 	appUI.topBar = NewTopBar(appUI)
 	appUI.tabBar = NewTabBar(appUI)
 	appUI.statusBar = NewStatusBar(appUI)
+	appUI.transfers = NewTransferQueue(appUI)
 	appUI.localPane = NewLocalPane(appUI)
 	appUI.remotePane = NewRemotePane(appUI)
 
@@ -80,10 +83,23 @@ func NewApp(a fyne.App, w fyne.Window) *App {
 		appUI.activeTab = 0
 	}
 
+	toolbars := container.NewGridWithColumns(2,
+		appUI.localPane.Toolbar(),
+		splitBorder(appUI.remotePane.Toolbar()),
+	)
+	panelHeaders := container.NewGridWithColumns(2,
+		appUI.localPane.PanelHeader(),
+		splitBorder(appUI.remotePane.PanelHeader()),
+	)
 	panes := container.NewHSplit(appUI.localPane.Container(), appUI.remotePane.Container())
 	panes.SetOffset(0.5)
 
-	header := container.NewVBox(appUI.topBar.Container(), appUI.tabBar.Container())
+	header := container.NewVBox(
+		appUI.topBar.Container(),
+		appUI.tabBar.Container(),
+		toolbars,
+		panelHeaders,
+	)
 	body := container.NewBorder(header, appUI.statusBar.Container(), nil, nil, panes)
 	bg := canvas.NewRectangle(colorBG)
 	w.SetPadded(false)

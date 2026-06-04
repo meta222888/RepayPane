@@ -37,10 +37,13 @@ type FilePane struct {
 	history   []string
 	histIndex int
 
-	header    *widget.Label
+	pathLabel  *widget.Label
+	panelHdrLabel *widget.Label
 	breadcrumb *fyne.Container
-	table     *widget.Table
-	root      *fyne.Container
+	table      *widget.Table
+	toolbar    fyne.CanvasObject
+	panelHdr   fyne.CanvasObject
+	root       fyne.CanvasObject
 
 	selectedRow int
 	lastTap     time.Time
@@ -71,7 +74,6 @@ func (p *FilePane) colCount() int {
 }
 
 func (p *FilePane) build() {
-	p.header = widget.NewLabelWithStyle("", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
 	p.breadcrumb = container.NewHBox()
 
 	p.table = widget.NewTable(
@@ -79,11 +81,13 @@ func (p *FilePane) build() {
 		func() fyne.CanvasObject { return widget.NewLabel("") },
 		p.updateCell,
 	)
-	p.table.SetColumnWidth(0, 220)
+	p.table.SetColumnWidth(0, 240)
 	p.table.SetColumnWidth(1, 90)
-	p.table.SetColumnWidth(2, 120)
 	if p.kind == PaneRemote {
-		p.table.SetColumnWidth(3, 120)
+		p.table.SetColumnWidth(2, 120)
+		p.table.SetColumnWidth(3, 140)
+	} else {
+		p.table.SetColumnWidth(2, 140)
 	}
 	p.table.OnSelected = func(id widget.TableCellID) {
 		if id.Row == 0 {
@@ -94,37 +98,42 @@ func (p *FilePane) build() {
 		p.handleRowSelect(id, row)
 	}
 
-	toolbar := p.buildToolbar()
-	if p.kind == PaneLocal {
-		p.localNav = NewLocalNav(p)
-		toolbarRow := container.NewBorder(nil, nil, p.localNav.Button(), toolbar, nil)
-		p.root = container.NewBorder(container.NewVBox(toolbarRow, p.breadcrumb), nil, nil, nil, p.table)
-	} else {
-		headerBar := container.NewBorder(nil, nil, p.header, toolbar, p.breadcrumb)
-		p.root = container.NewBorder(headerBar, nil, nil, nil, p.table)
-	}
+	p.toolbar = p.buildToolbar()
+	p.panelHdr = p.buildPanelHeader()
+	p.root = p.table
 	p.ApplyLanguage()
-	p.refreshBreadcrumb()
+	p.refreshPathDisplay()
 }
 
 func (p *FilePane) buildToolbar() fyne.CanvasObject {
-	if p.kind == PaneLocal {
-		up := widget.NewButtonWithIcon(i18n.T(i18n.KeyUp), theme.MoveUpIcon(), p.goUp)
-		home := widget.NewButtonWithIcon("", theme.HomeIcon(), p.goHome)
-		refresh := widget.NewButtonWithIcon(i18n.T(i18n.KeyRefresh), theme.ViewRefreshIcon(), p.RefreshListing)
-		newFolder := widget.NewButtonWithIcon(i18n.T(i18n.KeyNewFolder), theme.FolderNewIcon(), p.newFolderSoon)
-		for _, b := range []*widget.Button{up, home, refresh, newFolder} {
-			b.Importance = widget.LowImportance
-		}
-		return container.NewHBox(up, home, refresh, newFolder)
-	}
 	up := widget.NewButtonWithIcon("", theme.MoveUpIcon(), p.goUp)
+	newFolder := widget.NewButtonWithIcon("", theme.FolderNewIcon(), p.newFolderSoon)
 	refresh := widget.NewButtonWithIcon("", theme.ViewRefreshIcon(), p.RefreshListing)
-	newFolder := widget.NewButtonWithIcon(i18n.T(i18n.KeyNewFolder), theme.FolderNewIcon(), p.newFolderSoon)
-	up.Importance = widget.LowImportance
-	refresh.Importance = widget.LowImportance
-	newFolder.Importance = widget.LowImportance
-	return container.NewHBox(up, refresh, newFolder)
+	for _, b := range []*widget.Button{up, newFolder, refresh} {
+		b.Importance = widget.LowImportance
+	}
+	btns := container.NewHBox(up, newFolder, refresh)
+
+	if p.kind == PaneLocal {
+		p.localNav = NewLocalNav(p)
+		p.pathLabel = widget.NewLabel("")
+		p.pathLabel.TextStyle = fyne.TextStyle{Monospace: true}
+		left := container.NewHBox(p.localNav.Button(), btns)
+		row := container.NewBorder(nil, nil, left, p.pathLabel, nil)
+		return withPanelHeader(row)
+	}
+
+	serverIcon := widget.NewLabel("⬡")
+	pathBox := container.NewBorder(nil, nil, nil, nil, p.breadcrumb)
+	left := container.NewHBox(serverIcon, pathBox)
+	row := container.NewBorder(nil, nil, left, btns, nil)
+	return withPanelHeader(row)
+}
+
+func (p *FilePane) buildPanelHeader() fyne.CanvasObject {
+	p.panelHdrLabel = widget.NewLabel("")
+	p.panelHdrLabel.TextStyle = fyne.TextStyle{Bold: true}
+	return withPanelLabel(p.panelHdrLabel)
 }
 
 func (p *FilePane) rowCount() int {
@@ -136,22 +145,27 @@ func (p *FilePane) rowCount() int {
 
 func (p *FilePane) updateCell(id widget.TableCellID, obj fyne.CanvasObject) {
 	label := obj.(*widget.Label)
+	label.Alignment = fyne.TextAlignLeading
 	label.TextStyle = fyne.TextStyle{}
+	if id.Col == 1 {
+		label.Alignment = fyne.TextAlignTrailing
+	}
 	if id.Row == 0 {
 		label.TextStyle = fyne.TextStyle{Bold: true}
+		label.Importance = widget.MediumImportance
 		switch id.Col {
 		case 0:
-			label.SetText(i18n.T(i18n.KeyColName))
+			label.SetText(strings.ToUpper(i18n.T(i18n.KeyColName)))
 		case 1:
-			label.SetText(i18n.T(i18n.KeyColSize))
+			label.SetText(strings.ToUpper(i18n.T(i18n.KeyColSize)))
 		case 2:
 			if p.kind == PaneRemote {
-				label.SetText(i18n.T(i18n.KeyColPermissions))
+				label.SetText(strings.ToUpper(i18n.T(i18n.KeyColPermissions)))
 			} else {
-				label.SetText(i18n.T(i18n.KeyColModified))
+				label.SetText(strings.ToUpper(i18n.T(i18n.KeyColModified)))
 			}
 		case 3:
-			label.SetText(i18n.T(i18n.KeyColModified))
+			label.SetText(strings.ToUpper(i18n.T(i18n.KeyColModified)))
 		}
 		return
 	}
@@ -187,7 +201,9 @@ func (p *FilePane) updateCell(id widget.TableCellID, obj fyne.CanvasObject) {
 	}
 }
 
-func (p *FilePane) Container() *fyne.Container { return p.root }
+func (p *FilePane) Toolbar() fyne.CanvasObject  { return p.toolbar }
+func (p *FilePane) PanelHeader() fyne.CanvasObject { return p.panelHdr }
+func (p *FilePane) Container() fyne.CanvasObject { return p.root }
 
 func (p *FilePane) CurrentPath() string { return p.path }
 
@@ -203,11 +219,27 @@ func (p *FilePane) ApplyLanguage() {
 	if p.localNav != nil {
 		p.localNav.ApplyLanguage()
 	}
+	p.refreshPathDisplay()
+	p.table.Refresh()
+}
+
+func (p *FilePane) refreshPathDisplay() {
 	if p.kind == PaneLocal {
+		if p.pathLabel != nil {
+			p.pathLabel.SetText(p.path)
+		}
+		if p.panelHdrLabel != nil {
+			drive := p.path
+			if len(drive) >= 2 && drive[1] == ':' {
+				drive = strings.ToUpper(drive[:2]) + `\`
+			}
+			p.panelHdrLabel.SetText("💾  " + i18n.T(i18n.KeyPanelLocal) + " — " + drive)
+		}
 		return
 	}
-	p.header.SetText(i18n.Tf(i18n.KeyRemoteHeader, p.path))
-	p.table.Refresh()
+	if p.panelHdrLabel != nil {
+		p.panelHdrLabel.SetText("⬡  " + i18n.T(i18n.KeyPanelRemote) + " — " + p.path)
+	}
 }
 
 func (p *FilePane) Navigate(path string) {
@@ -238,7 +270,7 @@ func (p *FilePane) Navigate(path string) {
 		}
 	}
 	p.refreshBreadcrumb()
-	p.ApplyLanguage()
+	p.refreshPathDisplay()
 	p.RefreshListing()
 }
 
@@ -251,41 +283,6 @@ func (p *FilePane) pushHistory(path string) {
 	}
 	p.history = append(p.history, path)
 	p.histIndex = len(p.history) - 1
-}
-
-func (p *FilePane) goBack() {
-	if p.histIndex <= 0 {
-		return
-	}
-	p.histIndex--
-	p.path = p.history[p.histIndex]
-	if p.localNav != nil {
-		p.localNav.syncFromPath(p.path)
-	}
-	p.refreshBreadcrumb()
-	p.ApplyLanguage()
-	p.RefreshListing()
-}
-
-func (p *FilePane) goForward() {
-	if p.histIndex >= len(p.history)-1 {
-		return
-	}
-	p.histIndex++
-	p.path = p.history[p.histIndex]
-	if p.localNav != nil {
-		p.localNav.syncFromPath(p.path)
-	}
-	p.refreshBreadcrumb()
-	p.ApplyLanguage()
-	p.RefreshListing()
-}
-
-func (p *FilePane) goHome() {
-	if p.kind != PaneLocal {
-		return
-	}
-	p.Navigate(defaultLocalDir())
 }
 
 func (p *FilePane) goUp() {
@@ -309,48 +306,30 @@ func (p *FilePane) newFolderSoon() {
 }
 
 func (p *FilePane) refreshBreadcrumb() {
+	if p.kind != PaneRemote {
+		return
+	}
 	p.breadcrumb.Objects = nil
-	var parts []string
-	if p.kind == PaneLocal {
-		parts = strings.Split(filepath.Clean(p.path), string(os.PathSeparator))
-		if len(parts) == 0 {
-			parts = []string{p.path}
+	parts := strings.Split(p.path, "/")
+	acc := ""
+	rootBtn := widget.NewButton("/", func() { p.Navigate("/") })
+	rootBtn.Importance = widget.LowImportance
+	p.breadcrumb.Add(rootBtn)
+	for _, part := range parts {
+		if part == "" {
+			continue
 		}
-		acc := ""
-		for i, part := range parts {
-			if part == "" {
-				continue
-			}
-			if i == 0 && len(part) == 2 && part[1] == ':' {
-				acc = part + string(os.PathSeparator)
-			} else {
-				acc = filepath.Join(acc, part)
-			}
-			target := acc
-			btn := widget.NewButton(part, func() { p.Navigate(target) })
-			btn.Importance = widget.LowImportance
-			p.breadcrumb.Add(btn)
+		if acc == "" || acc == "/" {
+			acc = "/" + part
+		} else {
+			acc = acc + "/" + part
 		}
-	} else {
-		parts = strings.Split(p.path, "/")
-		acc := ""
-		for _, part := range parts {
-			if part == "" {
-				btn := widget.NewButton("/", func() { p.Navigate("/") })
-				btn.Importance = widget.LowImportance
-				p.breadcrumb.Add(btn)
-				continue
-			}
-			if acc == "" || acc == "/" {
-				acc = "/" + part
-			} else {
-				acc = acc + "/" + part
-			}
-			target := acc
-			btn := widget.NewButton(part, func() { p.Navigate(target) })
-			btn.Importance = widget.LowImportance
-			p.breadcrumb.Add(btn)
-		}
+		target := acc
+		sep := widget.NewLabel(" › ")
+		btn := widget.NewButton(part, func() { p.Navigate(target) })
+		btn.Importance = widget.LowImportance
+		p.breadcrumb.Add(sep)
+		p.breadcrumb.Add(btn)
 	}
 	p.breadcrumb.Refresh()
 }
@@ -438,7 +417,10 @@ func formatSize(size int64, isDir bool) string {
 	if size < 1024*1024 {
 		return fmt.Sprintf("%.1f KB", float64(size)/1024)
 	}
-	return fmt.Sprintf("%.1f MB", float64(size)/(1024*1024))
+	if size < 1024*1024*1024 {
+		return fmt.Sprintf("%.1f MB", float64(size)/(1024*1024))
+	}
+	return fmt.Sprintf("%.2f GB", float64(size)/(1024*1024*1024))
 }
 
 func formatTime(t time.Time) string {

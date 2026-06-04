@@ -4,24 +4,61 @@ import (
 	"image/color"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
+	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/theme"
 )
 
-// RelayPane dark palette aligned with file-compass reference UI.
+// RelayPane dark palette — aligned with Lovable reference (styles.css oklch).
 var (
-	colorBG          = color.NRGBA{R: 28, G: 31, B: 38, A: 255}
-	colorPanelHeader = color.NRGBA{R: 34, G: 37, B: 45, A: 255}
-	colorPanel       = color.NRGBA{R: 30, G: 33, B: 40, A: 255}
-	colorBorder      = color.NRGBA{R: 50, G: 54, B: 62, A: 255}
-	colorAccent      = color.NRGBA{R: 59, G: 130, B: 246, A: 255}
-	colorForeground  = color.NRGBA{R: 232, G: 234, B: 237, A: 255}
-	colorMuted       = color.NRGBA{R: 154, G: 160, B: 166, A: 255}
-	colorConnected   = color.NRGBA{R: 34, G: 197, B: 94, A: 255}
-	colorDisconnected = color.NRGBA{R: 107, G: 114, B: 128, A: 255}
-	colorTabActive   = color.NRGBA{R: 42, G: 46, B: 56, A: 255}
-	colorTabInactive = color.NRGBA{R: 28, G: 31, B: 38, A: 255}
-	colorHover       = color.NRGBA{R: 55, G: 60, B: 72, A: 255}
+	colorBG           = color.NRGBA{R: 38, G: 41, B: 50, A: 255}   // background
+	colorPanelHeader  = color.NRGBA{R: 46, G: 49, B: 58, A: 255}   // panel-header
+	colorPanel        = color.NRGBA{R: 42, G: 45, B: 54, A: 255}
+	colorBorder       = color.NRGBA{R: 58, G: 62, B: 72, A: 255}
+	colorInput        = color.NRGBA{R: 48, G: 51, B: 60, A: 255}
+	colorAccent       = color.NRGBA{R: 56, G: 189, B: 220, A: 255} // primary cyan
+	colorForeground   = color.NRGBA{R: 232, G: 234, B: 240, A: 255}
+	colorMuted        = color.NRGBA{R: 148, G: 154, B: 168, A: 255}
+	colorConnected    = color.NRGBA{R: 74, G: 200, B: 130, A: 255} // success
+	colorDisconnected = color.NRGBA{R: 120, G: 126, B: 138, A: 255}
+	colorTabActive    = color.NRGBA{R: 46, G: 49, B: 58, A: 255}
+	colorTabInactive  = color.NRGBA{R: 38, G: 41, B: 50, A: 255}
+	colorHover        = color.NRGBA{R: 55, G: 60, B: 72, A: 255}
+	colorRowSelected  = color.NRGBA{R: 52, G: 72, B: 96, A: 255}
+	colorRowHover     = color.NRGBA{R: 50, G: 54, B: 64, A: 255}
+	colorWarning      = color.NRGBA{R: 220, G: 180, B: 90, A: 255}
 )
+
+func withBorderBottom(obj fyne.CanvasObject) fyne.CanvasObject {
+	line := canvas.NewRectangle(colorBorder)
+	line.SetMinSize(fyne.NewSize(0, 1))
+	return container.NewBorder(nil, line, nil, nil, withBackground(obj, colorPanelHeader))
+}
+
+func withBackground(obj fyne.CanvasObject, bg color.Color) fyne.CanvasObject {
+	rect := canvas.NewRectangle(bg)
+	return container.NewStack(rect, container.NewPadded(obj))
+}
+
+func withPanelHeader(obj fyne.CanvasObject) fyne.CanvasObject {
+	return withBorderBottom(obj)
+}
+
+func withStatusBar(obj fyne.CanvasObject) fyne.CanvasObject {
+	top := canvas.NewRectangle(colorBorder)
+	top.SetMinSize(fyne.NewSize(0, 1))
+	return container.NewBorder(top, nil, nil, nil, withBackground(obj, colorPanelHeader))
+}
+
+func withPanelLabel(obj fyne.CanvasObject) fyne.CanvasObject {
+	return withBorderBottom(withBackground(obj, colorBG))
+}
+
+func splitBorder(obj fyne.CanvasObject) fyne.CanvasObject {
+	line := canvas.NewRectangle(colorBorder)
+	line.SetMinSize(fyne.NewSize(1, 0))
+	return container.NewBorder(nil, nil, line, nil, obj)
+}
 
 type relayPaneTheme struct{}
 
@@ -44,7 +81,7 @@ func (relayPaneTheme) Color(name fyne.ThemeColorName, _ fyne.ThemeVariant) color
 	case theme.ColorNameHover:
 		return colorHover
 	case theme.ColorNameInputBackground:
-		return colorPanel
+		return colorInput
 	case theme.ColorNameInputBorder:
 		return colorBorder
 	case theme.ColorNameScrollBar:
@@ -58,7 +95,7 @@ func (relayPaneTheme) Color(name fyne.ThemeColorName, _ fyne.ThemeVariant) color
 	case theme.ColorNameOverlayBackground:
 		return colorPanelHeader
 	case theme.ColorNameSelection:
-		return color.NRGBA{R: 59, G: 130, B: 246, A: 90}
+		return colorRowSelected
 	case theme.ColorNameSeparator:
 		return colorBorder
 	}
@@ -78,13 +115,13 @@ func (relayPaneTheme) Size(name fyne.ThemeSizeName) float32 {
 	case theme.SizeNameText:
 		return 13
 	case theme.SizeNameCaptionText:
-		return 12
+		return 11
 	case theme.SizeNamePadding:
 		return 6
 	case theme.SizeNameInnerPadding:
 		return 4
 	case theme.SizeNameInlineIcon:
-		return 16
+		return 14
 	}
 	return theme.DefaultTheme().Size(name)
 }

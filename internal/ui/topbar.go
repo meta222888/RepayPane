@@ -54,7 +54,8 @@ func NewTopBar(app *App) *TopBar {
 	barContent := container.NewBorder(nil, nil, logoDrag, right, nil)
 	dragLayer := newDragRegion(t.app.window, layout.NewSpacer())
 	header := container.NewStack(dragLayer, barContent)
-	t.root = withPanelHeader(header)
+	wrapped := withPanelHeader(header)
+	t.root = wrapped
 	return t
 }
 

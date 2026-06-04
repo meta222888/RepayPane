@@ -1,34 +1,105 @@
 package ui
 
 import (
+	"fmt"
+
 	"github.com/relaypane/relaypane/internal/i18n"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 )
 
+type slimProgressBar struct {
+	widget.BaseWidget
+	value float64 // 0..1
+}
+
+func newSlimProgressBar() *slimProgressBar {
+	p := &slimProgressBar{}
+	p.ExtendBaseWidget(p)
+	return p
+}
+
+func (p *slimProgressBar) SetValue(v float64) {
+	if v < 0 {
+		v = 0
+	}
+	if v > 1 {
+		v = 1
+	}
+	p.value = v
+	p.Refresh()
+}
+
+type slimProgressRenderer struct {
+	bar  *slimProgressBar
+	bg   *canvas.Rectangle
+	fill *canvas.Rectangle
+}
+
+func (r *slimProgressRenderer) Layout(size fyne.Size) {
+	r.bg.Resize(size)
+	fillW := size.Width * float32(r.bar.value)
+	r.fill.Resize(fyne.NewSize(fillW, size.Height))
+	r.fill.Move(fyne.NewPos(0, 0))
+}
+
+func (r *slimProgressRenderer) MinSize() fyne.Size {
+	return fyne.NewSize(160, 6)
+}
+
+func (r *slimProgressRenderer) Refresh() {
+	r.bg.FillColor = colorInput
+	r.fill.FillColor = colorAccent
+	canvas.Refresh(r.bg)
+	canvas.Refresh(r.fill)
+}
+
+func (r *slimProgressRenderer) Objects() []fyne.CanvasObject {
+	return []fyne.CanvasObject{r.bg, r.fill}
+}
+
+func (r *slimProgressRenderer) Destroy() {}
+
+func (p *slimProgressBar) CreateRenderer() fyne.WidgetRenderer {
+	r := &slimProgressRenderer{bar: p}
+	r.bg = canvas.NewRectangle(colorInput)
+	r.fill = canvas.NewRectangle(colorAccent)
+	return r
+}
+
 type StatusBar struct {
-	app      *App
-	conn     *widget.Label
-	speed    *widget.Label
-	progress *widget.ProgressBar
-	queue    *widget.Label
-	root     fyne.CanvasObject
+	app        *App
+	connIcon   *canvas.Text
+	conn       *widget.Label
+	syncLabel  *widget.Label
+	speed      *widget.Label
+	progress   *slimProgressBar
+	percent    *widget.Label
+	sep        *canvas.Rectangle
+	queue      *widget.Label
+	root       fyne.CanvasObject
 }
 
 func NewStatusBar(app *App) *StatusBar {
 	s := &StatusBar{app: app}
-	s.conn = widget.NewLabel(i18n.T(i18n.KeyNotConnected))
+	s.connIcon = canvas.NewText("○", colorDisconnected)
+	s.connIcon.TextSize = 11
+	s.conn = widget.NewLabel(i18n.T(i18n.KeyDisconnected))
+	s.syncLabel = widget.NewLabel("")
+	s.syncLabel.Hide()
 	s.speed = widget.NewLabel(i18n.T(i18n.KeyTransferIdle))
-	s.progress = widget.NewProgressBar()
-	s.progress.SetValue(0)
-	s.progress.Hide()
-	s.queue = widget.NewLabel(i18n.Tf(i18n.KeyQueue, 0))
-	s.queue.Hide()
+	s.progress = newSlimProgressBar()
+	s.percent = widget.NewLabel("0%")
+	s.sep = canvas.NewRectangle(colorBorder)
+	s.sep.SetMinSize(fyne.NewSize(1, 12))
+	s.queue = widget.NewLabel(i18n.Tf(i18n.KeyStatusQueue, 0))
 
-	right := container.NewHBox(s.speed, s.progress, s.queue)
-	inner := container.NewBorder(nil, nil, s.conn, right, nil)
+	left := container.NewHBox(s.connIcon, s.conn, s.syncLabel)
+	right := container.NewHBox(s.speed, s.progress, s.percent, s.sep, s.queue)
+	inner := container.NewBorder(nil, nil, left, right, nil)
 	s.root = withStatusBar(inner)
 	return s
 }
@@ -38,16 +109,30 @@ func (s *StatusBar) Container() fyne.CanvasObject { return s.root }
 func (s *StatusBar) Refresh() {
 	sess := s.app.activeSession()
 	if sess == nil || sess.state != tabConnected {
-		s.conn.SetText(i18n.T(i18n.KeyNotConnected))
-		s.speed.SetText(i18n.T(i18n.KeyTransferIdle))
-		s.progress.Hide()
-		s.queue.Hide()
-		return
+		s.connIcon.Text = "○"
+		s.connIcon.Color = colorDisconnected
+		s.conn.SetText(i18n.T(i18n.KeyDisconnected))
+	} else {
+		s.connIcon.Text = "●"
+		s.connIcon.Color = colorConnected
+		s.conn.SetText(i18n.T(i18n.KeyStatusConnected) + " " + sess.addr())
 	}
-	s.conn.SetText(i18n.Tf(i18n.KeyStatusBarConnected, sess.addr()))
-	s.speed.SetText(i18n.T(i18n.KeyTransferIdle))
-	s.progress.Hide()
-	s.queue.Hide()
+	canvas.Refresh(s.connIcon)
+	s.RefreshTransfer()
+}
+
+func (s *StatusBar) RefreshTransfer() {
+	active, pct, speed, queue := s.app.transfers.Snapshot()
+	s.speed.SetText(speed)
+	s.progress.SetValue(pct / 100)
+	s.percent.SetText(fmt.Sprintf("%.0f%%", pct))
+	s.queue.SetText(i18n.Tf(i18n.KeyStatusQueue, queue))
+	if active {
+		s.syncLabel.SetText("  ⟳ " + i18n.T(i18n.KeyStatusSyncing))
+		s.syncLabel.Show()
+	} else {
+		s.syncLabel.Hide()
+	}
 }
 
 func (s *StatusBar) ApplyLanguage() {

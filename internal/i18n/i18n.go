@@ -132,9 +132,14 @@ const (
 	KeyColSize       = "col.size"
 	KeyColModified   = "col.modified"
 	KeyColPermissions = "col.permissions"
+	KeyPanelLocal     = "pane.panel_local"
+	KeyPanelRemote    = "pane.panel_remote"
 	KeyLocalHeader   = "pane.local_header"
 	KeyRemoteHeader  = "pane.remote_header"
 	KeyStatusBarConnected = "status.bar_connected"
+	KeyStatusConnected    = "status.connected_to"
+	KeyStatusSyncing      = "status.syncing"
+	KeyStatusQueue        = "status.queue_label"
 	KeyTransferIdle  = "status.transfer_idle"
 	KeyQueue         = "status.queue"
 	KeyNewFolder     = "action.new_folder"
@@ -252,9 +257,14 @@ var enStrings = map[string]string{
 	KeyColSize:        "Size",
 	KeyColModified:    "Modified",
 	KeyColPermissions: "Permissions",
+	KeyPanelLocal:     "Local",
+	KeyPanelRemote:    "Remote",
 	KeyLocalHeader:    "Local — %s",
 	KeyRemoteHeader:   "Remote — %s",
 	KeyStatusBarConnected: "Connected to %s",
+	KeyStatusConnected:    "Connected to",
+	KeyStatusSyncing:      "Silently syncing to server…",
+	KeyStatusQueue:        "Queue: %d",
 	KeyTransferIdle:   "— MB/s",
 	KeyQueue:          "Queue: %d",
 	KeyNewFolder:      "New Folder",
@@ -372,9 +382,14 @@ var zhStrings = map[string]string{
 	KeyColSize:        "大小",
 	KeyColModified:    "修改日期",
 	KeyColPermissions: "权限",
+	KeyPanelLocal:     "本地",
+	KeyPanelRemote:    "远程",
 	KeyLocalHeader:    "本地 — %s",
 	KeyRemoteHeader:   "远程 — %s",
 	KeyStatusBarConnected: "已连接到 %s",
+	KeyStatusConnected:    "已连接到",
+	KeyStatusSyncing:      "正在静默同步至服务器…",
+	KeyStatusQueue:        "队列: %d",
 	KeyTransferIdle:   "— MB/s",
 	KeyQueue:          "队列: %d",
 	KeyNewFolder:      "新建文件夹",

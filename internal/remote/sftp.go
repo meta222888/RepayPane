@@ -163,7 +163,30 @@ func (c *Client) WriteFile(p string, data []byte) error {
 	return err
 }
 
+type ProgressFunc func(transferred int64)
+
+type progressReader struct {
+	r    io.Reader
+	done int64
+	fn   ProgressFunc
+}
+
+func (p *progressReader) Read(b []byte) (int, error) {
+	n, err := p.r.Read(b)
+	if n > 0 {
+		p.done += int64(n)
+		if p.fn != nil {
+			p.fn(p.done)
+		}
+	}
+	return n, err
+}
+
 func (c *Client) Upload(localPath, remotePath string) error {
+	return c.UploadWithProgress(localPath, remotePath, nil)
+}
+
+func (c *Client) UploadWithProgress(localPath, remotePath string, fn ProgressFunc) error {
 	localFile, err := os.Open(localPath)
 	if err != nil {
 		return err
@@ -181,11 +204,19 @@ func (c *Client) Upload(localPath, remotePath string) error {
 		return err
 	}
 	defer remoteFile.Close()
-	_, err = io.Copy(remoteFile, localFile)
+	src := io.Reader(localFile)
+	if fn != nil {
+		src = &progressReader{r: localFile, fn: fn}
+	}
+	_, err = io.Copy(remoteFile, src)
 	return err
 }
 
 func (c *Client) Download(remotePath, localPath string) error {
+	return c.DownloadWithProgress(remotePath, localPath, nil)
+}
+
+func (c *Client) DownloadWithProgress(remotePath, localPath string, fn ProgressFunc) error {
 	remotePath = normalizeRemote(remotePath)
 	remoteFile, err := c.sftp.Open(remotePath)
 	if err != nil {
@@ -201,7 +232,11 @@ func (c *Client) Download(remotePath, localPath string) error {
 		return err
 	}
 	defer localFile.Close()
-	_, err = io.Copy(localFile, remoteFile)
+	src := io.Reader(remoteFile)
+	if fn != nil {
+		src = &progressReader{r: remoteFile, fn: fn}
+	}
+	_, err = io.Copy(localFile, src)
 	return err
 }
 

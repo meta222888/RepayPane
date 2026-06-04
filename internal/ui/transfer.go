@@ -25,11 +25,16 @@ func (a *App) handleDrop(_ fyne.Position, uris []fyne.URI, remoteArea bool) {
 			localPath := u.Path()
 			name := filepath.Base(localPath)
 			remotePath := filepath.ToSlash(filepath.Join(a.remotePane.CurrentPath(), name))
-			if err := client.Upload(localPath, remotePath); err != nil {
-				dialogShowError(a, fmt.Errorf("upload %s: %w", name, err))
-			}
+			a.transfers.EnqueueUpload(client, localPath, remotePath, func(err error) {
+				fyne.Do(func() {
+					if err != nil {
+						dialogShowError(a, fmt.Errorf("upload %s: %w", name, err))
+						return
+					}
+					a.remotePane.RefreshListing()
+				})
+			})
 		}
-		a.remotePane.RefreshListing()
 		return
 	}
 
@@ -57,8 +62,7 @@ func (a *App) uploadSelectedLocal() {
 	}
 	name := filepath.Base(path)
 	remotePath := filepath.ToSlash(filepath.Join(a.remotePane.CurrentPath(), name))
-	go func() {
-		err := client.Upload(path, remotePath)
+	a.transfers.EnqueueUpload(client, path, remotePath, func(err error) {
 		fyne.Do(func() {
 			if err != nil {
 				dialogShowError(a, err)
@@ -66,7 +70,7 @@ func (a *App) uploadSelectedLocal() {
 			}
 			a.remotePane.RefreshListing()
 		})
-	}()
+	})
 }
 
 func (a *App) downloadSelectedRemote() {
@@ -80,8 +84,7 @@ func (a *App) downloadSelectedRemote() {
 		return
 	}
 	localPath := filepath.Join(a.localPane.CurrentPath(), entry.Name)
-	go func() {
-		err := client.Download(entry.Path, localPath)
+	a.transfers.EnqueueDownload(client, entry.Path, localPath, func(err error) {
 		fyne.Do(func() {
 			if err != nil {
 				dialogShowError(a, err)
@@ -89,7 +92,7 @@ func (a *App) downloadSelectedRemote() {
 			}
 			a.localPane.RefreshListing()
 		})
-	}()
+	})
 }
 
 func copyFile(src, dst string) error {
