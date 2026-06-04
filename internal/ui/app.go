@@ -38,6 +38,8 @@ type App struct {
 	selectedServerID int // for my servers dialog
 
 	transfers *TransferQueue
+
+	clipboard *PaneClipboard
 }
 
 func NewApp(a fyne.App, w fyne.Window) *App {

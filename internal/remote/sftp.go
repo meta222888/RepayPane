@@ -256,6 +256,72 @@ func (c *Client) Remove(p string) error {
 	return c.sftp.Remove(p)
 }
 
+func (c *Client) RemoveAll(p string) error {
+	p = normalizeRemote(p)
+	st, err := c.sftp.Stat(p)
+	if err != nil {
+		return err
+	}
+	if !st.IsDir() {
+		return c.sftp.Remove(p)
+	}
+	entries, err := c.ListDir(p)
+	if err != nil {
+		return err
+	}
+	for _, e := range entries {
+		child := e.Path
+		if e.IsDir {
+			if err := c.RemoveAll(child); err != nil {
+				return err
+			}
+			continue
+		}
+		if err := c.sftp.Remove(child); err != nil {
+			return err
+		}
+	}
+	return c.sftp.RemoveDirectory(p)
+}
+
+func (c *Client) CopyPath(src, dst string) error {
+	src = normalizeRemote(src)
+	dst = normalizeRemote(dst)
+	st, err := c.Stat(src)
+	if err != nil {
+		return err
+	}
+	if st.IsDir {
+		return c.copyDirRemote(src, dst)
+	}
+	data, err := c.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	return c.WriteFile(dst, data)
+}
+
+func (c *Client) copyDirRemote(src, dst string) error {
+	_ = c.Mkdir(dst)
+	entries, err := c.ListDir(src)
+	if err != nil {
+		return err
+	}
+	for _, e := range entries {
+		dstChild := path.Join(dst, e.Name)
+		if e.IsDir {
+			if err := c.copyDirRemote(e.Path, dstChild); err != nil {
+				return err
+			}
+			continue
+		}
+		if err := c.CopyPath(e.Path, dstChild); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func normalizeRemote(p string) string {
 	p = strings.ReplaceAll(p, "\\", "/")
 	if p == "" {

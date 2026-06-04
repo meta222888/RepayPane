@@ -2,6 +2,9 @@ package ui
 
 import (
 	"image/color"
+	"os"
+	"path/filepath"
+	"runtime"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -60,7 +63,35 @@ func splitBorder(obj fyne.CanvasObject) fyne.CanvasObject {
 	return container.NewBorder(nil, nil, line, nil, obj)
 }
 
-type relayPaneTheme struct{}
+func fixedWidth(obj fyne.CanvasObject, width float32) fyne.CanvasObject {
+	spacer := canvas.NewRectangle(color.Transparent)
+	spacer.SetMinSize(fyne.NewSize(width, 0))
+	return container.NewStack(spacer, obj)
+}
+
+type relayPaneTheme struct {
+	font fyne.Resource
+}
+
+func newRelayPaneTheme() *relayPaneTheme {
+	return &relayPaneTheme{font: loadSystemFont()}
+}
+
+func loadSystemFont() fyne.Resource {
+	if runtime.GOOS == "windows" {
+		windir := os.Getenv("WINDIR")
+		if windir == "" {
+			windir = `C:\Windows`
+		}
+		for _, name := range []string{"msyh.ttc", "msyhbd.ttc", "segoeui.ttf"} {
+			p := filepath.Join(windir, "Fonts", name)
+			if res, err := fyne.LoadResourceFromPath(p); err == nil {
+				return res
+			}
+		}
+	}
+	return theme.DefaultTheme().Font(fyne.TextStyle{})
+}
 
 func (relayPaneTheme) Color(name fyne.ThemeColorName, _ fyne.ThemeVariant) color.Color {
 	switch name {
@@ -102,7 +133,10 @@ func (relayPaneTheme) Color(name fyne.ThemeColorName, _ fyne.ThemeVariant) color
 	return theme.DefaultTheme().Color(name, theme.VariantDark)
 }
 
-func (relayPaneTheme) Font(style fyne.TextStyle) fyne.Resource {
+func (t *relayPaneTheme) Font(style fyne.TextStyle) fyne.Resource {
+	if t.font != nil {
+		return t.font
+	}
 	return theme.DefaultTheme().Font(style)
 }
 
@@ -127,5 +161,5 @@ func (relayPaneTheme) Size(name fyne.ThemeSizeName) float32 {
 }
 
 func ApplyTheme(a fyne.App) {
-	a.Settings().SetTheme(&relayPaneTheme{})
+	a.Settings().SetTheme(newRelayPaneTheme())
 }

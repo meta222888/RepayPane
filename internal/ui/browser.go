@@ -25,6 +25,13 @@ const (
 	PaneRemote
 )
 
+type PaneClipboard struct {
+	Kind  PaneKind
+	Path  string
+	Name  string
+	IsDir bool
+}
+
 type FilePane struct {
 	app  *App
 	kind PaneKind
@@ -37,13 +44,14 @@ type FilePane struct {
 	history   []string
 	histIndex int
 
-	pathLabel  *widget.Label
+	pathLabel     *widget.Label
 	panelHdrLabel *widget.Label
-	breadcrumb *fyne.Container
-	table      *widget.Table
-	toolbar    fyne.CanvasObject
-	panelHdr   fyne.CanvasObject
-	root       fyne.CanvasObject
+	breadcrumb    *fyne.Container
+	list          *widget.List
+	listHeader    fyne.CanvasObject
+	toolbar       fyne.CanvasObject
+	panelHdr      fyne.CanvasObject
+	root          fyne.CanvasObject
 
 	selectedRow int
 	lastTap     time.Time
@@ -66,48 +74,46 @@ func NewRemotePane(app *App) *FilePane {
 	return p
 }
 
-func (p *FilePane) colCount() int {
-	if p.kind == PaneRemote {
-		return 4
-	}
-	return 3
-}
-
 func (p *FilePane) build() {
 	p.breadcrumb = container.NewHBox()
 
-	p.table = widget.NewTable(
-		func() (int, int) { return p.rowCount() + 1, p.colCount() },
-		func() fyne.CanvasObject { return widget.NewLabel("") },
-		p.updateCell,
+	p.list = widget.NewList(
+		func() int { return p.rowCount() },
+		func() fyne.CanvasObject { return newFileListRow() },
+		p.updateListRow,
 	)
-	p.table.SetColumnWidth(0, 240)
-	p.table.SetColumnWidth(1, 90)
-	if p.kind == PaneRemote {
-		p.table.SetColumnWidth(2, 120)
-		p.table.SetColumnWidth(3, 140)
-	} else {
-		p.table.SetColumnWidth(2, 140)
-	}
-	p.table.OnSelected = func(id widget.TableCellID) {
-		if id.Row == 0 {
-			return
-		}
-		row := id.Row - 1
-		p.selectedRow = row
-		p.handleRowSelect(id, row)
-	}
+	p.list.OnSelected = p.handleListSelect
+
+	p.listHeader = p.buildListHeader()
+	p.root = container.NewBorder(p.listHeader, nil, nil, nil, p.list)
 
 	p.toolbar = p.buildToolbar()
 	p.panelHdr = p.buildPanelHeader()
-	p.root = p.table
 	p.ApplyLanguage()
 	p.refreshPathDisplay()
 }
 
+func (p *FilePane) buildListHeader() fyne.CanvasObject {
+	name := widget.NewLabel(strings.ToUpper(i18n.T(i18n.KeyColName)))
+	size := widget.NewLabel(strings.ToUpper(i18n.T(i18n.KeyColSize)))
+	meta := widget.NewLabel("")
+	if p.kind == PaneRemote {
+		meta.SetText(strings.ToUpper(i18n.T(i18n.KeyColModified)))
+	} else {
+		meta.SetText(strings.ToUpper(i18n.T(i18n.KeyColModified)))
+	}
+	name.Importance = widget.MediumImportance
+	size.Importance = widget.MediumImportance
+	meta.Importance = widget.MediumImportance
+	size.Alignment = fyne.TextAlignTrailing
+	meta.Alignment = fyne.TextAlignTrailing
+	row := container.NewBorder(nil, nil, name, container.NewHBox(fixedWidth(meta, 128), fixedWidth(size, 72)), nil)
+	return withBackground(container.NewPadded(row), colorPanelHeader)
+}
+
 func (p *FilePane) buildToolbar() fyne.CanvasObject {
 	up := widget.NewButtonWithIcon("", theme.MoveUpIcon(), p.goUp)
-	newFolder := widget.NewButtonWithIcon("", theme.FolderNewIcon(), p.newFolderSoon)
+	newFolder := widget.NewButtonWithIcon("", theme.FolderNewIcon(), p.promptNewFolder)
 	refresh := widget.NewButtonWithIcon("", theme.ViewRefreshIcon(), p.RefreshListing)
 	for _, b := range []*widget.Button{up, newFolder, refresh} {
 		b.Importance = widget.LowImportance
@@ -117,7 +123,6 @@ func (p *FilePane) buildToolbar() fyne.CanvasObject {
 	if p.kind == PaneLocal {
 		p.localNav = NewLocalNav(p)
 		p.pathLabel = widget.NewLabel("")
-		p.pathLabel.TextStyle = fyne.TextStyle{Monospace: true}
 		left := container.NewHBox(p.localNav.Button(), btns)
 		row := container.NewBorder(nil, nil, left, p.pathLabel, nil)
 		return withPanelHeader(row)
@@ -143,67 +148,40 @@ func (p *FilePane) rowCount() int {
 	return len(p.remote)
 }
 
-func (p *FilePane) updateCell(id widget.TableCellID, obj fyne.CanvasObject) {
-	label := obj.(*widget.Label)
-	label.Alignment = fyne.TextAlignLeading
-	label.TextStyle = fyne.TextStyle{}
-	if id.Col == 1 {
-		label.Alignment = fyne.TextAlignTrailing
+func (p *FilePane) updateListRow(i widget.ListItemID, obj fyne.CanvasObject) {
+	row := obj.(*fileListRow)
+	row.onSecondary = func(ev *fyne.PointEvent) {
+		p.selectedRow = int(i)
+		p.list.Select(i)
+		p.showContextMenu(ev.AbsolutePosition)
 	}
-	if id.Row == 0 {
-		label.TextStyle = fyne.TextStyle{Bold: true}
-		label.Importance = widget.MediumImportance
-		switch id.Col {
-		case 0:
-			label.SetText(strings.ToUpper(i18n.T(i18n.KeyColName)))
-		case 1:
-			label.SetText(strings.ToUpper(i18n.T(i18n.KeyColSize)))
-		case 2:
-			if p.kind == PaneRemote {
-				label.SetText(strings.ToUpper(i18n.T(i18n.KeyColPermissions)))
-			} else {
-				label.SetText(strings.ToUpper(i18n.T(i18n.KeyColModified)))
-			}
-		case 3:
-			label.SetText(strings.ToUpper(i18n.T(i18n.KeyColModified)))
-		}
-		return
-	}
-	row := id.Row - 1
+
 	if p.kind == PaneLocal {
-		if row >= len(p.local) {
+		if int(i) >= len(p.local) {
 			return
 		}
-		e := p.local[row]
-		switch id.Col {
-		case 0:
-			label.SetText(fileIcon(e.isDir) + "  " + e.name)
-		case 1:
-			label.SetText(formatSize(e.size, e.isDir))
-		case 2:
-			label.SetText(formatTime(e.mod))
-		}
+		e := p.local[i]
+		row.nameLbl.SetText(fileIcon(e.isDir) + "  " + e.name)
+		row.sizeLbl.SetText(formatSize(e.size, e.isDir))
+		row.metaLbl.SetText(formatTime(e.mod))
 		return
 	}
-	if row >= len(p.remote) {
+	if int(i) >= len(p.remote) {
 		return
 	}
-	e := p.remote[row]
-	switch id.Col {
-	case 0:
-		label.SetText(fileIcon(e.IsDir) + "  " + e.Name)
-	case 1:
-		label.SetText(formatSize(e.Size, e.IsDir))
-	case 2:
-		label.SetText(formatRemotePerm(e.Mode, e.IsDir))
-	case 3:
-		label.SetText(formatTime(e.ModTime))
+	e := p.remote[i]
+	row.nameLbl.SetText(fileIcon(e.IsDir) + "  " + e.Name)
+	row.sizeLbl.SetText(formatSize(e.Size, e.IsDir))
+	if p.kind == PaneRemote {
+		row.metaLbl.SetText(formatTime(e.ModTime))
+	} else {
+		row.metaLbl.SetText(formatTime(e.ModTime))
 	}
 }
 
-func (p *FilePane) Toolbar() fyne.CanvasObject  { return p.toolbar }
+func (p *FilePane) Toolbar() fyne.CanvasObject     { return p.toolbar }
 func (p *FilePane) PanelHeader() fyne.CanvasObject { return p.panelHdr }
-func (p *FilePane) Container() fyne.CanvasObject { return p.root }
+func (p *FilePane) Container() fyne.CanvasObject   { return p.root }
 
 func (p *FilePane) CurrentPath() string { return p.path }
 
@@ -211,7 +189,7 @@ func (p *FilePane) SetConnected(v bool) {
 	p.connected = v
 	if !v {
 		p.remote = nil
-		p.table.Refresh()
+		p.list.Refresh()
 	}
 }
 
@@ -220,7 +198,7 @@ func (p *FilePane) ApplyLanguage() {
 		p.localNav.ApplyLanguage()
 	}
 	p.refreshPathDisplay()
-	p.table.Refresh()
+	p.list.Refresh()
 }
 
 func (p *FilePane) refreshPathDisplay() {
@@ -261,6 +239,7 @@ func (p *FilePane) Navigate(path string) {
 		}
 	}
 	p.path = path
+	p.selectedRow = -1
 	if p.kind == PaneLocal && p.localNav != nil {
 		p.localNav.syncFromPath(path)
 	}
@@ -301,10 +280,6 @@ func (p *FilePane) goUp() {
 	p.Navigate(parent)
 }
 
-func (p *FilePane) newFolderSoon() {
-	dialog.ShowInformation(i18n.T(i18n.KeyMenuComingSoon), i18n.T(i18n.KeyMenuFeaturesSoon), p.app.window)
-}
-
 func (p *FilePane) refreshBreadcrumb() {
 	if p.kind != PaneRemote {
 		return
@@ -342,7 +317,7 @@ func (p *FilePane) RefreshListing() {
 			return
 		}
 		p.local = entries
-		p.table.Refresh()
+		p.list.Refresh()
 		return
 	}
 	if !p.connected || p.app.activeClient() == nil {
@@ -360,21 +335,23 @@ func (p *FilePane) RefreshListing() {
 		return strings.ToLower(entries[i].Name) < strings.ToLower(entries[j].Name)
 	})
 	p.remote = entries
-	p.table.Refresh()
+	p.list.Refresh()
 }
 
-func (p *FilePane) handleRowSelect(id widget.TableCellID, row int) {
+func (p *FilePane) handleListSelect(id widget.ListItemID) {
+	row := int(id)
 	now := time.Now()
 	isDouble := row == p.lastTapID && now.Sub(p.lastTap) < 500*time.Millisecond
 	p.lastTap = now
 	p.lastTapID = row
+	p.selectedRow = row
 	if isDouble {
 		p.activateRow(row)
 		return
 	}
-	cellID := id
+	listID := id
 	time.AfterFunc(100*time.Millisecond, func() {
-		fyne.Do(func() { p.table.Unselect(cellID) })
+		fyne.Do(func() { p.list.Unselect(listID) })
 	})
 }
 
@@ -398,6 +375,274 @@ func (p *FilePane) activateRow(row int) {
 		return
 	}
 	p.app.openRemoteEditor(e)
+}
+
+func (p *FilePane) showContextMenu(at fyne.Position) {
+	copyItem := fyne.NewMenuItem(i18n.T(i18n.KeyCtxCopy), p.ctxCopy)
+	pasteItem := fyne.NewMenuItem(i18n.T(i18n.KeyCtxPaste), p.ctxPaste)
+	newFolderItem := fyne.NewMenuItem(i18n.T(i18n.KeyCtxNewFolder), p.promptNewFolder)
+	newFileItem := fyne.NewMenuItem(i18n.T(i18n.KeyCtxNewFile), p.promptNewFile)
+	deleteItem := fyne.NewMenuItem(i18n.T(i18n.KeyCtxDelete), p.ctxDelete)
+
+	if p.selectedRow < 0 || p.selectedRow >= p.rowCount() {
+		copyItem.Disabled = true
+		deleteItem.Disabled = true
+	}
+	clip := p.app.clipboard
+	if clip == nil || clip.Kind != p.kind {
+		pasteItem.Disabled = true
+	}
+	if p.kind == PaneRemote && (!p.connected || p.app.activeClient() == nil) {
+		pasteItem.Disabled = true
+		newFolderItem.Disabled = true
+		newFileItem.Disabled = true
+		deleteItem.Disabled = true
+	}
+
+	menu := fyne.NewMenu("",
+		copyItem,
+		pasteItem,
+		fyne.NewMenuItemSeparator(),
+		newFolderItem,
+		newFileItem,
+		fyne.NewMenuItemSeparator(),
+		deleteItem,
+	)
+	popup := widget.NewPopUpMenu(menu, p.app.window.Canvas())
+	popup.ShowAtPosition(at)
+}
+
+func (p *FilePane) selectedName() string {
+	if p.selectedRow < 0 {
+		return ""
+	}
+	if p.kind == PaneLocal {
+		if p.selectedRow >= len(p.local) {
+			return ""
+		}
+		return p.local[p.selectedRow].name
+	}
+	if p.selectedRow >= len(p.remote) {
+		return ""
+	}
+	return p.remote[p.selectedRow].Name
+}
+
+func (p *FilePane) selectedFullPath() string {
+	if p.selectedRow < 0 {
+		return ""
+	}
+	if p.kind == PaneLocal {
+		if p.selectedRow >= len(p.local) {
+			return ""
+		}
+		return p.local[p.selectedRow].path
+	}
+	if p.selectedRow >= len(p.remote) {
+		return ""
+	}
+	return p.remote[p.selectedRow].Path
+}
+
+func (p *FilePane) selectedIsDir() bool {
+	if p.selectedRow < 0 {
+		return false
+	}
+	if p.kind == PaneLocal {
+		if p.selectedRow >= len(p.local) {
+			return false
+		}
+		return p.local[p.selectedRow].isDir
+	}
+	if p.selectedRow >= len(p.remote) {
+		return false
+	}
+	return p.remote[p.selectedRow].IsDir
+}
+
+func (p *FilePane) ctxCopy() {
+	path := p.selectedFullPath()
+	if path == "" {
+		return
+	}
+	p.app.clipboard = &PaneClipboard{
+		Kind:  p.kind,
+		Path:  path,
+		Name:  p.selectedName(),
+		IsDir: p.selectedIsDir(),
+	}
+}
+
+func (p *FilePane) ctxPaste() {
+	clip := p.app.clipboard
+	if clip == nil || clip.Kind != p.kind {
+		return
+	}
+	dst := p.joinPath(clip.Name)
+	if p.pathExistsAt(dst) {
+		dialog.ShowError(fmt.Errorf(i18n.Tf(i18n.KeyFileExists, clip.Name)), p.app.window)
+		return
+	}
+	if p.kind == PaneLocal {
+		if err := copyPathLocal(clip.Path, dst); err != nil {
+			dialog.ShowError(err, p.app.window)
+			return
+		}
+		p.RefreshListing()
+		return
+	}
+	client := p.app.activeClient()
+	if client == nil {
+		return
+	}
+	if err := client.CopyPath(clip.Path, dst); err != nil {
+		dialog.ShowError(err, p.app.window)
+		return
+	}
+	p.RefreshListing()
+}
+
+func (p *FilePane) ctxDelete() {
+	name := p.selectedName()
+	path := p.selectedFullPath()
+	if path == "" {
+		return
+	}
+	dialog.ShowConfirm(i18n.T(i18n.KeyDelete), i18n.Tf(i18n.KeyDeleteFileConfirm, name), func(ok bool) {
+		if !ok {
+			return
+		}
+		if p.kind == PaneLocal {
+			if err := removePathLocal(path); err != nil {
+				dialog.ShowError(err, p.app.window)
+				return
+			}
+			p.selectedRow = -1
+			p.RefreshListing()
+			return
+		}
+		client := p.app.activeClient()
+		if client == nil {
+			return
+		}
+		var err error
+		if p.selectedIsDir() {
+			err = client.RemoveAll(path)
+		} else {
+			err = client.Remove(path)
+		}
+		if err != nil {
+			dialog.ShowError(err, p.app.window)
+			return
+		}
+		p.selectedRow = -1
+		p.RefreshListing()
+	}, p.app.window)
+}
+
+func (p *FilePane) promptNewFolder() {
+	entry := widget.NewEntry()
+	dialog.ShowForm(i18n.T(i18n.KeyCtxNewFolder), i18n.T(i18n.KeyOK), i18n.T(i18n.KeyCancel),
+		[]*widget.FormItem{widget.NewFormItem(i18n.T(i18n.KeyFormName), entry)},
+		func(ok bool) {
+			if !ok {
+				return
+			}
+			name := strings.TrimSpace(entry.Text)
+			if name == "" {
+				return
+			}
+			p.createFolder(name)
+		}, p.app.window)
+}
+
+func (p *FilePane) promptNewFile() {
+	entry := widget.NewEntry()
+	dialog.ShowForm(i18n.T(i18n.KeyCtxNewFile), i18n.T(i18n.KeyOK), i18n.T(i18n.KeyCancel),
+		[]*widget.FormItem{widget.NewFormItem(i18n.T(i18n.KeyFormName), entry)},
+		func(ok bool) {
+			if !ok {
+				return
+			}
+			name := strings.TrimSpace(entry.Text)
+			if name == "" {
+				return
+			}
+			p.createFile(name)
+		}, p.app.window)
+}
+
+func (p *FilePane) createFolder(name string) {
+	dst := p.joinPath(name)
+	if p.pathExistsAt(dst) {
+		dialog.ShowError(fmt.Errorf(i18n.Tf(i18n.KeyFileExists, name)), p.app.window)
+		return
+	}
+	if p.kind == PaneLocal {
+		if err := os.Mkdir(dst, 0o755); err != nil {
+			dialog.ShowError(err, p.app.window)
+			return
+		}
+		p.RefreshListing()
+		return
+	}
+	client := p.app.activeClient()
+	if client == nil {
+		return
+	}
+	if err := client.Mkdir(dst); err != nil {
+		dialog.ShowError(err, p.app.window)
+		return
+	}
+	p.RefreshListing()
+}
+
+func (p *FilePane) createFile(name string) {
+	dst := p.joinPath(name)
+	if p.pathExistsAt(dst) {
+		dialog.ShowError(fmt.Errorf(i18n.Tf(i18n.KeyFileExists, name)), p.app.window)
+		return
+	}
+	if p.kind == PaneLocal {
+		if err := os.WriteFile(dst, nil, 0o644); err != nil {
+			dialog.ShowError(err, p.app.window)
+			return
+		}
+		p.RefreshListing()
+		ShowLocalEditor(p.app, dst, name)
+		return
+	}
+	client := p.app.activeClient()
+	if client == nil {
+		return
+	}
+	if err := client.WriteFile(dst, nil); err != nil {
+		dialog.ShowError(err, p.app.window)
+		return
+	}
+	p.RefreshListing()
+	entry := remote.FileInfo{Name: name, Path: dst}
+	ShowEditor(p.app, entry, "")
+}
+
+func (p *FilePane) joinPath(name string) string {
+	if p.kind == PaneLocal {
+		return filepath.Join(p.path, name)
+	}
+	return filepath.ToSlash(filepath.Join(p.path, name))
+}
+
+func (p *FilePane) pathExistsAt(fullPath string) bool {
+	if p.kind == PaneLocal {
+		_, err := os.Stat(fullPath)
+		return err == nil
+	}
+	client := p.app.activeClient()
+	if client == nil {
+		return false
+	}
+	_, err := client.Stat(fullPath)
+	return err == nil
 }
 
 func fileIcon(isDir bool) string {
@@ -428,20 +673,6 @@ func formatTime(t time.Time) string {
 		return "—"
 	}
 	return t.Format("2006-01-02 15:04")
-}
-
-func formatRemotePerm(m os.FileMode, isDir bool) string {
-	if m == 0 {
-		if isDir {
-			return "drwxr-xr-x"
-		}
-		return "—"
-	}
-	s := m.String()
-	if len(s) >= 10 {
-		return s
-	}
-	return s
 }
 
 func (p *FilePane) SelectedPath() string {

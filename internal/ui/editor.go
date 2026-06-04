@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/relaypane/relaypane/internal/i18n"
 	"github.com/relaypane/relaypane/internal/remote"
@@ -15,24 +16,41 @@ import (
 
 type EditorWindow struct {
 	app     *App
-	entry   remote.FileInfo
+	path    string
+	saveFn  func([]byte) error
 	content *widget.Entry
 	dirty   bool
 	window  fyne.Window
 }
 
 func ShowEditor(app *App, entry remote.FileInfo, text string) {
-	e := &EditorWindow{app: app, entry: entry}
+	showTextEditor(app, i18n.Tf(i18n.KeyEditTitle, entry.Name), entry.Path, text, i18n.T(i18n.KeyCtrlSSave), func(data []byte) error {
+		client := app.activeClient()
+		if client == nil {
+			return fmt.Errorf(i18n.T(i18n.KeyNotConnectedErr))
+		}
+		return client.WriteFile(entry.Path, data)
+	})
+}
+
+func ShowLocalEditor(app *App, path, name string) {
+	showTextEditor(app, i18n.Tf(i18n.KeyEditTitle, name), path, "", i18n.T(i18n.KeyCtrlSSaveLocal), func(data []byte) error {
+		return os.WriteFile(path, data, 0o644)
+	})
+}
+
+func showTextEditor(app *App, title, path, text, saveHint string, saveFn func([]byte) error) {
+	e := &EditorWindow{app: app, path: path, saveFn: saveFn}
 	e.content = widget.NewMultiLineEntry()
 	e.content.SetText(text)
 	e.content.Wrapping = fyne.TextWrapWord
 	e.content.OnChanged = func(string) { e.dirty = true }
 
-	e.window = app.fyneApp.NewWindow(i18n.Tf(i18n.KeyEditTitle, entry.Name))
+	e.window = app.fyneApp.NewWindow(title)
 	e.window.Resize(fyne.NewSize(900, 600))
 	e.window.SetContent(container.NewBorder(
-		widget.NewLabel(entry.Path),
-		widget.NewLabel(i18n.T(i18n.KeyCtrlSSave)),
+		widget.NewLabel(path),
+		widget.NewLabel(saveHint),
 		nil, nil,
 		container.NewScroll(e.content),
 	))
@@ -55,21 +73,16 @@ func ShowEditor(app *App, entry remote.FileInfo, text string) {
 }
 
 func (e *EditorWindow) save() {
-	client := e.app.activeClient()
-	if client == nil {
-		dialog.ShowError(fmt.Errorf(i18n.T(i18n.KeyNotConnectedErr)), e.window)
-		return
-	}
 	data := []byte(e.content.Text)
 	go func() {
-		err := client.WriteFile(e.entry.Path, data)
+		err := e.saveFn(data)
 		fyne.Do(func() {
 			if err != nil {
 				dialog.ShowError(fmt.Errorf(i18n.Tf(i18n.KeySaveFailed, err.Error())), e.window)
 				return
 			}
 			e.dirty = false
-			dialog.ShowInformation(i18n.T(i18n.KeySaved), i18n.Tf(i18n.KeySavedMsg, e.entry.Path), e.window)
+			dialog.ShowInformation(i18n.T(i18n.KeySaved), i18n.Tf(i18n.KeySavedMsg, e.path), e.window)
 		})
 	}()
 }

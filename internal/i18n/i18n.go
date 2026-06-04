@@ -165,6 +165,15 @@ const (
 	KeyPassphraseHint     = "passphrase.hint"
 	KeyKeyPickerTitle     = "keypicker.title"
 	KeyKeyPickerHint      = "keypicker.hint"
+
+	KeyCtxCopy            = "ctx.copy"
+	KeyCtxPaste           = "ctx.paste"
+	KeyCtxDelete          = "ctx.delete"
+	KeyCtxNewFolder       = "ctx.new_folder"
+	KeyCtxNewFile         = "ctx.new_file"
+	KeyDeleteFileConfirm  = "dialog.delete_file_confirm"
+	KeyFileExists         = "dialog.file_exists"
+	KeyCtrlSSaveLocal     = "editor.ctrl_s_local"
 )
 
 var enStrings = map[string]string{
@@ -290,6 +299,15 @@ var enStrings = map[string]string{
 	KeyPassphraseHint:     "Your private key file is encrypted. Enter the passphrase to continue.",
 	KeyKeyPickerTitle:     "Select Private Key",
 	KeyKeyPickerHint:      "Pick a key from ~/.ssh or enter the full path below.",
+
+	KeyCtxCopy:           "Copy",
+	KeyCtxPaste:          "Paste",
+	KeyCtxDelete:         "Delete",
+	KeyCtxNewFolder:      "New Folder",
+	KeyCtxNewFile:        "New File",
+	KeyDeleteFileConfirm: "Delete %q?",
+	KeyFileExists:        "%q already exists",
+	KeyCtrlSSaveLocal:    "Ctrl+S to save",
 }
 
 var zhStrings = map[string]string{
@@ -415,4 +433,13 @@ var zhStrings = map[string]string{
 	KeyPassphraseHint:     "您的私钥文件已加密，请输入密码后继续连接。",
 	KeyKeyPickerTitle:     "选择私钥",
 	KeyKeyPickerHint:      "从 ~/.ssh 列表中选择，或在下方输入完整路径。",
+
+	KeyCtxCopy:           "复制",
+	KeyCtxPaste:          "粘贴",
+	KeyCtxDelete:         "删除",
+	KeyCtxNewFolder:      "新建目录",
+	KeyCtxNewFile:        "新建文件",
+	KeyDeleteFileConfirm: "确定删除 %q？",
+	KeyFileExists:        "%q 已存在",
+	KeyCtrlSSaveLocal:    "Ctrl+S 保存",
 }
