@@ -5,6 +5,7 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
@@ -49,7 +50,11 @@ func NewTopBar(app *App) *TopBar {
 	winControls := container.NewHBox(minBtn, maxBtn, closeBtn)
 
 	logoDrag := newDragRegion(t.app.window, logo)
-	header := container.NewBorder(nil, nil, logoDrag, container.NewHBox(t.btnSet, t.btnFeat, t.btnAbout, winControls), nil)
+	centerDrag := newDragRegion(t.app.window, layout.NewSpacer())
+	header := container.NewBorder(nil, nil, logoDrag,
+		container.NewHBox(t.btnSet, t.btnFeat, t.btnAbout, winControls),
+		centerDrag,
+	)
 	t.root = withPanelHeader(header)
 	return t
 }

@@ -4,27 +4,37 @@ package ui
 
 import (
 	"syscall"
+	"unsafe"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/driver"
 )
 
 var (
-	user32               = syscall.NewLazyDLL("user32.dll")
-	procReleaseCapture   = user32.NewProc("ReleaseCapture")
-	procSendMessageW     = user32.NewProc("SendMessageW")
-	procShowWindow       = user32.NewProc("ShowWindow")
+	user32           = syscall.NewLazyDLL("user32.dll")
+	procShowWindow   = user32.NewProc("ShowWindow")
+	procGetWindowRect = user32.NewProc("GetWindowRect")
+	procSetWindowPos = user32.NewProc("SetWindowPos")
 )
 
 const (
-	wmNCLButtonDown = 0x00A1
-	htCaption       = 2
-	swMinimize      = 6
-	swMaximize      = 3
-	swRestore       = 9
+	swMinimize  = 6
+	swMaximize  = 3
+	swRestore   = 9
+	swpNoSize   = 0x0001
+	swpNoZOrder = 0x0004
 )
 
-func winDragWindows(w fyne.Window) {
+type winRect struct {
+	Left, Top, Right, Bottom int32
+}
+
+func winMoveWindows(w fyne.Window, scale float32, delta fyne.Delta) {
+	dx := int(delta.DX * scale)
+	dy := int(delta.DY * scale)
+	if dx == 0 && dy == 0 {
+		return
+	}
 	nw, ok := w.(driver.NativeWindow)
 	if !ok {
 		return
@@ -34,8 +44,15 @@ func winDragWindows(w fyne.Window) {
 		if !ok || c.HWND == 0 {
 			return
 		}
-		procReleaseCapture.Call()
-		procSendMessageW.Call(c.HWND, wmNCLButtonDown, htCaption, 0)
+		var r winRect
+		procGetWindowRect.Call(c.HWND, uintptr(unsafe.Pointer(&r)))
+		procSetWindowPos.Call(
+			c.HWND, 0,
+			uintptr(int64(r.Left)+int64(dx)),
+			uintptr(int64(r.Top)+int64(dy)),
+			0, 0,
+			swpNoSize|swpNoZOrder,
+		)
 	})
 }
 

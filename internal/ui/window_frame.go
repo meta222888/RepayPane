@@ -26,9 +26,9 @@ func NewMainWindow(a fyne.App) fyne.Window {
 	return w
 }
 
-func beginWindowDrag(w fyne.Window) {
+func moveWindowBy(w fyne.Window, scale float32, delta fyne.Delta) {
 	if runtime.GOOS == "windows" {
-		winDragWindows(w)
+		winMoveWindows(w, scale, delta)
 	}
 }
 
