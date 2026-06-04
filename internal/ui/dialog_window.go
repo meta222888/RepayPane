@@ -60,7 +60,7 @@ func withPopupFrame(content fyne.CanvasObject) fyne.CanvasObject {
 	left.SetMinSize(fyne.NewSize(1, 0))
 	right := canvas.NewRectangle(colorBorder)
 	right.SetMinSize(fyne.NewSize(1, 0))
-	bordered := container.NewBorder(top, bottom, left, right, nil, content)
+	bordered := container.NewBorder(top, bottom, left, right, content)
 
 	bottomShadow := canvas.NewRectangle(colorPopupShadow)
 	bottomShadow.SetMinSize(fyne.NewSize(0, popupShadowSize))
