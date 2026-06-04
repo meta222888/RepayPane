@@ -22,6 +22,7 @@ type Server struct {
 	Port          int    `json:"port"`
 	Username      string `json:"username"`
 	Password      string `json:"password,omitempty"`
+	AutoSSHKey    bool   `json:"auto_ssh_key,omitempty"`
 	PrivateKey    string `json:"private_key_path,omitempty"`
 	RemoteRoot    string `json:"remote_root,omitempty"`
 	HeartbeatSec  int    `json:"heartbeat_sec,omitempty"`

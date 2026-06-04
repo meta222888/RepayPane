@@ -36,6 +36,7 @@ type ConnectOptions struct {
 	Port       int
 	Username   string
 	Password   string
+	AutoSSHKey bool
 	PrivateKey string
 }
 
@@ -47,7 +48,15 @@ func Connect(opts ConnectOptions) (*Client, error) {
 	if opts.Password != "" {
 		authMethods = append(authMethods, ssh.Password(opts.Password))
 	}
-	if opts.PrivateKey != "" {
+	if opts.AutoSSHKey {
+		signers, err := loadSSHDirKeys()
+		if err != nil {
+			return nil, err
+		}
+		if len(signers) > 0 {
+			authMethods = append(authMethods, ssh.PublicKeys(signers...))
+		}
+	} else if opts.PrivateKey != "" {
 		keyData, err := os.ReadFile(opts.PrivateKey)
 		if err != nil {
 			return nil, fmt.Errorf("read private key: %w", err)
@@ -226,4 +235,32 @@ func normalizeRemote(p string) string {
 		p = "/" + p
 	}
 	return path.Clean(p)
+}
+
+func loadSSHDirKeys() ([]ssh.Signer, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, fmt.Errorf("home dir: %w", err)
+	}
+	sshDir := filepath.Join(home, ".ssh")
+	entries, err := os.ReadDir(sshDir)
+	if err != nil {
+		return nil, fmt.Errorf("read ~/.ssh: %w", err)
+	}
+	var signers []ssh.Signer
+	for _, e := range entries {
+		if e.IsDir() || strings.HasSuffix(e.Name(), ".pub") {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(sshDir, e.Name()))
+		if err != nil {
+			continue
+		}
+		signer, err := ssh.ParsePrivateKey(data)
+		if err != nil {
+			continue
+		}
+		signers = append(signers, signer)
+	}
+	return signers, nil
 }

@@ -101,6 +101,10 @@ const (
 	KeyFormUsername    = "form.username"
 	KeyFormPassword    = "form.password"
 	KeyFormPrivateKey  = "form.private_key"
+	KeyFormAutoSSHKey  = "form.auto_ssh_key"
+	KeyFormSelectKey   = "form.select_key"
+	KeyFormKeySelected = "form.key_selected"
+	KeyFormKeyNone     = "form.key_none"
 	KeyFormRemoteRoot  = "form.remote_root"
 	KeyFormHeartbeat   = "form.heartbeat"
 
@@ -204,6 +208,10 @@ var enStrings = map[string]string{
 	KeyFormUsername:    "Username",
 	KeyFormPassword:    "Password",
 	KeyFormPrivateKey:  "Private key file",
+	KeyFormAutoSSHKey:  "Auto (~/.ssh)",
+	KeyFormSelectKey:   "Select key…",
+	KeyFormKeySelected: "Selected: %s",
+	KeyFormKeyNone:     "No key selected",
 	KeyFormRemoteRoot:  "Remote root",
 	KeyFormHeartbeat:   "Heartbeat (seconds, 0=off)",
 
@@ -307,6 +315,10 @@ var zhStrings = map[string]string{
 	KeyFormUsername:    "用户名",
 	KeyFormPassword:    "密码",
 	KeyFormPrivateKey:  "私钥文件",
+	KeyFormAutoSSHKey:  "自动（使用 ~/.ssh 目录私钥）",
+	KeyFormSelectKey:   "选择私钥…",
+	KeyFormKeySelected: "已选：%s",
+	KeyFormKeyNone:     "未选择私钥",
 	KeyFormRemoteRoot:  "远程根目录",
 	KeyFormHeartbeat:   "心跳间隔（秒，0=关闭）",
 

@@ -91,7 +91,7 @@ func (p *FilePane) build() {
 		}
 		row := id.Row - 1
 		p.selectedRow = row
-		p.onRowActivate(row)
+		p.handleRowSelect(id, row)
 	}
 
 	toolbar := p.buildToolbar()
@@ -384,19 +384,33 @@ func (p *FilePane) RefreshListing() {
 	p.table.Refresh()
 }
 
-func (p *FilePane) onRowActivate(row int) {
+func (p *FilePane) handleRowSelect(id widget.TableCellID, row int) {
 	now := time.Now()
-	isDouble := row == p.lastTapID && now.Sub(p.lastTap) < 450*time.Millisecond
+	isDouble := row == p.lastTapID && now.Sub(p.lastTap) < 500*time.Millisecond
 	p.lastTap = now
 	p.lastTapID = row
-	if !isDouble {
+	if isDouble {
+		p.activateRow(row)
 		return
 	}
+	cellID := id
+	time.AfterFunc(100*time.Millisecond, func() {
+		fyne.Do(func() { p.table.Unselect(cellID) })
+	})
+}
+
+func (p *FilePane) activateRow(row int) {
 	if p.kind == PaneLocal {
+		if row < 0 || row >= len(p.local) {
+			return
+		}
 		e := p.local[row]
 		if e.isDir {
 			p.Navigate(e.path)
 		}
+		return
+	}
+	if row < 0 || row >= len(p.remote) {
 		return
 	}
 	e := p.remote[row]
