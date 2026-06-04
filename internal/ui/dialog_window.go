@@ -6,8 +6,6 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/driver/desktop"
-	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
@@ -16,35 +14,41 @@ const popupShadowSize = float32(8)
 
 var colorPopupShadow = color.NRGBA{R: 0, G: 0, B: 0, A: 120}
 
-func newThemedWindow(a fyne.App, size fyne.Size) fyne.Window {
-	var w fyne.Window
-	if drv, ok := a.Driver().(desktop.Driver); ok {
-		w = drv.CreateSplashWindow()
-	} else {
-		w = a.NewWindow("")
-	}
-	// Extra space for drop shadow on right/bottom.
-	w.Resize(fyne.NewSize(size.Width+popupShadowSize, size.Height+popupShadowSize))
-	w.CenterOnScreen()
-	w.SetPadded(false)
-	return w
+// modalDialog is a themed modal overlay on the main window canvas (stable on Windows).
+type modalDialog struct {
+	popup *widget.PopUp
 }
 
-func themedWindowChrome(w fyne.Window, title string, body fyne.CanvasObject) fyne.CanvasObject {
+func (d *modalDialog) Close() {
+	if d != nil && d.popup != nil {
+		d.popup.Hide()
+	}
+}
+
+func (d *modalDialog) Canvas() fyne.Canvas {
+	if d == nil || d.popup == nil {
+		return nil
+	}
+	return d.popup.Canvas
+}
+
+func newModalDialog(parent fyne.Window, title string, size fyne.Size, body fyne.CanvasObject) *modalDialog {
+	md := &modalDialog{}
+	onClose := func() { md.Close() }
+	card := buildDialogCard(title, body, onClose)
+	md.popup = widget.NewModalPopUp(withPopupFrame(card), parent.Canvas())
+	md.popup.Resize(size)
+	md.popup.Show()
+	return md
+}
+
+func buildDialogCard(title string, body fyne.CanvasObject, onClose func()) fyne.CanvasObject {
 	titleLbl := widget.NewLabelWithStyle(title, fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
-	closeBtn := widget.NewButtonWithIcon("", theme.CancelIcon(), func() { w.Close() })
+	closeBtn := widget.NewButtonWithIcon("", theme.CancelIcon(), onClose)
 	closeBtn.Importance = widget.LowImportance
-
-	titleInner := container.NewBorder(nil, nil, titleLbl, closeBtn, nil)
-	dragLayer := newDragRegion(w, layout.NewSpacer())
-	titleBar := withPanelHeader(container.NewStack(dragLayer, titleInner))
-
+	titleBar := withPanelHeader(container.NewBorder(nil, nil, titleLbl, closeBtn, nil))
 	inner := container.NewBorder(titleBar, nil, nil, nil, container.NewPadded(body))
-	panel := withBackground(inner, colorBG)
-	frame := withPopupFrame(panel)
-
-	outer := canvas.NewRectangle(colorBG)
-	return container.NewStack(outer, frame)
+	return withBackground(inner, colorBG)
 }
 
 func withPopupFrame(content fyne.CanvasObject) fyne.CanvasObject {
@@ -66,9 +70,7 @@ func withPopupFrame(content fyne.CanvasObject) fyne.CanvasObject {
 	return container.NewBorder(nil, bottomShadow, nil, rightShadow, bordered)
 }
 
-func showThemedWindow(a fyne.App, title string, size fyne.Size, body fyne.CanvasObject) fyne.Window {
-	w := newThemedWindow(a, size)
-	w.SetContent(themedWindowChrome(w, title, body))
-	w.Show()
-	return w
+// showThemedWindow opens a modal dialog on the main window.
+func showThemedWindow(parent fyne.Window, title string, size fyne.Size, body fyne.CanvasObject) *modalDialog {
+	return newModalDialog(parent, title, size, body)
 }

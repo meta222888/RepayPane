@@ -13,7 +13,7 @@ import (
 
 func showSSHKeyPicker(a *App, current string, onPick func(path string)) {
 	title := i18n.T(i18n.KeyKeyPickerTitle)
-	w := newThemedWindow(a.fyneApp, fyne.NewSize(620, 420))
+	var dlg *modalDialog
 
 	paths, _ := remote.ListSSHKeyFiles()
 	pathEntry := widget.NewEntry()
@@ -57,9 +57,9 @@ func showSSHKeyPicker(a *App, current string, onPick func(path string)) {
 	hint := widget.NewLabel(i18n.T(i18n.KeyKeyPickerHint))
 	okBtn := newAccentButton(i18n.T(i18n.KeyOK), func() {
 		onPick(pathEntry.Text)
-		w.Close()
+		dlg.Close()
 	})
-	cancelBtn := newAccentButton(i18n.T(i18n.KeyCancel), func() { w.Close() })
+	cancelBtn := newAccentButton(i18n.T(i18n.KeyCancel), func() { dlg.Close() })
 
 	buttons := container.NewHBox(cancelBtn, okBtn)
 	body := container.NewBorder(
@@ -68,6 +68,5 @@ func showSSHKeyPicker(a *App, current string, onPick func(path string)) {
 		nil, nil,
 		list,
 	)
-	w.SetContent(themedWindowChrome(w, title, body))
-	w.Show()
+	dlg = newModalDialog(a.window, title, fyne.NewSize(620, 420), body)
 }

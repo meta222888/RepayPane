@@ -35,7 +35,7 @@ func (a *App) showCheckUpdate() {
 
 func (a *App) showAboutUs() {
 	title := i18n.T(i18n.KeyAboutTitle)
-	w := newThemedWindow(a.fyneApp, fyne.NewSize(420, 220))
+	var dlg *modalDialog
 
 	intro := widget.NewLabel(i18n.T(i18n.KeyAboutIntro))
 	intro.Wrapping = fyne.TextWrapWord
@@ -44,15 +44,14 @@ func (a *App) showAboutUs() {
 	website := widget.NewHyperlink(i18n.T(i18n.KeyAboutWebsite), site)
 
 	content := container.NewVBox(intro, versionLabel, website)
-	closeBtn := newAccentButton(i18n.T(i18n.KeyOK), func() { w.Close() })
+	closeBtn := newAccentButton(i18n.T(i18n.KeyOK), func() { dlg.Close() })
 	body := container.NewBorder(nil, container.NewHBox(closeBtn), nil, nil, content)
-	w.SetContent(themedWindowChrome(w, title, body))
-	w.Show()
+	dlg = newModalDialog(a.window, title, fyne.NewSize(420, 220), body)
 }
 
 func (a *App) showMyServers() {
 	title := i18n.T(i18n.KeyMyServersTitle)
-	w := newThemedWindow(a.fyneApp, fyne.NewSize(480, 360))
+	var dlg *modalDialog
 
 	selected := -1
 	prevSelected := -1
@@ -60,6 +59,9 @@ func (a *App) showMyServers() {
 		func() int { return len(a.store.Servers) },
 		func() fyne.CanvasObject { return newConnectPickerRow() },
 		func(id widget.ListItemID, obj fyne.CanvasObject) {
+			if int(id) >= len(a.store.Servers) {
+				return
+			}
 			s := a.store.Servers[id]
 			name := s.Name
 			if name == "" {
@@ -69,6 +71,9 @@ func (a *App) showMyServers() {
 		},
 	)
 	list.OnSelected = func(id widget.ListItemID) {
+		if int(id) >= len(a.store.Servers) {
+			return
+		}
 		prevSelected = selected
 		selected = int(id)
 		if prevSelected >= 0 {
@@ -79,7 +84,7 @@ func (a *App) showMyServers() {
 
 	buttons := container.NewHBox(
 		newAccentButton(i18n.T(i18n.KeyAddServer), func() {
-			w.Close()
+			dlg.Close()
 			a.onNewTab()
 		}),
 		newAccentButton(i18n.T(i18n.KeyEdit), func() {
@@ -88,7 +93,7 @@ func (a *App) showMyServers() {
 				return
 			}
 			a.selectedServerID = selected
-			w.Close()
+			dlg.Close()
 			a.showEditServer()
 		}),
 		newAccentButton(i18n.T(i18n.KeyDelete), func() {
@@ -97,15 +102,14 @@ func (a *App) showMyServers() {
 				return
 			}
 			a.selectedServerID = selected
-			w.Close()
+			dlg.Close()
 			a.showDeleteServer()
 		}),
-		newAccentButton(i18n.T(i18n.KeyOK), func() { w.Close() }),
+		newAccentButton(i18n.T(i18n.KeyOK), func() { dlg.Close() }),
 	)
 
 	body := container.NewBorder(nil, buttons, nil, nil, list)
-	w.SetContent(themedWindowChrome(w, title, body))
-	w.Show()
+	dlg = newModalDialog(a.window, title, fyne.NewSize(480, 360), body)
 }
 
 func initLanguage(settings *config.Settings) {

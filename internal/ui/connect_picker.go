@@ -19,10 +19,15 @@ func (a *App) showConnectPicker() {
 	var lastTap time.Time
 	var lastID int
 
+	var dlg *modalDialog
+
 	list := widget.NewList(
 		func() int { return len(a.store.Servers) },
 		func() fyne.CanvasObject { return newConnectPickerRow() },
 		func(id widget.ListItemID, obj fyne.CanvasObject) {
+			if int(id) >= len(a.store.Servers) {
+				return
+			}
 			row := obj.(*connectPickerRow)
 			s := a.store.Servers[id]
 			name := s.Name
@@ -33,14 +38,14 @@ func (a *App) showConnectPicker() {
 		},
 	)
 
-	title := i18n.T(i18n.KeyConnectPickerTitle)
-	w := newThemedWindow(a.fyneApp, fyne.NewSize(520, 420))
-
 	list.OnSelected = func(id widget.ListItemID) {
 		idx := int(id)
+		if idx < 0 || idx >= len(a.store.Servers) {
+			return
+		}
 		now := time.Now()
 		if idx == lastID && now.Sub(lastTap) < 500*time.Millisecond {
-			w.Close()
+			dlg.Close()
 			a.openServerTab(a.store.Servers[idx])
 			return
 		}
@@ -55,24 +60,25 @@ func (a *App) showConnectPicker() {
 	}
 
 	connectBtn := newAccentButton(i18n.T(i18n.KeyConnect), func() {
-		if selected < 0 {
+		if selected < 0 || selected >= len(a.store.Servers) {
 			return
 		}
-		w.Close()
+		dlg.Close()
 		a.openServerTab(a.store.Servers[selected])
 	})
 
 	newBtn := newAccentButton(i18n.T(i18n.KeyNewConnection), func() {
-		w.Close()
+		dlg.Close()
 		a.showAddServer()
 	})
-	cancelBtn := newAccentButton(i18n.T(i18n.KeyCancel), func() { w.Close() })
+	cancelBtn := newAccentButton(i18n.T(i18n.KeyCancel), func() { dlg.Close() })
 
 	hint := widget.NewLabel(i18n.T(i18n.KeyConnectPickerHint))
 	buttons := container.NewHBox(cancelBtn, newBtn, connectBtn)
 	body := container.NewBorder(hint, buttons, nil, nil, list)
-	w.SetContent(themedWindowChrome(w, title, body))
-	w.Show()
+
+	title := i18n.T(i18n.KeyConnectPickerTitle)
+	dlg = newModalDialog(a.window, title, fyne.NewSize(520, 420), body)
 }
 
 func serverSubtitle(s config.Server) string {

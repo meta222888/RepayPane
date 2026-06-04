@@ -130,24 +130,20 @@ func diskUsageCard(mount, total, used, avail, pctStr string) fyne.CanvasObject {
 	return withBackground(container.NewPadded(row), colorPanel)
 }
 
-func showThemedFeature(a *App, title string, size fyne.Size, body fyne.CanvasObject) fyne.Window {
-	w := newThemedWindow(a.fyneApp, size)
-	w.SetContent(themedWindowChrome(w, title, body))
-	w.Show()
-	return w
+func showThemedFeature(a *App, title string, size fyne.Size, body fyne.CanvasObject) *modalDialog {
+	return newModalDialog(a.window, title, size, body)
 }
 
 func confirmThemed(a *App, title, msg string, onOK func()) {
-	w := newThemedWindow(a.fyneApp, fyne.NewSize(480, 220))
-	lbl := widget.NewLabel(msg)
-	lbl.Wrapping = fyne.TextWrapWord
+	var dlg *modalDialog
 	ok := newAccentButton(i18n.T(i18n.KeyOK), func() {
-		w.Close()
+		dlg.Close()
 		onOK()
 	})
-	cancel := newAccentButton(i18n.T(i18n.KeyCancel), func() { w.Close() })
+	cancel := newAccentButton(i18n.T(i18n.KeyCancel), func() { dlg.Close() })
 	btns := container.NewHBox(cancel, ok)
+	lbl := widget.NewLabel(msg)
+	lbl.Wrapping = fyne.TextWrapWord
 	body := container.NewBorder(nil, btns, nil, nil, lbl)
-	w.SetContent(themedWindowChrome(w, title, body))
-	w.Show()
+	dlg = newModalDialog(a.window, title, fyne.NewSize(480, 220), body)
 }

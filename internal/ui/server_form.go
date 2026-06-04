@@ -92,7 +92,7 @@ func showServerForm(a *App, initial config.Server, editMode bool, onDone func(co
 	heartbeat.SetText(strconv.Itoa(hbSec))
 	heartbeat.SetPlaceHolder("30")
 
-	w := newThemedWindow(a.fyneApp, fyne.NewSize(540, 520))
+	var dlg *modalDialog
 	title := i18n.T(i18n.KeyServerFormTitle)
 
 	buildServer := func() (config.Server, bool) {
@@ -116,7 +116,7 @@ func showServerForm(a *App, initial config.Server, editMode bool, onDone func(co
 			HeartbeatSec: hb,
 		}
 		if s.Host == "" || s.Username == "" {
-			dialog.ShowInformation(i18n.T(i18n.KeyServerFormTitle), i18n.T(i18n.KeyFormRequired), w)
+			dialog.ShowInformation(i18n.T(i18n.KeyServerFormTitle), i18n.T(i18n.KeyFormRequired), a.window)
 			return s, false
 		}
 		return s, true
@@ -133,7 +133,7 @@ func showServerForm(a *App, initial config.Server, editMode bool, onDone func(co
 		widget.NewFormItem(i18n.T(i18n.KeyFormHeartbeat), heartbeat),
 	)
 
-	cancelBtn := newAccentButton(i18n.T(i18n.KeyCancel), func() { w.Close() })
+	cancelBtn := newAccentButton(i18n.T(i18n.KeyCancel), func() { dlg.Close() })
 	var buttons *fyne.Container
 	if editMode {
 		saveBtn := newAccentButton(i18n.T(i18n.KeySave), func() {
@@ -141,7 +141,7 @@ func showServerForm(a *App, initial config.Server, editMode bool, onDone func(co
 			if !ok {
 				return
 			}
-			w.Close()
+			dlg.Close()
 			onDone(s, true)
 		})
 		buttons = container.NewHBox(cancelBtn, saveBtn)
@@ -151,7 +151,7 @@ func showServerForm(a *App, initial config.Server, editMode bool, onDone func(co
 			if !ok {
 				return
 			}
-			w.Close()
+			dlg.Close()
 			onDone(s, false)
 		})
 		saveBtn := newAccentButton(i18n.T(i18n.KeyFormSaveConnect), func() {
@@ -159,13 +159,12 @@ func showServerForm(a *App, initial config.Server, editMode bool, onDone func(co
 			if !ok {
 				return
 			}
-			w.Close()
+			dlg.Close()
 			onDone(s, true)
 		})
 		buttons = container.NewHBox(cancelBtn, connectOnlyBtn, saveBtn)
 	}
 
 	body := container.NewBorder(nil, buttons, nil, nil, form)
-	w.SetContent(themedWindowChrome(w, title, body))
-	w.Show()
+	dlg = newModalDialog(a.window, title, fyne.NewSize(540, 520), body)
 }

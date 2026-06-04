@@ -92,7 +92,7 @@ func (a *App) showRemoteShell() {
 		delAll,
 	)
 
-	w := showThemedFeature(a, title, fyne.NewSize(760, 560), container.NewBorder(
+	showThemedFeature(a, title, fyne.NewSize(760, 560), container.NewBorder(
 		container.NewVBox(inputRow, histRow),
 		nil, nil, nil,
 		outputScroll,
@@ -114,8 +114,8 @@ func (a *App) showRemoteShell() {
 
 	upKey := &desktop.CustomShortcut{KeyName: fyne.KeyUp, Modifier: 0}
 	downKey := &desktop.CustomShortcut{KeyName: fyne.KeyDown, Modifier: 0}
-	w.Canvas().AddShortcut(upKey, func(fyne.Shortcut) { navHistory(-1) })
-	w.Canvas().AddShortcut(downKey, func(fyne.Shortcut) { navHistory(1) })
+	a.window.Canvas().AddShortcut(upKey, func(fyne.Shortcut) { navHistory(-1) })
+	a.window.Canvas().AddShortcut(downKey, func(fyne.Shortcut) { navHistory(1) })
 }
 
 func (a *App) pushShellHistory(cmd string) {

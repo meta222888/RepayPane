@@ -10,28 +10,27 @@ import (
 
 func (a *App) promptPassphrase(onOK func(string), onCancel func()) {
 	title := i18n.T(i18n.KeyPassphraseTitle)
-	w := newThemedWindow(a.fyneApp, fyne.NewSize(420, 180))
+	var dlg *modalDialog
 
 	entry := widget.NewPasswordEntry()
 	entry.SetPlaceHolder(i18n.T(i18n.KeyPassphrasePrompt))
 	hint := widget.NewLabel(i18n.T(i18n.KeyPassphraseHint))
 
 	submit := func() {
-		w.Close()
+		dlg.Close()
 		onOK(entry.Text)
 	}
 	entry.OnSubmitted = func(string) { submit() }
 
 	okBtn := newAccentButton(i18n.T(i18n.KeyOK), submit)
 	cancelBtn := newAccentButton(i18n.T(i18n.KeyCancel), func() {
-		w.Close()
+		dlg.Close()
 		onCancel()
 	})
 
 	buttons := container.NewHBox(cancelBtn, okBtn)
 	body := container.NewBorder(hint, buttons, nil, nil, entry)
-	w.SetContent(themedWindowChrome(w, title, body))
-	w.Show()
+	dlg = newModalDialog(a.window, title, fyne.NewSize(420, 180), body)
 }
 
 func (a *App) askPassphraseBlocking() []byte {

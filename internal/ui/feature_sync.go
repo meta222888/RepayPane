@@ -37,20 +37,19 @@ func (a *App) confirmSync(upload bool) {
 	lbl := widget.NewLabel(msg)
 	lbl.Wrapping = fyne.TextWrapWord
 
-	w := newThemedWindow(a.fyneApp, fyne.NewSize(520, 240))
 	title := i18n.T(i18n.KeyFeatSync)
+	var dlg *modalDialog
 	okBtn := newAccentButton(i18n.T(i18n.KeyOK), func() {
-		w.Close()
+		dlg.Close()
 		if upload {
 			a.runSyncUpload(client, localPath, remotePath)
 		} else {
 			a.runSyncDownload(client, remotePath, localPath)
 		}
 	})
-	cancelBtn := newAccentButton(i18n.T(i18n.KeyCancel), func() { w.Close() })
+	cancelBtn := newAccentButton(i18n.T(i18n.KeyCancel), func() { dlg.Close() })
 	body := container.NewBorder(nil, container.NewHBox(cancelBtn, okBtn), nil, nil, lbl)
-	w.SetContent(themedWindowChrome(w, title, body))
-	w.Show()
+	dlg = newModalDialog(a.window, title, fyne.NewSize(520, 240), body)
 }
 
 func (a *App) runSyncUpload(client *remote.Client, localDir, remoteDir string) {
