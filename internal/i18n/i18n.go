@@ -145,6 +145,7 @@ const (
 	KeyNewFolder     = "action.new_folder"
 	KeyCloseTab      = "action.close_tab"
 	KeyNewTab        = "action.new_tab"
+	KeyNewTabConnect = "action.new_tab_connect"
 
 	KeySidebarPlaces   = "sidebar.places"
 	KeySidebarDrive    = "sidebar.drive"
@@ -279,6 +280,7 @@ var enStrings = map[string]string{
 	KeyNewFolder:      "New Folder",
 	KeyCloseTab:       "Close session",
 	KeyNewTab:         "New connection",
+	KeyNewTabConnect:  "+ Connect",
 
 	KeySidebarPlaces:  "Places",
 	KeySidebarDrive:   "Drive",
@@ -413,6 +415,7 @@ var zhStrings = map[string]string{
 	KeyNewFolder:      "新建文件夹",
 	KeyCloseTab:       "关闭会话",
 	KeyNewTab:         "新建连接",
+	KeyNewTabConnect:  "+连接",
 
 	KeySidebarPlaces:  "常用目录",
 	KeySidebarDrive:   "磁盘",

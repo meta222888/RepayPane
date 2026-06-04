@@ -115,7 +115,7 @@ func (s *StatusBar) Refresh() {
 	} else {
 		s.connIcon.Text = "●"
 		s.connIcon.Color = colorConnected
-		s.conn.SetText(i18n.T(i18n.KeyStatusConnected) + " " + sess.addr())
+		s.conn.SetText(i18n.T(i18n.KeyStatusConnected) + " " + sess.server.Name)
 	}
 	canvas.Refresh(s.connIcon)
 	s.RefreshTransfer()

@@ -9,9 +9,8 @@ import (
 )
 
 func (a *App) promptPassphrase(onOK func(string), onCancel func()) {
-	w := a.fyneApp.NewWindow(i18n.T(i18n.KeyPassphraseTitle))
-	w.Resize(fyne.NewSize(420, 160))
-	w.CenterOnScreen()
+	title := i18n.T(i18n.KeyPassphraseTitle)
+	w := newThemedWindow(a.fyneApp, fyne.NewSize(420, 180))
 
 	entry := widget.NewPasswordEntry()
 	entry.SetPlaceHolder(i18n.T(i18n.KeyPassphrasePrompt))
@@ -31,8 +30,8 @@ func (a *App) promptPassphrase(onOK func(string), onCancel func()) {
 	})
 
 	buttons := container.NewHBox(cancelBtn, okBtn)
-	content := container.NewBorder(hint, buttons, nil, nil, entry)
-	w.SetContent(container.NewPadded(content))
+	body := container.NewBorder(hint, buttons, nil, nil, entry)
+	w.SetContent(themedWindowChrome(w, title, body))
 	w.Show()
 }
 

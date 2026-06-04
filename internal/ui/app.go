@@ -72,18 +72,7 @@ func NewApp(a fyne.App, w fyne.Window) *App {
 	appUI.transfers = NewTransferQueue(appUI)
 	appUI.localPane = NewLocalPane(appUI)
 	appUI.remotePane = NewRemotePane(appUI)
-
-	for i := range store.Servers {
-		s := store.Servers[i]
-		appUI.tabs = append(appUI.tabs, &TabSession{
-			server:     s,
-			state:      tabDisconnected,
-			remotePath: defaultRemoteRoot(&s),
-		})
-	}
-	if len(appUI.tabs) > 0 {
-		appUI.activeTab = 0
-	}
+	appUI.activeTab = -1
 
 	toolbars := container.NewGridWithColumns(2,
 		appUI.localPane.Toolbar(),
@@ -109,9 +98,7 @@ func NewApp(a fyne.App, w fyne.Window) *App {
 	w.SetOnDropped(appUI.onWindowDropped)
 	appUI.applyLanguage()
 	appUI.tabBar.Refresh()
-	if appUI.activeTab >= 0 {
-		appUI.activateTab(appUI.activeTab)
-	}
+	appUI.statusBar.Refresh()
 	return appUI
 }
 

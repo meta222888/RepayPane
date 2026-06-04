@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -13,29 +14,28 @@ import (
 )
 
 func (a *App) showConnectPicker() {
-	w := a.fyneApp.NewWindow(i18n.T(i18n.KeyConnectPickerTitle))
-	w.Resize(fyne.NewSize(520, 400))
-	w.CenterOnScreen()
-
 	selected := -1
+	prevSelected := -1
 	var lastTap time.Time
 	var lastID int
 
 	list := widget.NewList(
 		func() int { return len(a.store.Servers) },
-		func() fyne.CanvasObject { return widget.NewLabel("") },
+		func() fyne.CanvasObject { return newConnectPickerRow() },
 		func(id widget.ListItemID, obj fyne.CanvasObject) {
+			row := obj.(*connectPickerRow)
 			s := a.store.Servers[id]
-			label := s.Username + "@" + s.Host
-			if strings.TrimSpace(s.Username) == "" {
-				label = s.Host + "  (" + i18n.T(i18n.KeyFormRequired) + ")"
+			name := s.Name
+			if name == "" {
+				name = s.Host
 			}
-			if s.Name != "" {
-				label = s.Name + "    " + label
-			}
-			obj.(*widget.Label).SetText(label)
+			row.update(name, serverSubtitle(s), int(id) == selected)
 		},
 	)
+
+	title := i18n.T(i18n.KeyConnectPickerTitle)
+	w := newThemedWindow(a.fyneApp, fyne.NewSize(520, 420))
+
 	list.OnSelected = func(id widget.ListItemID) {
 		idx := int(id)
 		now := time.Now()
@@ -46,11 +46,12 @@ func (a *App) showConnectPicker() {
 		}
 		lastTap = now
 		lastID = idx
+		prevSelected = selected
 		selected = idx
-		sel := id
-		time.AfterFunc(100*time.Millisecond, func() {
-			fyne.Do(func() { list.Unselect(sel) })
-		})
+		if prevSelected >= 0 {
+			list.RefreshItem(widget.ListItemID(prevSelected))
+		}
+		list.RefreshItem(id)
 	}
 
 	connectBtn := widget.NewButton(i18n.T(i18n.KeyConnect), func() {
@@ -68,11 +69,22 @@ func (a *App) showConnectPicker() {
 	})
 	cancelBtn := widget.NewButton(i18n.T(i18n.KeyCancel), func() { w.Close() })
 
-	buttons := container.NewHBox(cancelBtn, newBtn, connectBtn)
 	hint := widget.NewLabel(i18n.T(i18n.KeyConnectPickerHint))
-	content := container.NewBorder(hint, buttons, nil, nil, list)
-	w.SetContent(container.NewPadded(content))
+	buttons := container.NewHBox(cancelBtn, newBtn, connectBtn)
+	body := container.NewBorder(hint, buttons, nil, nil, list)
+	w.SetContent(themedWindowChrome(w, title, body))
 	w.Show()
+}
+
+func serverSubtitle(s config.Server) string {
+	port := s.Port
+	if port == 0 {
+		port = 22
+	}
+	if strings.TrimSpace(s.Username) == "" {
+		return fmt.Sprintf("%s:%d", s.Host, port)
+	}
+	return fmt.Sprintf("%s@%s:%d", s.Username, s.Host, port)
 }
 
 func (a *App) openServerTab(s config.Server) {

@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"github.com/relaypane/relaypane/internal/i18n"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
@@ -32,7 +34,7 @@ func (t *TabBar) Refresh() {
 		active := i == t.app.activeTab
 		t.inner.Add(t.buildTab(idx, tab, active))
 	}
-	addBtn := widget.NewButtonWithIcon("", theme.ContentAddIcon(), t.app.onNewTab)
+	addBtn := widget.NewButton(i18n.T(i18n.KeyNewTabConnect), t.app.onNewTab)
 	addBtn.Importance = widget.LowImportance
 	t.inner.Add(addBtn)
 	t.inner.Refresh()
@@ -50,20 +52,13 @@ func (t *TabBar) buildTab(idx int, tab *TabSession, active bool) fyne.CanvasObje
 	if name == "" {
 		name = tab.server.Host
 	}
-	if len(name) > 14 {
-		name = name[:12] + "…"
-	}
-	host := tab.addr()
-	if len(host) > 18 {
-		host = host[:16] + "…"
+	if len(name) > 20 {
+		name = name[:18] + "…"
 	}
 
 	nameLbl := widget.NewLabel(name)
-	hostLbl := widget.NewLabel(host)
-	hostLbl.TextStyle = fyne.TextStyle{Monospace: true}
-	hostLbl.Importance = widget.MediumImportance
 
-	selectArea := container.NewHBox(dot, widget.NewLabel("⬡"), nameLbl, hostLbl)
+	selectArea := container.NewHBox(dot, widget.NewLabel("⬡"), nameLbl)
 	selectBtn := widget.NewButton("", func() { t.app.activateTab(idx) })
 	selectBtn.Importance = widget.LowImportance
 	if active {

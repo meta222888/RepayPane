@@ -12,9 +12,8 @@ import (
 )
 
 func showSSHKeyPicker(a *App, current string, onPick func(path string)) {
-	w := a.fyneApp.NewWindow(i18n.T(i18n.KeyKeyPickerTitle))
-	w.Resize(fyne.NewSize(620, 420))
-	w.CenterOnScreen()
+	title := i18n.T(i18n.KeyKeyPickerTitle)
+	w := newThemedWindow(a.fyneApp, fyne.NewSize(620, 420))
 
 	paths, _ := remote.ListSSHKeyFiles()
 	pathEntry := widget.NewEntry()
@@ -23,23 +22,33 @@ func showSSHKeyPicker(a *App, current string, onPick func(path string)) {
 		pathEntry.SetText(current)
 	}
 
+	selected := -1
 	list := widget.NewList(
 		func() int { return len(paths) },
-		func() fyne.CanvasObject { return widget.NewLabel("") },
+		func() fyne.CanvasObject { return newConnectPickerRow() },
 		func(id widget.ListItemID, obj fyne.CanvasObject) {
 			if int(id) >= len(paths) {
 				return
 			}
-			obj.(*widget.Label).SetText(filepath.Base(paths[id]) + "    " + paths[id])
+			row := obj.(*connectPickerRow)
+			p := paths[id]
+			row.update(filepath.Base(p), p, int(id) == selected)
 		},
 	)
 	list.OnSelected = func(id widget.ListItemID) {
+		prev := selected
+		selected = int(id)
+		if prev >= 0 {
+			list.RefreshItem(widget.ListItemID(prev))
+		}
+		list.RefreshItem(id)
 		if int(id) < len(paths) {
 			pathEntry.SetText(paths[id])
 		}
 	}
 	for i, p := range paths {
 		if p == current {
+			selected = i
 			list.Select(widget.ListItemID(i))
 			break
 		}
@@ -54,12 +63,12 @@ func showSSHKeyPicker(a *App, current string, onPick func(path string)) {
 	cancelBtn := widget.NewButton(i18n.T(i18n.KeyCancel), func() { w.Close() })
 
 	buttons := container.NewHBox(cancelBtn, okBtn)
-	content := container.NewBorder(
+	body := container.NewBorder(
 		container.NewVBox(hint, pathEntry),
 		buttons,
 		nil, nil,
 		list,
 	)
-	w.SetContent(container.NewPadded(content))
+	w.SetContent(themedWindowChrome(w, title, body))
 	w.Show()
 }

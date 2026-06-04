@@ -92,9 +92,8 @@ func showServerForm(a *App, initial config.Server, editMode bool, onDone func(co
 	heartbeat.SetText(strconv.Itoa(hbSec))
 	heartbeat.SetPlaceHolder("30")
 
-	w := a.fyneApp.NewWindow(i18n.T(i18n.KeyServerFormTitle))
-	w.Resize(fyne.NewSize(540, 520))
-	w.CenterOnScreen()
+	w := newThemedWindow(a.fyneApp, fyne.NewSize(540, 520))
+	title := i18n.T(i18n.KeyServerFormTitle)
 
 	buildServer := func() (config.Server, bool) {
 		var p int
@@ -168,6 +167,7 @@ func showServerForm(a *App, initial config.Server, editMode bool, onDone func(co
 		buttons = container.NewHBox(cancelBtn, connectOnlyBtn, saveBtn)
 	}
 
-	w.SetContent(container.NewBorder(nil, buttons, nil, nil, form))
+	body := container.NewBorder(nil, buttons, nil, nil, form)
+	w.SetContent(themedWindowChrome(w, title, body))
 	w.Show()
 }
