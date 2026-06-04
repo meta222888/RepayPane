@@ -26,25 +26,16 @@ if defined MINGW (
 :gcc_ok
 if not exist "dev" mkdir dev
 
-REM --- Fast path: already compiled ---
-if /i not "%~1"=="rebuild" (
-  if exist "dev\RelayPane-dev.exe" goto :launch_dev
-  if exist "RelayPane.exe" (
-    echo [run.bat] Starting RelayPane.exe
-    RelayPane.exe
-    exit /b !ERRORLEVEL!
-  )
+echo.
+echo [run.bat] Building dev\RelayPane-dev.exe ^(incremental — code changes always apply^)...
+if not exist "dev\RelayPane-dev.exe" (
+  echo [run.bat] First build: after "internal/ui" GCC may run 10-20 min with no output. Please wait.
+) else (
+  echo [run.bat] Rebuild usually finishes in seconds when only Go code changed.
 )
-
-REM --- First-time compile (CGO/Fyne: slow, often silent after internal/ui) ---
-echo.
-echo [run.bat] First compile: compiling to dev\RelayPane-dev.exe
-echo [run.bat] After "internal/ui" GCC may run 10-20 min with NO new lines. Normal.
-echo [run.bat] Next time run.bat will start instantly ^(skip compile^).
-echo [run.bat] Force rebuild later: run.bat rebuild
 echo.
 
-go build -x -o dev\RelayPane-dev.exe ./cmd/relaypane
+go build -v -o dev\RelayPane-dev.exe ./cmd/relaypane
 if errorlevel 1 (
   echo.
   echo [run.bat] Build failed.
@@ -52,9 +43,8 @@ if errorlevel 1 (
   exit /b 1
 )
 
-:launch_dev
 echo.
-echo [run.bat] Launching dev\RelayPane-dev.exe ...
+echo [run.bat] Launching...
 dev\RelayPane-dev.exe
 if errorlevel 1 (
   echo [run.bat] RelayPane exited with error.
