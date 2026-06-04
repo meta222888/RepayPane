@@ -6,12 +6,11 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-var _ fyne.Draggable = (*dragRegion)(nil)
-
 type dragRegion struct {
 	widget.BaseWidget
-	win   fyne.Window
-	inner fyne.CanvasObject
+	win      fyne.Window
+	inner    fyne.CanvasObject
+	dragging bool
 }
 
 func newDragRegion(win fyne.Window, inner fyne.CanvasObject) *dragRegion {
@@ -24,12 +23,21 @@ func (d *dragRegion) CreateRenderer() fyne.WidgetRenderer {
 	return widget.NewSimpleRenderer(d.inner)
 }
 
-func (d *dragRegion) Dragged(e *fyne.DragEvent) {
-	moveWindowBy(d.win, d.win.Canvas().Scale(), e.Dragged)
+func (d *dragRegion) MouseDown(e *desktop.MouseEvent) {
+	if e.Button != desktop.MouseButtonPrimary {
+		return
+	}
+	if winBeginDrag(d) {
+		d.dragging = true
+	}
 }
 
-func (d *dragRegion) DragEnd() {}
+func (d *dragRegion) MouseUp(*desktop.MouseEvent) {
+	if d.dragging {
+		winEndDrag()
+		d.dragging = false
+	}
+}
 
-func (d *dragRegion) MouseDown(*desktop.MouseEvent) {}
-
-func (d *dragRegion) MouseUp(*desktop.MouseEvent) {}
+func (d *dragRegion) MouseIn(*desktop.MouseEvent) {}
+func (d *dragRegion) MouseOut()                   {}

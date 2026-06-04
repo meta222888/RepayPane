@@ -5,6 +5,7 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
@@ -21,7 +22,8 @@ func NewTabBar(app *App) *TabBar {
 func (t *TabBar) Container() fyne.CanvasObject {
 	scroll := container.NewHScroll(t.inner)
 	scroll.SetMinSize(fyne.NewSize(0, 34))
-	return scroll
+	dragLayer := newDragRegion(t.app.window, layout.NewSpacer())
+	return container.NewStack(dragLayer, scroll)
 }
 
 func (t *TabBar) Refresh() {

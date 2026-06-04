@@ -50,11 +50,10 @@ func NewTopBar(app *App) *TopBar {
 	winControls := container.NewHBox(minBtn, maxBtn, closeBtn)
 
 	logoDrag := newDragRegion(t.app.window, logo)
-	centerDrag := newDragRegion(t.app.window, layout.NewSpacer())
-	header := container.NewBorder(nil, nil, logoDrag,
-		container.NewHBox(t.btnSet, t.btnFeat, t.btnAbout, winControls),
-		centerDrag,
-	)
+	right := container.NewHBox(t.btnSet, t.btnFeat, t.btnAbout, winControls)
+	barContent := container.NewBorder(nil, nil, logoDrag, right, nil)
+	dragLayer := newDragRegion(t.app.window, layout.NewSpacer())
+	header := container.NewStack(dragLayer, barContent)
 	t.root = withPanelHeader(header)
 	return t
 }

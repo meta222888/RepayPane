@@ -26,12 +26,6 @@ func NewMainWindow(a fyne.App) fyne.Window {
 	return w
 }
 
-func moveWindowBy(w fyne.Window, scale float32, delta fyne.Delta) {
-	if runtime.GOOS == "windows" {
-		winMoveWindows(w, scale, delta)
-	}
-}
-
 func minimizeWindow(w fyne.Window) {
 	if runtime.GOOS == "windows" {
 		winMinimizeWindows(w)
