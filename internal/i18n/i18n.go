@@ -139,7 +139,10 @@ const (
 	KeyPlaceHome       = "place.home"
 	KeyPlaceDesktop    = "place.desktop"
 	KeyPlaceDocuments  = "place.documents"
+	KeyPlacePictures   = "place.pictures"
 	KeyPlaceDownloads  = "place.downloads"
+	KeyPlaceMusic      = "place.music"
+	KeyPlaceVideos     = "place.videos"
 )
 
 var enStrings = map[string]string{
@@ -239,7 +242,10 @@ var enStrings = map[string]string{
 	KeyPlaceHome:      "Home",
 	KeyPlaceDesktop:   "Desktop",
 	KeyPlaceDocuments: "Documents",
+	KeyPlacePictures:  "Pictures",
 	KeyPlaceDownloads: "Downloads",
+	KeyPlaceMusic:     "Music",
+	KeyPlaceVideos:    "Videos",
 }
 
 var zhStrings = map[string]string{
@@ -336,8 +342,11 @@ var zhStrings = map[string]string{
 
 	KeySidebarPlaces:  "常用目录",
 	KeySidebarDrive:   "磁盘",
-	KeyPlaceHome:      "用户目录",
+	KeyPlaceHome:      "主目录",
 	KeyPlaceDesktop:   "桌面",
-	KeyPlaceDocuments: "文档",
+	KeyPlaceDocuments: "我的文档",
+	KeyPlacePictures:  "我的图片",
 	KeyPlaceDownloads: "下载",
+	KeyPlaceMusic:     "音乐",
+	KeyPlaceVideos:    "视频",
 }

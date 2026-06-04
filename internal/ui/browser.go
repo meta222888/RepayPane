@@ -46,7 +46,7 @@ type FilePane struct {
 	lastTap     time.Time
 	lastTapID   int
 
-	sidebar *LocalSidebar
+	localNav *LocalNav
 }
 
 func NewLocalPane(app *App) *FilePane {
@@ -95,15 +95,13 @@ func (p *FilePane) build() {
 	}
 
 	toolbar := p.buildToolbar()
-	headerBar := container.NewBorder(nil, nil, p.header, toolbar, p.breadcrumb)
-	main := container.NewBorder(headerBar, nil, nil, nil, p.table)
 	if p.kind == PaneLocal {
-		p.sidebar = NewLocalSidebar(p)
-		split := container.NewHSplit(p.sidebar.Container(), main)
-		split.SetOffset(0.18)
-		p.root = container.NewStack(split)
+		p.localNav = NewLocalNav(p)
+		toolbarRow := container.NewBorder(nil, nil, p.localNav.Button(), toolbar, nil)
+		p.root = container.NewBorder(container.NewVBox(toolbarRow, p.breadcrumb), nil, nil, nil, p.table)
 	} else {
-		p.root = container.NewStack(main)
+		headerBar := container.NewBorder(nil, nil, p.header, toolbar, p.breadcrumb)
+		p.root = container.NewBorder(headerBar, nil, nil, nil, p.table)
 	}
 	p.ApplyLanguage()
 	p.refreshBreadcrumb()
@@ -111,16 +109,14 @@ func (p *FilePane) build() {
 
 func (p *FilePane) buildToolbar() fyne.CanvasObject {
 	if p.kind == PaneLocal {
-		back := widget.NewButtonWithIcon("", theme.NavigateBackIcon(), p.goBack)
-		fwd := widget.NewButtonWithIcon("", theme.NavigateNextIcon(), p.goForward)
-		up := widget.NewButtonWithIcon("", theme.MoveUpIcon(), p.goUp)
+		up := widget.NewButtonWithIcon(i18n.T(i18n.KeyUp), theme.MoveUpIcon(), p.goUp)
 		home := widget.NewButtonWithIcon("", theme.HomeIcon(), p.goHome)
-		refresh := widget.NewButtonWithIcon("", theme.ViewRefreshIcon(), p.RefreshListing)
+		refresh := widget.NewButtonWithIcon(i18n.T(i18n.KeyRefresh), theme.ViewRefreshIcon(), p.RefreshListing)
 		newFolder := widget.NewButtonWithIcon(i18n.T(i18n.KeyNewFolder), theme.FolderNewIcon(), p.newFolderSoon)
-		for _, b := range []*widget.Button{back, fwd, up, home, refresh, newFolder} {
+		for _, b := range []*widget.Button{up, home, refresh, newFolder} {
 			b.Importance = widget.LowImportance
 		}
-		return container.NewHBox(back, fwd, up, home, refresh, newFolder)
+		return container.NewHBox(up, home, refresh, newFolder)
 	}
 	up := widget.NewButtonWithIcon("", theme.MoveUpIcon(), p.goUp)
 	refresh := widget.NewButtonWithIcon("", theme.ViewRefreshIcon(), p.RefreshListing)
@@ -204,19 +200,13 @@ func (p *FilePane) SetConnected(v bool) {
 }
 
 func (p *FilePane) ApplyLanguage() {
-	if p.sidebar != nil {
-		p.sidebar.ApplyLanguage()
+	if p.localNav != nil {
+		p.localNav.ApplyLanguage()
 	}
 	if p.kind == PaneLocal {
-		root := p.path
-		if len(root) >= 3 && root[1] == ':' {
-			p.header.SetText(i18n.Tf(i18n.KeyLocalHeader, root[:2]+`\`))
-		} else {
-			p.header.SetText(i18n.Tf(i18n.KeyLocalHeader, root))
-		}
-	} else {
-		p.header.SetText(i18n.Tf(i18n.KeyRemoteHeader, p.path))
+		return
 	}
+	p.header.SetText(i18n.Tf(i18n.KeyRemoteHeader, p.path))
 	p.table.Refresh()
 }
 
@@ -239,8 +229,8 @@ func (p *FilePane) Navigate(path string) {
 		}
 	}
 	p.path = path
-	if p.kind == PaneLocal && p.sidebar != nil {
-		p.sidebar.syncFromPath(path)
+	if p.kind == PaneLocal && p.localNav != nil {
+		p.localNav.syncFromPath(path)
 	}
 	if p.kind == PaneRemote {
 		if sess := p.app.activeSession(); sess != nil {
@@ -269,6 +259,9 @@ func (p *FilePane) goBack() {
 	}
 	p.histIndex--
 	p.path = p.history[p.histIndex]
+	if p.localNav != nil {
+		p.localNav.syncFromPath(p.path)
+	}
 	p.refreshBreadcrumb()
 	p.ApplyLanguage()
 	p.RefreshListing()
@@ -280,6 +273,9 @@ func (p *FilePane) goForward() {
 	}
 	p.histIndex++
 	p.path = p.history[p.histIndex]
+	if p.localNav != nil {
+		p.localNav.syncFromPath(p.path)
+	}
 	p.refreshBreadcrumb()
 	p.ApplyLanguage()
 	p.RefreshListing()
