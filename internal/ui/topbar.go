@@ -12,7 +12,7 @@ import (
 
 type TopBar struct {
 	app      *App
-	root     *fyne.Container
+	root     fyne.CanvasObject
 	btnSet   *widget.Button
 	btnFeat  *widget.Button
 	btnAbout *widget.Button
@@ -37,12 +37,10 @@ func NewTopBar(app *App) *TopBar {
 	line := canvas.NewRectangle(colorBorder)
 	line.SetMinSize(fyne.NewSize(0, 1))
 
-	t.root = container.NewVBox(
-		container.NewBorder(nil, nil, logo, nil,
-			container.NewHBox(t.btnSet, t.btnFeat, t.btnAbout),
-		),
-		line,
+	header := container.NewBorder(nil, nil, logo, nil,
+		container.NewHBox(t.btnSet, t.btnFeat, t.btnAbout),
 	)
+	t.root = withPanelHeader(container.NewVBox(header, line))
 	return t
 }
 

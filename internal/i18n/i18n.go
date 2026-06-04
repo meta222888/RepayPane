@@ -9,7 +9,7 @@ const (
 	ZH Lang = "zh"
 )
 
-var current = EN
+var current = ZH
 
 func Current() Lang {
 	return current
@@ -133,6 +133,13 @@ const (
 	KeyNewFolder     = "action.new_folder"
 	KeyCloseTab      = "action.close_tab"
 	KeyNewTab        = "action.new_tab"
+
+	KeySidebarPlaces   = "sidebar.places"
+	KeySidebarDrive    = "sidebar.drive"
+	KeyPlaceHome       = "place.home"
+	KeyPlaceDesktop    = "place.desktop"
+	KeyPlaceDocuments  = "place.documents"
+	KeyPlaceDownloads  = "place.downloads"
 )
 
 var enStrings = map[string]string{
@@ -226,6 +233,13 @@ var enStrings = map[string]string{
 	KeyNewFolder:      "New Folder",
 	KeyCloseTab:       "Close session",
 	KeyNewTab:         "New connection",
+
+	KeySidebarPlaces:  "Places",
+	KeySidebarDrive:   "Drive",
+	KeyPlaceHome:      "Home",
+	KeyPlaceDesktop:   "Desktop",
+	KeyPlaceDocuments: "Documents",
+	KeyPlaceDownloads: "Downloads",
 }
 
 var zhStrings = map[string]string{
@@ -319,4 +333,11 @@ var zhStrings = map[string]string{
 	KeyNewFolder:      "新建文件夹",
 	KeyCloseTab:       "关闭会话",
 	KeyNewTab:         "新建连接",
+
+	KeySidebarPlaces:  "常用目录",
+	KeySidebarDrive:   "磁盘",
+	KeyPlaceHome:      "用户目录",
+	KeyPlaceDesktop:   "桌面",
+	KeyPlaceDocuments: "文档",
+	KeyPlaceDownloads: "下载",
 }

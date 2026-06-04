@@ -98,12 +98,11 @@ func initLanguage(settings *config.Settings) {
 		i18n.SetLanguage(i18n.EN)
 		return
 	}
-	lang := os.Getenv("LANG")
-	if strings.HasPrefix(strings.ToLower(lang), "zh") {
-		i18n.SetLanguage(i18n.ZH)
-		settings.Language = "zh"
+	if lang := os.Getenv("LANG"); strings.HasPrefix(strings.ToLower(lang), "en") {
+		i18n.SetLanguage(i18n.EN)
+		settings.Language = "en"
 		return
 	}
-	i18n.SetLanguage(i18n.EN)
-	settings.Language = "en"
+	i18n.SetLanguage(i18n.ZH)
+	settings.Language = "zh"
 }

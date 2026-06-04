@@ -14,7 +14,7 @@ type StatusBar struct {
 	speed    *widget.Label
 	progress *widget.ProgressBar
 	queue    *widget.Label
-	root     *fyne.Container
+	root     fyne.CanvasObject
 }
 
 func NewStatusBar(app *App) *StatusBar {
@@ -28,7 +28,8 @@ func NewStatusBar(app *App) *StatusBar {
 	s.queue.Hide()
 
 	right := container.NewHBox(s.speed, s.progress, s.queue)
-	s.root = container.NewBorder(nil, nil, s.conn, right, nil)
+	inner := container.NewBorder(nil, nil, s.conn, right, nil)
+	s.root = withStatusBar(inner)
 	return s
 }
 

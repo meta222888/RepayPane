@@ -13,6 +13,7 @@ func main() {
 	ui.ApplyTheme(a)
 	w := a.NewWindow(i18n.T(i18n.KeyAppTitle))
 	w.Resize(fyne.NewSize(1280, 760))
+	w.SetPadded(false)
 	w.SetMaster()
 
 	ui.NewApp(a, w)

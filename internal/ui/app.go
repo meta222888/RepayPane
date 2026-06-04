@@ -14,6 +14,7 @@ import (
 	"github.com/relaypane/relaypane/internal/remote"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
@@ -83,14 +84,11 @@ func NewApp(a fyne.App, w fyne.Window) *App {
 	panes := container.NewHSplit(appUI.localPane.Container(), appUI.remotePane.Container())
 	panes.SetOffset(0.5)
 
-	body := container.NewBorder(
-		container.NewVBox(appUI.topBar.Container(), appUI.tabBar.Container()),
-		appUI.statusBar.Container(),
-		nil, nil,
-		panes,
-	)
-
-	w.SetContent(body)
+	header := container.NewVBox(appUI.topBar.Container(), appUI.tabBar.Container())
+	body := container.NewBorder(header, appUI.statusBar.Container(), nil, nil, panes)
+	bg := canvas.NewRectangle(colorBG)
+	w.SetPadded(false)
+	w.SetContent(container.NewStack(bg, body))
 	w.SetOnDropped(appUI.onWindowDropped)
 	appUI.applyLanguage()
 	appUI.tabBar.Refresh()

@@ -45,6 +45,8 @@ type FilePane struct {
 	selectedRow int
 	lastTap     time.Time
 	lastTapID   int
+
+	sidebar *LocalSidebar
 }
 
 func NewLocalPane(app *App) *FilePane {
@@ -94,7 +96,15 @@ func (p *FilePane) build() {
 
 	toolbar := p.buildToolbar()
 	headerBar := container.NewBorder(nil, nil, p.header, toolbar, p.breadcrumb)
-	p.root = container.NewBorder(headerBar, nil, nil, nil, p.table)
+	main := container.NewBorder(headerBar, nil, nil, nil, p.table)
+	if p.kind == PaneLocal {
+		p.sidebar = NewLocalSidebar(p)
+		split := container.NewHSplit(p.sidebar.Container(), main)
+		split.SetOffset(0.18)
+		p.root = container.NewStack(split)
+	} else {
+		p.root = container.NewStack(main)
+	}
 	p.ApplyLanguage()
 	p.refreshBreadcrumb()
 }
@@ -194,6 +204,9 @@ func (p *FilePane) SetConnected(v bool) {
 }
 
 func (p *FilePane) ApplyLanguage() {
+	if p.sidebar != nil {
+		p.sidebar.ApplyLanguage()
+	}
 	if p.kind == PaneLocal {
 		root := p.path
 		if len(root) >= 3 && root[1] == ':' {
@@ -226,6 +239,9 @@ func (p *FilePane) Navigate(path string) {
 		}
 	}
 	p.path = path
+	if p.kind == PaneLocal && p.sidebar != nil {
+		p.sidebar.syncFromPath(path)
+	}
 	if p.kind == PaneRemote {
 		if sess := p.app.activeSession(); sess != nil {
 			sess.remotePath = path
