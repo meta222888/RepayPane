@@ -67,7 +67,7 @@ func (e *EditorWindow) save() {
 	data := []byte(e.content.Text)
 	go func() {
 		err := e.app.client.WriteFile(e.entry.Path, data)
-		fyne.CurrentApp().Driver().RunOnMain(func() {
+		fyne.Do(func() {
 			if err != nil {
 				dialog.ShowError(fmt.Errorf("save failed: %w", err), e.window)
 				return

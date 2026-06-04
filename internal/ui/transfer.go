@@ -55,7 +55,7 @@ func (a *App) uploadSelectedLocal() {
 	remotePath := filepath.ToSlash(filepath.Join(a.remotePane.CurrentPath(), name))
 	go func() {
 		err := a.client.Upload(path, remotePath)
-		fyneCurrent().Driver().RunOnMain(func() {
+		fyne.Do(func() {
 			if err != nil {
 				dialogShowError(a, err)
 				return
@@ -77,7 +77,7 @@ func (a *App) downloadSelectedRemote() {
 	localPath := filepath.Join(a.localPane.CurrentPath(), entry.Name)
 	go func() {
 		err := a.client.Download(entry.Path, localPath)
-		fyneCurrent().Driver().RunOnMain(func() {
+		fyne.Do(func() {
 			if err != nil {
 				dialogShowError(a, err)
 				return

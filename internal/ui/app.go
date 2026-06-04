@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -27,6 +28,7 @@ type App struct {
 
 	serverList *widget.List
 	status     *widget.Label
+	selectedServerID int
 
 	localPane  *FilePane
 	remotePane *FilePane
@@ -59,6 +61,7 @@ func NewApp(a fyne.App, w fyne.Window) *App {
 		},
 	)
 	appUI.serverList.OnSelected = func(id widget.ListItemID) {
+		appUI.selectedServerID = int(id)
 		appUI.connectServer(&appUI.store.Servers[id])
 	}
 
@@ -103,6 +106,8 @@ func (a *App) onWindowDropped(pos fyne.Position, uris []fyne.URI) {
 	remoteArea := pos.X > size.Width/2
 	a.handleDrop(pos, uris, remoteArea)
 }
+
+func (a *App) connectServer(s *config.Server) {
 	if a.client != nil {
 		_ = a.client.Close()
 		a.client = nil
@@ -117,7 +122,7 @@ func (a *App) onWindowDropped(pos fyne.Position, uris []fyne.URI) {
 			Password:   s.Password,
 			PrivateKey: s.PrivateKey,
 		})
-		fyne.CurrentApp().Driver().RunOnMain(func() {
+		fyne.Do(func() {
 			if err != nil {
 				a.status.SetText("Connection failed")
 				dialog.ShowError(err, a.window)
@@ -131,9 +136,35 @@ func (a *App) onWindowDropped(pos fyne.Position, uris []fyne.URI) {
 			}
 			a.remotePane.SetConnected(true)
 			a.remotePane.Navigate(root)
-			a.status.SetText(fmt.Sprintf("Connected: %s (%s@%s)", s.Name, s.Username, s.Host))
+
+			interval := s.HeartbeatInterval()
+			if interval > 0 {
+				client.StartHeartbeat(interval, func(err error) {
+					fyne.Do(func() {
+						a.handleHeartbeatFailure(s, err)
+					})
+				})
+			}
+
+			status := fmt.Sprintf("Connected: %s (%s@%s)", s.Name, s.Username, s.Host)
+			if interval > 0 {
+				status += fmt.Sprintf(" · heartbeat %ds", int(interval.Seconds()))
+			}
+			a.status.SetText(status)
 		})
 	}()
+}
+
+func (a *App) handleHeartbeatFailure(s *config.Server, err error) {
+	if a.client == nil || a.activeServer == nil || a.activeServer.ID != s.ID {
+		return
+	}
+	_ = a.client.Close()
+	a.client = nil
+	a.activeServer = nil
+	a.remotePane.SetConnected(false)
+	a.status.SetText("Connection lost (heartbeat failed)")
+	dialog.ShowError(fmt.Errorf("connection to %s lost: %w", s.Name, err), a.window)
 }
 
 func (a *App) disconnect() {
@@ -151,7 +182,7 @@ func (a *App) refreshPanes() {
 	a.remotePane.RefreshListing()
 }
 
-func (a *App) connectServer(s *config.Server) {
+func (a *App) openRemoteEditor(entry remote.FileInfo) {
 	if a.client == nil {
 		return
 	}
@@ -174,7 +205,7 @@ func (a *App) connectServer(s *config.Server) {
 func (a *App) loadEditor(entry remote.FileInfo) {
 	go func() {
 		data, err := a.client.ReadFile(entry.Path)
-		fyne.CurrentApp().Driver().RunOnMain(func() {
+		fyne.Do(func() {
 			if err != nil {
 				dialog.ShowError(err, a.window)
 				return
@@ -192,7 +223,10 @@ func (a *App) saveServers() {
 }
 
 func (a *App) showAddServer() {
-	showServerForm(a, config.Server{Port: config.DefaultSFTPPort}, func(s config.Server) {
+	showServerForm(a, config.Server{
+		Port:         config.DefaultSFTPPort,
+		HeartbeatSec: config.DefaultHeartbeatSec,
+	}, func(s config.Server) {
 		s.ID = fmt.Sprintf("srv-%d", time.Now().UnixNano())
 		a.store.Servers = append(a.store.Servers, s)
 		a.saveServers()
@@ -200,7 +234,7 @@ func (a *App) showAddServer() {
 }
 
 func (a *App) showEditServer() {
-	id := a.serverList.Selected()
+	id := a.selectedServerID
 	if id < 0 || id >= len(a.store.Servers) {
 		dialog.ShowInformation("Select server", "Choose a server to edit.", a.window)
 		return
@@ -210,11 +244,14 @@ func (a *App) showEditServer() {
 		updated.ID = s.ID
 		a.store.Servers[id] = updated
 		a.saveServers()
+		if a.activeServer != nil && a.activeServer.ID == s.ID {
+			a.connectServer(&a.store.Servers[id])
+		}
 	})
 }
 
 func (a *App) showDeleteServer() {
-	id := a.serverList.Selected()
+	id := a.selectedServerID
 	if id < 0 || id >= len(a.store.Servers) {
 		dialog.ShowInformation("Select server", "Choose a server to delete.", a.window)
 		return
@@ -249,6 +286,14 @@ func showServerForm(a *App, initial config.Server, onSave func(config.Server)) {
 	root.SetText(initial.RemoteRoot)
 	root.SetPlaceHolder("/")
 
+	heartbeat := widget.NewEntry()
+	hbSec := initial.HeartbeatSec
+	if hbSec == 0 {
+		hbSec = config.DefaultHeartbeatSec
+	}
+	heartbeat.SetText(strconv.Itoa(hbSec))
+	heartbeat.SetPlaceHolder("30")
+
 	form := dialog.NewForm("Server", "Save", "Cancel", []*widget.FormItem{
 		{Text: "Name", Widget: name},
 		{Text: "Host", Widget: host},
@@ -257,23 +302,27 @@ func showServerForm(a *App, initial config.Server, onSave func(config.Server)) {
 		{Text: "Password", Widget: pass},
 		{Text: "Private key file", Widget: keyPath},
 		{Text: "Remote root", Widget: root},
+		{Text: "Heartbeat (seconds, 0=off)", Widget: heartbeat},
 	}, func(ok bool) {
 		if !ok {
 			return
 		}
 		var p int
 		fmt.Sscanf(port.Text, "%d", &p)
+		var hb int
+		fmt.Sscanf(strings.TrimSpace(heartbeat.Text), "%d", &hb)
 		onSave(config.Server{
-			Name:       strings.TrimSpace(name.Text),
-			Host:       strings.TrimSpace(host.Text),
-			Port:       p,
-			Username:   strings.TrimSpace(user.Text),
-			Password:   pass.Text,
-			PrivateKey: strings.TrimSpace(keyPath.Text),
-			RemoteRoot: strings.TrimSpace(root.Text),
+			Name:         strings.TrimSpace(name.Text),
+			Host:         strings.TrimSpace(host.Text),
+			Port:         p,
+			Username:     strings.TrimSpace(user.Text),
+			Password:     pass.Text,
+			PrivateKey:   strings.TrimSpace(keyPath.Text),
+			RemoteRoot:   strings.TrimSpace(root.Text),
+			HeartbeatSec: hb,
 		})
 	}, a.window)
-	form.Resize(fyne.NewSize(480, 420))
+	form.Resize(fyne.NewSize(480, 460))
 	form.Show()
 }
 

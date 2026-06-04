@@ -7,6 +7,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkg/sftp"
@@ -24,6 +25,9 @@ type FileInfo struct {
 type Client struct {
 	ssh  *ssh.Client
 	sftp *sftp.Client
+
+	heartbeatMu   sync.Mutex
+	heartbeatStop chan struct{}
 }
 
 type ConnectOptions struct {
@@ -78,6 +82,7 @@ func Connect(opts ConnectOptions) (*Client, error) {
 }
 
 func (c *Client) Close() error {
+	c.StopHeartbeat()
 	if c.sftp != nil {
 		_ = c.sftp.Close()
 	}

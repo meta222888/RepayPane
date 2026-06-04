@@ -4,24 +4,35 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 const (
-	AppDirName     = ".relaypane"
-	ServersFile    = "servers.json"
-	MaxEditBytes   = 2 * 1024 * 1024 // 2 MB
-	DefaultSFTPPort = 22
+	AppDirName          = ".relaypane"
+	ServersFile         = "servers.json"
+	MaxEditBytes        = 2 * 1024 * 1024 // 2 MB
+	DefaultSFTPPort     = 22
+	DefaultHeartbeatSec = 30
 )
 
 type Server struct {
-	ID           string `json:"id"`
-	Name         string `json:"name"`
-	Host         string `json:"host"`
-	Port         int    `json:"port"`
-	Username     string `json:"username"`
-	Password     string `json:"password,omitempty"`
-	PrivateKey   string `json:"private_key_path,omitempty"`
-	RemoteRoot   string `json:"remote_root,omitempty"`
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	Host          string `json:"host"`
+	Port          int    `json:"port"`
+	Username      string `json:"username"`
+	Password      string `json:"password,omitempty"`
+	PrivateKey    string `json:"private_key_path,omitempty"`
+	RemoteRoot    string `json:"remote_root,omitempty"`
+	HeartbeatSec  int    `json:"heartbeat_sec,omitempty"`
+}
+
+// HeartbeatInterval returns the configured interval, or 0 when heartbeat is disabled.
+func (s Server) HeartbeatInterval() time.Duration {
+	if s.HeartbeatSec <= 0 {
+		return 0
+	}
+	return time.Duration(s.HeartbeatSec) * time.Second
 }
 
 type Store struct {
