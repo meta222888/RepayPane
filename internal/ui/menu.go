@@ -60,7 +60,7 @@ func (a *App) showMyServers() {
 
 	buttons := container.NewHBox(
 		widget.NewButton(i18n.T(i18n.KeyAddServer), func() {
-			a.showAddServer()
+			a.onNewTab()
 			list.Refresh()
 		}),
 		widget.NewButton(i18n.T(i18n.KeyEdit), func() {

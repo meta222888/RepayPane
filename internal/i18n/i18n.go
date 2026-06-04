@@ -105,6 +105,9 @@ const (
 	KeyFormSelectKey   = "form.select_key"
 	KeyFormKeySelected = "form.key_selected"
 	KeyFormKeyNone     = "form.key_none"
+	KeyFormSaveConnect = "form.save_connect"
+	KeyFormConnectOnly = "form.connect_only"
+	KeyFormRequired    = "form.required"
 	KeyFormRemoteRoot  = "form.remote_root"
 	KeyFormHeartbeat   = "form.heartbeat"
 
@@ -147,6 +150,16 @@ const (
 	KeyPlaceDownloads  = "place.downloads"
 	KeyPlaceMusic      = "place.music"
 	KeyPlaceVideos     = "place.videos"
+
+	KeyConnectPickerTitle = "connect.picker_title"
+	KeyConnectPickerHint  = "connect.picker_hint"
+	KeyConnect            = "connect.action"
+	KeyNewConnection      = "connect.new"
+	KeyPassphraseTitle    = "passphrase.title"
+	KeyPassphrasePrompt   = "passphrase.prompt"
+	KeyPassphraseHint     = "passphrase.hint"
+	KeyKeyPickerTitle     = "keypicker.title"
+	KeyKeyPickerHint      = "keypicker.hint"
 )
 
 var enStrings = map[string]string{
@@ -212,6 +225,9 @@ var enStrings = map[string]string{
 	KeyFormSelectKey:   "Select key…",
 	KeyFormKeySelected: "Selected: %s",
 	KeyFormKeyNone:     "No key selected",
+	KeyFormSaveConnect: "Save & Connect",
+	KeyFormConnectOnly: "Connect only",
+	KeyFormRequired:    "Host and username are required.",
 	KeyFormRemoteRoot:  "Remote root",
 	KeyFormHeartbeat:   "Heartbeat (seconds, 0=off)",
 
@@ -254,6 +270,16 @@ var enStrings = map[string]string{
 	KeyPlaceDownloads: "Downloads",
 	KeyPlaceMusic:     "Music",
 	KeyPlaceVideos:    "Videos",
+
+	KeyConnectPickerTitle: "Connect to Server",
+	KeyConnectPickerHint:  "Select a saved server (double-click to connect), or create a new connection.",
+	KeyConnect:            "Connect",
+	KeyNewConnection:      "New connection…",
+	KeyPassphraseTitle:    "Private Key Passphrase",
+	KeyPassphrasePrompt:   "Enter passphrase",
+	KeyPassphraseHint:     "Your private key file is encrypted. Enter the passphrase to continue.",
+	KeyKeyPickerTitle:     "Select Private Key",
+	KeyKeyPickerHint:      "Pick a key from ~/.ssh or enter the full path below.",
 }
 
 var zhStrings = map[string]string{
@@ -319,6 +345,9 @@ var zhStrings = map[string]string{
 	KeyFormSelectKey:   "选择私钥…",
 	KeyFormKeySelected: "已选：%s",
 	KeyFormKeyNone:     "未选择私钥",
+	KeyFormSaveConnect: "保存并连接",
+	KeyFormConnectOnly: "仅连接",
+	KeyFormRequired:    "请填写主机和用户名。",
 	KeyFormRemoteRoot:  "远程根目录",
 	KeyFormHeartbeat:   "心跳间隔（秒，0=关闭）",
 
@@ -361,4 +390,14 @@ var zhStrings = map[string]string{
 	KeyPlaceDownloads: "下载",
 	KeyPlaceMusic:     "音乐",
 	KeyPlaceVideos:    "视频",
+
+	KeyConnectPickerTitle: "连接服务器",
+	KeyConnectPickerHint:  "选择已保存的服务器（双击可连接），或新建连接。",
+	KeyConnect:            "连接",
+	KeyNewConnection:      "新建连接…",
+	KeyPassphraseTitle:    "私钥密码",
+	KeyPassphrasePrompt:   "请输入私钥密码",
+	KeyPassphraseHint:     "您的私钥文件已加密，请输入密码后继续连接。",
+	KeyKeyPickerTitle:     "选择私钥",
+	KeyKeyPickerHint:      "从 ~/.ssh 列表中选择，或在下方输入完整路径。",
 }

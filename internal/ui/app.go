@@ -1,11 +1,11 @@
 package ui
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -17,7 +17,6 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
-	"fyne.io/fyne/v2/widget"
 )
 
 type App struct {
@@ -122,6 +121,10 @@ func (a *App) onWindowDropped(pos fyne.Position, uris []fyne.URI) {
 }
 
 func (a *App) onNewTab() {
+	if len(a.store.Servers) > 0 {
+		a.showConnectPicker()
+		return
+	}
 	a.showAddServer()
 }
 
@@ -150,6 +153,13 @@ func (a *App) connectTab(tab *TabSession) {
 		_ = tab.client.Close()
 		tab.client = nil
 	}
+	if strings.TrimSpace(tab.server.Host) == "" || strings.TrimSpace(tab.server.Username) == "" {
+		tab.state = tabDisconnected
+		a.tabBar.Refresh()
+		a.statusBar.Refresh()
+		dialog.ShowInformation(i18n.T(i18n.KeyServerFormTitle), i18n.T(i18n.KeyFormRequired), a.window)
+		return
+	}
 	tab.state = tabConnecting
 	a.tabBar.Refresh()
 	a.statusBar.Refresh()
@@ -157,14 +167,7 @@ func (a *App) connectTab(tab *TabSession) {
 	a.statusBar.conn.SetText(i18n.Tf(i18n.KeyConnecting, tab.server.Name))
 	go func() {
 		s := tab.server
-		client, err := remote.Connect(remote.ConnectOptions{
-			Host:       s.Host,
-			Port:       s.Port,
-			Username:   s.Username,
-			Password:   s.Password,
-			AutoSSHKey: s.AutoSSHKey,
-			PrivateKey: s.PrivateKey,
-		})
+		client, err := a.dialServer(s)
 		fyne.Do(func() {
 			if a.activeSession() != tab {
 				if client != nil {
@@ -286,19 +289,51 @@ func (a *App) saveServers() {
 	a.tabBar.Refresh()
 }
 
+func (a *App) dialServer(s config.Server) (*remote.Client, error) {
+	var pass []byte
+	if remote.NeedsPassphrase(s.AutoSSHKey, s.PrivateKey) {
+		pass = a.askPassphraseBlocking()
+		if len(pass) == 0 {
+			return nil, remote.ErrPassphraseRequired
+		}
+	}
+	client, err := a.tryConnect(s, pass)
+	if errors.Is(err, remote.ErrPassphraseRequired) {
+		pass = a.askPassphraseBlocking()
+		if len(pass) == 0 {
+			return nil, err
+		}
+		return a.tryConnect(s, pass)
+	}
+	return client, err
+}
+
+func (a *App) tryConnect(s config.Server, passphrase []byte) (*remote.Client, error) {
+	return remote.Connect(remote.ConnectOptions{
+		Host:          s.Host,
+		Port:          s.Port,
+		Username:      s.Username,
+		Password:      s.Password,
+		AutoSSHKey:    s.AutoSSHKey,
+		PrivateKey:    s.PrivateKey,
+		KeyPassphrase: passphrase,
+	})
+}
+
 func (a *App) showAddServer() {
 	showServerForm(a, config.Server{
 		Port:         config.DefaultSFTPPort,
 		HeartbeatSec: config.DefaultHeartbeatSec,
-	}, func(s config.Server) {
-		s.ID = fmt.Sprintf("srv-%d", time.Now().UnixNano())
-		a.store.Servers = append(a.store.Servers, s)
-		a.saveServers()
-		tab := &TabSession{server: s, state: tabDisconnected, remotePath: defaultRemoteRoot(&s)}
-		a.tabs = append(a.tabs, tab)
-		a.activeTab = len(a.tabs) - 1
-		a.tabBar.Refresh()
-		a.activateTab(a.activeTab)
+		AutoSSHKey:   true,
+	}, false, func(s config.Server, save bool) {
+		if save {
+			s.ID = fmt.Sprintf("srv-%d", time.Now().UnixNano())
+			a.store.Servers = append(a.store.Servers, s)
+			a.saveServers()
+		} else {
+			s.ID = fmt.Sprintf("tmp-%d", time.Now().UnixNano())
+		}
+		a.openServerTab(s)
 	})
 }
 
@@ -309,7 +344,10 @@ func (a *App) showEditServer() {
 		return
 	}
 	s := a.store.Servers[id]
-	showServerForm(a, s, func(updated config.Server) {
+	showServerForm(a, s, true, func(updated config.Server, save bool) {
+		if !save {
+			return
+		}
 		updated.ID = s.ID
 		a.store.Servers[id] = updated
 		a.saveServers()
@@ -350,122 +388,6 @@ func (a *App) showDeleteServer() {
 			}
 		}
 	}, a.window)
-}
-
-func showServerForm(a *App, initial config.Server, onSave func(config.Server)) {
-	name := widget.NewEntry()
-	name.SetText(initial.Name)
-	host := widget.NewEntry()
-	host.SetText(initial.Host)
-	port := widget.NewEntry()
-	if initial.Port == 0 {
-		initial.Port = config.DefaultSFTPPort
-	}
-	port.SetText(fmt.Sprintf("%d", initial.Port))
-	user := widget.NewEntry()
-	user.SetText(initial.Username)
-	pass := widget.NewPasswordEntry()
-	pass.SetText(initial.Password)
-
-	var selectedKeyPath string
-	autoSSH := initial.AutoSSHKey
-	if initial.PrivateKey != "" {
-		selectedKeyPath = initial.PrivateKey
-		autoSSH = false
-	} else if !initial.AutoSSHKey && initial.ID == "" {
-		autoSSH = true
-	}
-
-	keyStatus := widget.NewLabel(i18n.T(i18n.KeyFormKeyNone))
-	if selectedKeyPath != "" {
-		keyStatus.SetText(i18n.Tf(i18n.KeyFormKeySelected, filepath.Base(selectedKeyPath)))
-	}
-
-	updateKeyUI := func() {}
-	autoCheck := widget.NewCheck(i18n.T(i18n.KeyFormAutoSSHKey), func(checked bool) {
-		autoSSH = checked
-		updateKeyUI()
-	})
-	autoCheck.SetChecked(autoSSH)
-
-	selectBtn := widget.NewButton(i18n.T(i18n.KeyFormSelectKey), func() {
-		d := dialog.NewFileOpen(func(rc fyne.URIReadCloser, err error) {
-			if err != nil || rc == nil {
-				return
-			}
-			defer rc.Close()
-			selectedKeyPath = filepath.FromSlash(rc.URI().Path())
-			autoSSH = false
-			autoCheck.SetChecked(false)
-			updateKeyUI()
-		}, a.window)
-		d.Show()
-	})
-
-	updateKeyUI = func() {
-		if autoSSH {
-			keyStatus.SetText(i18n.T(i18n.KeyFormAutoSSHKey))
-			selectBtn.Disable()
-			return
-		}
-		selectBtn.Enable()
-		if selectedKeyPath != "" {
-			keyStatus.SetText(i18n.Tf(i18n.KeyFormKeySelected, filepath.Base(selectedKeyPath)))
-		} else {
-			keyStatus.SetText(i18n.T(i18n.KeyFormKeyNone))
-		}
-	}
-	updateKeyUI()
-
-	keyRow := container.NewVBox(autoCheck, container.NewHBox(selectBtn, keyStatus))
-
-	root := widget.NewEntry()
-	root.SetText(initial.RemoteRoot)
-	root.SetPlaceHolder("/")
-
-	heartbeat := widget.NewEntry()
-	hbSec := initial.HeartbeatSec
-	if hbSec == 0 {
-		hbSec = config.DefaultHeartbeatSec
-	}
-	heartbeat.SetText(strconv.Itoa(hbSec))
-	heartbeat.SetPlaceHolder("30")
-
-	form := dialog.NewForm(i18n.T(i18n.KeyServerFormTitle), i18n.T(i18n.KeySave), i18n.T(i18n.KeyCancel), []*widget.FormItem{
-		{Text: i18n.T(i18n.KeyFormName), Widget: name},
-		{Text: i18n.T(i18n.KeyFormHost), Widget: host},
-		{Text: i18n.T(i18n.KeyFormPort), Widget: port},
-		{Text: i18n.T(i18n.KeyFormUsername), Widget: user},
-		{Text: i18n.T(i18n.KeyFormPassword), Widget: pass},
-		{Text: i18n.T(i18n.KeyFormPrivateKey), Widget: keyRow},
-		{Text: i18n.T(i18n.KeyFormRemoteRoot), Widget: root},
-		{Text: i18n.T(i18n.KeyFormHeartbeat), Widget: heartbeat},
-	}, func(ok bool) {
-		if !ok {
-			return
-		}
-		var p int
-		fmt.Sscanf(port.Text, "%d", &p)
-		var hb int
-		fmt.Sscanf(strings.TrimSpace(heartbeat.Text), "%d", &hb)
-		keyPath := ""
-		if !autoSSH {
-			keyPath = strings.TrimSpace(selectedKeyPath)
-		}
-		onSave(config.Server{
-			Name:         strings.TrimSpace(name.Text),
-			Host:         strings.TrimSpace(host.Text),
-			Port:         p,
-			Username:     strings.TrimSpace(user.Text),
-			Password:     pass.Text,
-			AutoSSHKey:   autoSSH,
-			PrivateKey:   keyPath,
-			RemoteRoot:   strings.TrimSpace(root.Text),
-			HeartbeatSec: hb,
-		})
-	}, a.window)
-	form.Resize(fyne.NewSize(520, 480))
-	form.Show()
 }
 
 type localEntry struct {

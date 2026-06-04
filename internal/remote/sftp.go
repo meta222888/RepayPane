@@ -32,12 +32,13 @@ type Client struct {
 }
 
 type ConnectOptions struct {
-	Host       string
-	Port       int
-	Username   string
-	Password   string
-	AutoSSHKey bool
-	PrivateKey string
+	Host          string
+	Port          int
+	Username      string
+	Password      string
+	AutoSSHKey    bool
+	PrivateKey    string
+	KeyPassphrase []byte
 }
 
 func Connect(opts ConnectOptions) (*Client, error) {
@@ -49,21 +50,15 @@ func Connect(opts ConnectOptions) (*Client, error) {
 		authMethods = append(authMethods, ssh.Password(opts.Password))
 	}
 	if opts.AutoSSHKey {
-		signers, err := loadSSHDirKeys()
+		signers, err := loadSSHDirKeys(opts.KeyPassphrase)
 		if err != nil {
 			return nil, err
 		}
-		if len(signers) > 0 {
-			authMethods = append(authMethods, ssh.PublicKeys(signers...))
-		}
+		authMethods = append(authMethods, ssh.PublicKeys(signers...))
 	} else if opts.PrivateKey != "" {
-		keyData, err := os.ReadFile(opts.PrivateKey)
+		signer, err := loadPrivateKeyFile(opts.PrivateKey, opts.KeyPassphrase)
 		if err != nil {
-			return nil, fmt.Errorf("read private key: %w", err)
-		}
-		signer, err := ssh.ParsePrivateKey(keyData)
-		if err != nil {
-			return nil, fmt.Errorf("parse private key: %w", err)
+			return nil, err
 		}
 		authMethods = append(authMethods, ssh.PublicKeys(signer))
 	}
@@ -235,32 +230,4 @@ func normalizeRemote(p string) string {
 		p = "/" + p
 	}
 	return path.Clean(p)
-}
-
-func loadSSHDirKeys() ([]ssh.Signer, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return nil, fmt.Errorf("home dir: %w", err)
-	}
-	sshDir := filepath.Join(home, ".ssh")
-	entries, err := os.ReadDir(sshDir)
-	if err != nil {
-		return nil, fmt.Errorf("read ~/.ssh: %w", err)
-	}
-	var signers []ssh.Signer
-	for _, e := range entries {
-		if e.IsDir() || strings.HasSuffix(e.Name(), ".pub") {
-			continue
-		}
-		data, err := os.ReadFile(filepath.Join(sshDir, e.Name()))
-		if err != nil {
-			continue
-		}
-		signer, err := ssh.ParsePrivateKey(data)
-		if err != nil {
-			continue
-		}
-		signers = append(signers, signer)
-	}
-	return signers, nil
 }
