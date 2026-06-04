@@ -4,18 +4,18 @@ import (
 	"github.com/relaypane/relaypane/internal/i18n"
 
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
 
 type TopBar struct {
-	app      *App
-	root     fyne.CanvasObject
-	btnSet   *widget.Button
-	btnFeat  *widget.Button
-	btnAbout *widget.Button
+	app        *App
+	root       fyne.CanvasObject
+	btnSet     *widget.Button
+	btnFeat    *widget.Button
+	btnAbout   *widget.Button
+	maximized  bool
 }
 
 func NewTopBar(app *App) *TopBar {
@@ -34,13 +34,23 @@ func NewTopBar(app *App) *TopBar {
 	t.btnFeat.Importance = widget.LowImportance
 	t.btnAbout.Importance = widget.LowImportance
 
-	line := canvas.NewRectangle(colorBorder)
-	line.SetMinSize(fyne.NewSize(0, 1))
+	minBtn := widget.NewButtonWithIcon("", theme.WindowMinimizeIcon(), func() {
+		minimizeWindow(t.app.window)
+	})
+	maxBtn := widget.NewButtonWithIcon("", theme.WindowMaximizeIcon(), func() {
+		toggleMaximizeWindow(t.app.window, &t.maximized)
+	})
+	closeBtn := widget.NewButtonWithIcon("", theme.WindowCloseIcon(), func() {
+		closeWindow(t.app.window)
+	})
+	for _, b := range []*widget.Button{minBtn, maxBtn, closeBtn} {
+		b.Importance = widget.LowImportance
+	}
+	winControls := container.NewHBox(minBtn, maxBtn, closeBtn)
 
-	header := container.NewBorder(nil, nil, logo, nil,
-		container.NewHBox(t.btnSet, t.btnFeat, t.btnAbout),
-	)
-	t.root = withPanelHeader(container.NewVBox(header, line))
+	logoDrag := newDragRegion(t.app.window, logo)
+	header := container.NewBorder(nil, nil, logoDrag, container.NewHBox(t.btnSet, t.btnFeat, t.btnAbout, winControls), nil)
+	t.root = withPanelHeader(header)
 	return t
 }
 
