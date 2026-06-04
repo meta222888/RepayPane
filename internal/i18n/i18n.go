@@ -120,6 +120,19 @@ const (
 	KeyAboutVersion     = "about.version"
 	KeyAboutWebsite     = "about.website"
 	KeyMyServersTitle   = "about.my_servers_title"
+
+	KeyColName       = "col.name"
+	KeyColSize       = "col.size"
+	KeyColModified   = "col.modified"
+	KeyColPermissions = "col.permissions"
+	KeyLocalHeader   = "pane.local_header"
+	KeyRemoteHeader  = "pane.remote_header"
+	KeyStatusBarConnected = "status.bar_connected"
+	KeyTransferIdle  = "status.transfer_idle"
+	KeyQueue         = "status.queue"
+	KeyNewFolder     = "action.new_folder"
+	KeyCloseTab      = "action.close_tab"
+	KeyNewTab        = "action.new_tab"
 )
 
 var enStrings = map[string]string{
@@ -200,6 +213,19 @@ var enStrings = map[string]string{
 	KeyAboutVersion:     "Version %s",
 	KeyAboutWebsite:     "https://pc530.com",
 	KeyMyServersTitle:   "My Servers",
+
+	KeyColName:        "Name",
+	KeyColSize:        "Size",
+	KeyColModified:    "Modified",
+	KeyColPermissions: "Permissions",
+	KeyLocalHeader:    "Local — %s",
+	KeyRemoteHeader:   "Remote — %s",
+	KeyStatusBarConnected: "Connected to %s",
+	KeyTransferIdle:   "— MB/s",
+	KeyQueue:          "Queue: %d",
+	KeyNewFolder:      "New Folder",
+	KeyCloseTab:       "Close session",
+	KeyNewTab:         "New connection",
 }
 
 var zhStrings = map[string]string{
@@ -280,4 +306,17 @@ var zhStrings = map[string]string{
 	KeyAboutVersion:     "版本 %s",
 	KeyAboutWebsite:     "https://pc530.com",
 	KeyMyServersTitle:   "我的服务器",
+
+	KeyColName:        "名称",
+	KeyColSize:        "大小",
+	KeyColModified:    "修改日期",
+	KeyColPermissions: "权限",
+	KeyLocalHeader:    "本地 — %s",
+	KeyRemoteHeader:   "远程 — %s",
+	KeyStatusBarConnected: "已连接到 %s",
+	KeyTransferIdle:   "— MB/s",
+	KeyQueue:          "队列: %d",
+	KeyNewFolder:      "新建文件夹",
+	KeyCloseTab:       "关闭会话",
+	KeyNewTab:         "新建连接",
 }

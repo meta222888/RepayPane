@@ -14,9 +14,10 @@ func (a *App) handleDrop(_ fyne.Position, uris []fyne.URI, remoteArea bool) {
 	if len(uris) == 0 {
 		return
 	}
+	client := a.activeClient()
 
 	if remoteArea {
-		if a.client == nil {
+		if client == nil {
 			dialogShow(a, i18n.T(i18n.KeyNotConnectedTitle), i18n.T(i18n.KeyNotConnectedUpload))
 			return
 		}
@@ -24,7 +25,7 @@ func (a *App) handleDrop(_ fyne.Position, uris []fyne.URI, remoteArea bool) {
 			localPath := u.Path()
 			name := filepath.Base(localPath)
 			remotePath := filepath.ToSlash(filepath.Join(a.remotePane.CurrentPath(), name))
-			if err := a.client.Upload(localPath, remotePath); err != nil {
+			if err := client.Upload(localPath, remotePath); err != nil {
 				dialogShowError(a, fmt.Errorf("upload %s: %w", name, err))
 			}
 		}
@@ -44,7 +45,8 @@ func (a *App) handleDrop(_ fyne.Position, uris []fyne.URI, remoteArea bool) {
 }
 
 func (a *App) uploadSelectedLocal() {
-	if a.client == nil {
+	client := a.activeClient()
+	if client == nil {
 		dialogShow(a, i18n.T(i18n.KeyNotConnectedTitle), i18n.T(i18n.KeyNotConnectedFirst))
 		return
 	}
@@ -56,7 +58,7 @@ func (a *App) uploadSelectedLocal() {
 	name := filepath.Base(path)
 	remotePath := filepath.ToSlash(filepath.Join(a.remotePane.CurrentPath(), name))
 	go func() {
-		err := a.client.Upload(path, remotePath)
+		err := client.Upload(path, remotePath)
 		fyne.Do(func() {
 			if err != nil {
 				dialogShowError(a, err)
@@ -68,7 +70,8 @@ func (a *App) uploadSelectedLocal() {
 }
 
 func (a *App) downloadSelectedRemote() {
-	if a.client == nil {
+	client := a.activeClient()
+	if client == nil {
 		return
 	}
 	entry := a.remotePane.SelectedEntry()
@@ -78,7 +81,7 @@ func (a *App) downloadSelectedRemote() {
 	}
 	localPath := filepath.Join(a.localPane.CurrentPath(), entry.Name)
 	go func() {
-		err := a.client.Download(entry.Path, localPath)
+		err := client.Download(entry.Path, localPath)
 		fyne.Do(func() {
 			if err != nil {
 				dialogShowError(a, err)

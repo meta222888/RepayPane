@@ -20,6 +20,7 @@ type FileInfo struct {
 	Size    int64
 	IsDir   bool
 	ModTime time.Time
+	Mode    os.FileMode
 }
 
 type Client struct {
@@ -111,6 +112,7 @@ func (c *Client) ListDir(dir string) ([]FileInfo, error) {
 			Size:    e.Size(),
 			IsDir:   e.IsDir(),
 			ModTime: e.ModTime(),
+			Mode:    e.Mode(),
 		})
 	}
 	return out, nil
@@ -128,6 +130,7 @@ func (c *Client) Stat(p string) (FileInfo, error) {
 		Size:    st.Size(),
 		IsDir:   st.IsDir(),
 		ModTime: st.ModTime(),
+		Mode:    st.Mode(),
 	}, nil
 }
 

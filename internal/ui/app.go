@@ -23,26 +23,19 @@ type App struct {
 	fyneApp fyne.App
 	window  fyne.Window
 
-	settings     *config.Settings
-	store        *config.Store
-	client       *remote.Client
-	activeServer *config.Server
+	settings *config.Settings
+	store    *config.Store
 
-	serverList *widget.List
-	status     *widget.Label
-	selectedServerID int
+	tabs      []*TabSession
+	activeTab int
 
-	sidebarTitle *widget.Label
-	btnAddServer *widget.Button
-	btnEdit      *widget.Button
-	btnDelete    *widget.Button
-	btnRefresh   *widget.Button
-	btnDisconnect *widget.Button
-	btnUpload    *widget.Button
-	btnDownload  *widget.Button
-
+	topBar    *TopBar
+	tabBar    *TabBar
+	statusBar *StatusBar
 	localPane  *FilePane
 	remotePane *FilePane
+
+	selectedServerID int // for my servers dialog
 }
 
 func NewApp(a fyne.App, w fyne.Window) *App {
@@ -67,87 +60,61 @@ func NewApp(a fyne.App, w fyne.Window) *App {
 		window:   w,
 		settings: settings,
 		store:    store,
-		status:   widget.NewLabel(i18n.T(i18n.KeyNotConnected)),
 	}
 
+	appUI.topBar = NewTopBar(appUI)
+	appUI.tabBar = NewTabBar(appUI)
+	appUI.statusBar = NewStatusBar(appUI)
 	appUI.localPane = NewLocalPane(appUI)
 	appUI.remotePane = NewRemotePane(appUI)
 
-	appUI.sidebarTitle = widget.NewLabelWithStyle("", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
-	appUI.btnAddServer = widget.NewButton("", appUI.showAddServer)
-	appUI.btnEdit = widget.NewButton("", appUI.showEditServer)
-	appUI.btnDelete = widget.NewButton("", appUI.showDeleteServer)
-	appUI.btnRefresh = widget.NewButton("", appUI.refreshPanes)
-	appUI.btnDisconnect = widget.NewButton("", appUI.disconnect)
-	appUI.btnUpload = widget.NewButton("", appUI.uploadSelectedLocal)
-	appUI.btnDownload = widget.NewButton("", appUI.downloadSelectedRemote)
-
-	appUI.serverList = widget.NewList(
-		func() int { return len(appUI.store.Servers) },
-		func() fyne.CanvasObject {
-			return widget.NewLabel("template")
-		},
-		func(id widget.ListItemID, obj fyne.CanvasObject) {
-			obj.(*widget.Label).SetText(appUI.store.Servers[id].Name)
-		},
-	)
-	appUI.serverList.OnSelected = func(id widget.ListItemID) {
-		appUI.selectedServerID = int(id)
-		appUI.connectServer(&appUI.store.Servers[id])
+	for i := range store.Servers {
+		s := store.Servers[i]
+		appUI.tabs = append(appUI.tabs, &TabSession{
+			server:     s,
+			state:      tabDisconnected,
+			remotePath: defaultRemoteRoot(&s),
+		})
 	}
-
-	sidebar := container.NewBorder(
-		container.NewVBox(
-			appUI.sidebarTitle,
-			appUI.btnAddServer,
-			appUI.btnEdit,
-			appUI.btnDelete,
-		),
-		nil, nil, nil,
-		appUI.serverList,
-	)
+	if len(appUI.tabs) > 0 {
+		appUI.activeTab = 0
+	}
 
 	panes := container.NewHSplit(appUI.localPane.Container(), appUI.remotePane.Container())
 	panes.SetOffset(0.5)
 
-	toolbar := container.NewHBox(
-		appUI.btnRefresh,
-		appUI.btnDisconnect,
-		appUI.btnUpload,
-		appUI.btnDownload,
-	)
-
-	content := container.NewBorder(
-		container.NewVBox(toolbar, appUI.status),
-		nil, sidebar, nil,
+	body := container.NewBorder(
+		container.NewVBox(appUI.topBar.Container(), appUI.tabBar.Container()),
+		appUI.statusBar.Container(),
+		nil, nil,
 		panes,
 	)
 
-	w.SetContent(content)
+	w.SetContent(body)
 	w.SetOnDropped(appUI.onWindowDropped)
 	appUI.applyLanguage()
+	appUI.tabBar.Refresh()
+	if appUI.activeTab >= 0 {
+		appUI.activateTab(appUI.activeTab)
+	}
 	return appUI
+}
+
+func defaultRemoteRoot(s *config.Server) string {
+	if s.RemoteRoot != "" {
+		return s.RemoteRoot
+	}
+	return "/"
 }
 
 func (a *App) applyLanguage() {
 	a.window.SetTitle(i18n.T(i18n.KeyAppTitle))
-	a.buildMainMenu()
-
-	a.sidebarTitle.SetText(i18n.T(i18n.KeyServers))
-	a.btnAddServer.SetText(i18n.T(i18n.KeyAddServer))
-	a.btnEdit.SetText(i18n.T(i18n.KeyEdit))
-	a.btnDelete.SetText(i18n.T(i18n.KeyDelete))
-	a.btnRefresh.SetText(i18n.T(i18n.KeyRefresh))
-	a.btnDisconnect.SetText(i18n.T(i18n.KeyDisconnect))
-	a.btnUpload.SetText(i18n.T(i18n.KeyUpload))
-	a.btnDownload.SetText(i18n.T(i18n.KeyDownload))
-
+	a.window.SetMainMenu(nil)
+	a.topBar.ApplyLanguage()
 	a.localPane.ApplyLanguage()
 	a.remotePane.ApplyLanguage()
-
-	if a.client == nil {
-		a.status.SetText(i18n.T(i18n.KeyNotConnected))
-	}
+	a.statusBar.ApplyLanguage()
+	a.tabBar.Refresh()
 }
 
 func (a *App) onWindowDropped(pos fyne.Position, uris []fyne.URI) {
@@ -156,14 +123,42 @@ func (a *App) onWindowDropped(pos fyne.Position, uris []fyne.URI) {
 	a.handleDrop(pos, uris, remoteArea)
 }
 
-func (a *App) connectServer(s *config.Server) {
-	if a.client != nil {
-		_ = a.client.Close()
-		a.client = nil
-	}
+func (a *App) onNewTab() {
+	a.showAddServer()
+}
 
-	a.status.SetText(i18n.Tf(i18n.KeyConnecting, s.Name))
+func (a *App) activateTab(index int) {
+	if index < 0 || index >= len(a.tabs) {
+		return
+	}
+	a.activeTab = index
+	tab := a.tabs[index]
+	a.tabBar.Refresh()
+	a.statusBar.Refresh()
+
+	if tab.state == tabConnected && tab.client != nil {
+		a.remotePane.SetConnected(true)
+		a.remotePane.Navigate(tab.remotePath)
+		return
+	}
+	if tab.state == tabConnecting {
+		return
+	}
+	a.connectTab(tab)
+}
+
+func (a *App) connectTab(tab *TabSession) {
+	if tab.client != nil {
+		_ = tab.client.Close()
+		tab.client = nil
+	}
+	tab.state = tabConnecting
+	a.tabBar.Refresh()
+	a.statusBar.Refresh()
+
+	a.statusBar.conn.SetText(i18n.Tf(i18n.KeyConnecting, tab.server.Name))
 	go func() {
+		s := tab.server
 		client, err := remote.Connect(remote.ConnectOptions{
 			Host:       s.Host,
 			Port:       s.Port,
@@ -172,67 +167,84 @@ func (a *App) connectServer(s *config.Server) {
 			PrivateKey: s.PrivateKey,
 		})
 		fyne.Do(func() {
-			if err != nil {
-				a.status.SetText(i18n.T(i18n.KeyConnectionFailed))
-				dialog.ShowError(err, a.window)
+			if a.activeSession() != tab {
+				if client != nil {
+					_ = client.Close()
+				}
+				tab.state = tabDisconnected
+				a.tabBar.Refresh()
 				return
 			}
-			a.client = client
-			a.activeServer = s
-			root := s.RemoteRoot
-			if root == "" {
-				root = "/"
+			if err != nil {
+				tab.state = tabDisconnected
+				a.statusBar.Refresh()
+				dialog.ShowError(err, a.window)
+				a.tabBar.Refresh()
+				return
 			}
-			a.remotePane.SetConnected(true)
-			a.remotePane.Navigate(root)
+			tab.client = client
+			tab.state = tabConnected
+			tab.remotePath = defaultRemoteRoot(&s)
 
 			interval := s.HeartbeatInterval()
 			if interval > 0 {
 				client.StartHeartbeat(interval, func(err error) {
-					fyne.Do(func() {
-						a.handleHeartbeatFailure(s, err)
-					})
+					fyne.Do(func() { a.handleHeartbeatFailure(tab, err) })
 				})
 			}
 
-			status := i18n.Tf(i18n.KeyConnected, s.Name, s.Username, s.Host)
-			if interval > 0 {
-				status += i18n.Tf(i18n.KeyHeartbeatSuffix, int(interval.Seconds()))
-			}
-			a.status.SetText(status)
+			a.remotePane.SetConnected(true)
+			a.remotePane.Navigate(tab.remotePath)
+			a.tabBar.Refresh()
+			a.statusBar.Refresh()
 		})
 	}()
 }
 
-func (a *App) handleHeartbeatFailure(s *config.Server, err error) {
-	if a.client == nil || a.activeServer == nil || a.activeServer.ID != s.ID {
+func (a *App) closeTab(index int) {
+	if index < 0 || index >= len(a.tabs) {
 		return
 	}
-	_ = a.client.Close()
-	a.client = nil
-	a.activeServer = nil
-	a.remotePane.SetConnected(false)
-	a.status.SetText(i18n.T(i18n.KeyConnectionLost))
-	dialog.ShowError(fmt.Errorf("connection to %s lost: %w", s.Name, err), a.window)
-}
-
-func (a *App) disconnect() {
-	if a.client != nil {
-		_ = a.client.Close()
-		a.client = nil
+	tab := a.tabs[index]
+	if tab.client != nil {
+		_ = tab.client.Close()
 	}
-	a.activeServer = nil
-	a.remotePane.SetConnected(false)
-	a.status.SetText(i18n.T(i18n.KeyDisconnected))
+	a.tabs = append(a.tabs[:index], a.tabs[index+1:]...)
+	if len(a.tabs) == 0 {
+		a.activeTab = -1
+		a.remotePane.SetConnected(false)
+		a.tabBar.Refresh()
+		a.statusBar.Refresh()
+		return
+	}
+	if a.activeTab >= len(a.tabs) {
+		a.activeTab = len(a.tabs) - 1
+	}
+	if a.activeTab == index || index <= a.activeTab {
+		a.activateTab(a.activeTab)
+	} else {
+		a.tabBar.Refresh()
+	}
 }
 
-func (a *App) refreshPanes() {
-	a.localPane.RefreshListing()
-	a.remotePane.RefreshListing()
+func (a *App) handleHeartbeatFailure(tab *TabSession, err error) {
+	if tab.client == nil {
+		return
+	}
+	_ = tab.client.Close()
+	tab.client = nil
+	tab.state = tabDisconnected
+	if a.activeSession() == tab {
+		a.remotePane.SetConnected(false)
+	}
+	a.tabBar.Refresh()
+	a.statusBar.Refresh()
+	dialog.ShowError(fmt.Errorf("connection to %s lost: %w", tab.server.Name, err), a.window)
 }
 
 func (a *App) openRemoteEditor(entry remote.FileInfo) {
-	if a.client == nil {
+	client := a.activeClient()
+	if client == nil {
 		return
 	}
 	if entry.Size > config.MaxEditBytes {
@@ -252,8 +264,12 @@ func (a *App) openRemoteEditor(entry remote.FileInfo) {
 }
 
 func (a *App) loadEditor(entry remote.FileInfo) {
+	client := a.activeClient()
+	if client == nil {
+		return
+	}
 	go func() {
-		data, err := a.client.ReadFile(entry.Path)
+		data, err := client.ReadFile(entry.Path)
 		fyne.Do(func() {
 			if err != nil {
 				dialog.ShowError(err, a.window)
@@ -268,7 +284,7 @@ func (a *App) saveServers() {
 	if err := config.Save(a.store); err != nil {
 		dialog.ShowError(err, a.window)
 	}
-	a.serverList.Refresh()
+	a.tabBar.Refresh()
 }
 
 func (a *App) showAddServer() {
@@ -279,6 +295,11 @@ func (a *App) showAddServer() {
 		s.ID = fmt.Sprintf("srv-%d", time.Now().UnixNano())
 		a.store.Servers = append(a.store.Servers, s)
 		a.saveServers()
+		tab := &TabSession{server: s, state: tabDisconnected, remotePath: defaultRemoteRoot(&s)}
+		a.tabs = append(a.tabs, tab)
+		a.activeTab = len(a.tabs) - 1
+		a.tabBar.Refresh()
+		a.activateTab(a.activeTab)
 	})
 }
 
@@ -293,9 +314,20 @@ func (a *App) showEditServer() {
 		updated.ID = s.ID
 		a.store.Servers[id] = updated
 		a.saveServers()
-		if a.activeServer != nil && a.activeServer.ID == s.ID {
-			a.connectServer(&a.store.Servers[id])
+		for _, tab := range a.tabs {
+			if tab.server.ID == s.ID {
+				tab.server = updated
+				if tab.client != nil {
+					_ = tab.client.Close()
+					tab.client = nil
+					tab.state = tabDisconnected
+					if a.activeSession() == tab {
+						a.activateTab(a.activeTab)
+					}
+				}
+			}
 		}
+		a.tabBar.Refresh()
 	})
 }
 
@@ -305,13 +337,19 @@ func (a *App) showDeleteServer() {
 		dialogShow(a, i18n.T(i18n.KeySelectServer), i18n.T(i18n.KeyChooseDelete))
 		return
 	}
-	name := a.store.Servers[id].Name
-	dialog.ShowConfirm(i18n.T(i18n.KeyDelete), i18n.Tf(i18n.KeyDeleteConfirm, name), func(ok bool) {
+	name := a.store.Servers[id]
+	dialog.ShowConfirm(i18n.T(i18n.KeyDelete), i18n.Tf(i18n.KeyDeleteConfirm, name.Name), func(ok bool) {
 		if !ok {
 			return
 		}
+		srvID := a.store.Servers[id].ID
 		a.store.Servers = append(a.store.Servers[:id], a.store.Servers[id+1:]...)
 		a.saveServers()
+		for i := len(a.tabs) - 1; i >= 0; i-- {
+			if a.tabs[i].server.ID == srvID {
+				a.closeTab(i)
+			}
+		}
 	}, a.window)
 }
 

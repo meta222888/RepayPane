@@ -10,8 +10,9 @@ import (
 
 func main() {
 	a := app.NewWithID("com.relaypane.app")
+	ui.ApplyTheme(a)
 	w := a.NewWindow(i18n.T(i18n.KeyAppTitle))
-	w.Resize(fyne.NewSize(1100, 700))
+	w.Resize(fyne.NewSize(1280, 760))
 	w.SetMaster()
 
 	ui.NewApp(a, w)

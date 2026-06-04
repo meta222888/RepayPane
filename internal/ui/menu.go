@@ -15,32 +15,6 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-func (a *App) buildMainMenu() {
-	langItem := fyne.NewMenuItem(i18n.T(i18n.KeyMenuLanguage), nil)
-	langItem.ChildMenu = fyne.NewMenu("",
-		fyne.NewMenuItem(i18n.T(i18n.KeyMenuLangEN), func() { a.setLanguage(i18n.EN) }),
-		fyne.NewMenuItem(i18n.T(i18n.KeyMenuLangZH), func() { a.setLanguage(i18n.ZH) }),
-	)
-
-	settingsMenu := fyne.NewMenu(i18n.T(i18n.KeyMenuSettings),
-		langItem,
-		fyne.NewMenuItem(i18n.T(i18n.KeyMenuMyServers), a.showMyServers),
-		fyne.NewMenuItemSeparator(),
-		fyne.NewMenuItem(i18n.T(i18n.KeyMenuExit), func() { a.fyneApp.Quit() }),
-	)
-
-	featuresMenu := fyne.NewMenu(i18n.T(i18n.KeyMenuFeatures),
-		fyne.NewMenuItem(i18n.T(i18n.KeyMenuComingSoon), a.showFeaturesSoon),
-	)
-
-	aboutMenu := fyne.NewMenu(i18n.T(i18n.KeyMenuAbout),
-		fyne.NewMenuItem(i18n.T(i18n.KeyMenuCheckUpdate), a.showCheckUpdate),
-		fyne.NewMenuItem(i18n.T(i18n.KeyMenuAboutUs), a.showAboutUs),
-	)
-
-	a.window.SetMainMenu(fyne.NewMainMenu(settingsMenu, featuresMenu, aboutMenu))
-}
-
 func (a *App) setLanguage(lang i18n.Lang) {
 	if i18n.Current() == lang {
 		return

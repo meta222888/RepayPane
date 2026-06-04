@@ -14,34 +14,25 @@ import (
 )
 
 type EditorWindow struct {
-	app       *App
-	entry     remote.FileInfo
-	content   *widget.Entry
-	dirty     bool
-	window    fyne.Window
-	pathLabel *widget.Label
-	hintLabel *widget.Label
+	app     *App
+	entry   remote.FileInfo
+	content *widget.Entry
+	dirty   bool
+	window  fyne.Window
 }
 
 func ShowEditor(app *App, entry remote.FileInfo, text string) {
-	e := &EditorWindow{
-		app:   app,
-		entry: entry,
-		dirty: false,
-	}
+	e := &EditorWindow{app: app, entry: entry}
 	e.content = widget.NewMultiLineEntry()
 	e.content.SetText(text)
 	e.content.Wrapping = fyne.TextWrapWord
 	e.content.OnChanged = func(string) { e.dirty = true }
 
-	e.pathLabel = widget.NewLabel(entry.Path)
-	e.hintLabel = widget.NewLabel(i18n.T(i18n.KeyCtrlSSave))
-
 	e.window = app.fyneApp.NewWindow(i18n.Tf(i18n.KeyEditTitle, entry.Name))
 	e.window.Resize(fyne.NewSize(900, 600))
 	e.window.SetContent(container.NewBorder(
-		e.pathLabel,
-		e.hintLabel,
+		widget.NewLabel(entry.Path),
+		widget.NewLabel(i18n.T(i18n.KeyCtrlSSave)),
 		nil, nil,
 		container.NewScroll(e.content),
 	))
@@ -60,18 +51,18 @@ func ShowEditor(app *App, entry remote.FileInfo, text string) {
 		}
 		e.window.Close()
 	})
-
 	e.window.Show()
 }
 
 func (e *EditorWindow) save() {
-	if e.app.client == nil {
+	client := e.app.activeClient()
+	if client == nil {
 		dialog.ShowError(fmt.Errorf(i18n.T(i18n.KeyNotConnectedErr)), e.window)
 		return
 	}
 	data := []byte(e.content.Text)
 	go func() {
-		err := e.app.client.WriteFile(e.entry.Path, data)
+		err := client.WriteFile(e.entry.Path, data)
 		fyne.Do(func() {
 			if err != nil {
 				dialog.ShowError(fmt.Errorf(i18n.Tf(i18n.KeySaveFailed, err.Error())), e.window)
