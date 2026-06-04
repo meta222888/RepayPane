@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/relaypane/relaypane/internal/i18n"
+
 	"fyne.io/fyne/v2"
 )
 
@@ -15,7 +17,7 @@ func (a *App) handleDrop(_ fyne.Position, uris []fyne.URI, remoteArea bool) {
 
 	if remoteArea {
 		if a.client == nil {
-			dialogShow(a, "Not connected", "Connect to a server before uploading.")
+			dialogShow(a, i18n.T(i18n.KeyNotConnectedTitle), i18n.T(i18n.KeyNotConnectedUpload))
 			return
 		}
 		for _, u := range uris {
@@ -43,12 +45,12 @@ func (a *App) handleDrop(_ fyne.Position, uris []fyne.URI, remoteArea bool) {
 
 func (a *App) uploadSelectedLocal() {
 	if a.client == nil {
-		dialogShow(a, "Not connected", "Connect to a server first.")
+		dialogShow(a, i18n.T(i18n.KeyNotConnectedTitle), i18n.T(i18n.KeyNotConnectedFirst))
 		return
 	}
 	path := a.localPane.SelectedPath()
 	if path == "" {
-		dialogShow(a, "Select a file", "Select a local file to upload.")
+		dialogShow(a, i18n.T(i18n.KeySelectFile), i18n.T(i18n.KeySelectLocalUpload))
 		return
 	}
 	name := filepath.Base(path)
@@ -71,7 +73,7 @@ func (a *App) downloadSelectedRemote() {
 	}
 	entry := a.remotePane.SelectedEntry()
 	if entry == nil || entry.IsDir {
-		dialogShow(a, "Select a file", "Select a remote file to download.")
+		dialogShow(a, i18n.T(i18n.KeySelectFile), i18n.T(i18n.KeySelectRemoteDownload))
 		return
 	}
 	localPath := filepath.Join(a.localPane.CurrentPath(), entry.Name)

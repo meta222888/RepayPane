@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/relaypane/relaypane/internal/i18n"
 	"github.com/relaypane/relaypane/internal/remote"
 
 	"fyne.io/fyne/v2"
@@ -32,10 +33,12 @@ type FilePane struct {
 	remote  []remote.FileInfo
 	connected bool
 
-	title   *widget.Label
-	pathBar *widget.Entry
-	list    *widget.List
-	root    *fyne.Container
+	title      *widget.Label
+	pathBar    *widget.Entry
+	list       *widget.List
+	upBtn      *widget.Button
+	refreshBtn *widget.Button
+	root       *fyne.Container
 
 	selectedID int
 	lastTap     time.Time
@@ -91,16 +94,25 @@ func (p *FilePane) build() {
 		p.onSelect(id)
 	}
 
-	upBtn := widget.NewButton("Up", func() { p.goUp() })
-	refreshBtn := widget.NewButton("Refresh", func() { p.RefreshListing() })
+	p.upBtn = widget.NewButton("", func() { p.goUp() })
+	p.refreshBtn = widget.NewButton("", func() { p.RefreshListing() })
 
-	header := container.NewBorder(nil, nil, p.title, container.NewHBox(upBtn, refreshBtn), p.pathBar)
+	header := container.NewBorder(nil, nil, p.title, container.NewHBox(p.upBtn, p.refreshBtn), p.pathBar)
 	p.root = container.NewBorder(header, nil, nil, nil, p.list)
+	p.ApplyLanguage()
+}
 
+func (p *FilePane) ApplyLanguage() {
 	if p.kind == PaneLocal {
-		p.title.SetText("Local")
+		p.title.SetText(i18n.T(i18n.KeyLocal))
 	} else {
-		p.title.SetText("Remote")
+		p.title.SetText(i18n.T(i18n.KeyRemote))
+	}
+	if p.upBtn != nil {
+		p.upBtn.SetText(i18n.T(i18n.KeyUp))
+	}
+	if p.refreshBtn != nil {
+		p.refreshBtn.SetText(i18n.T(i18n.KeyRefresh))
 	}
 }
 
@@ -125,7 +137,7 @@ func (p *FilePane) Navigate(path string) {
 		path = filepath.Clean(path)
 		st, err := os.Stat(path)
 		if err != nil || !st.IsDir() {
-			dialog.ShowError(fmt.Errorf("invalid local path: %s", path), p.app.window)
+			dialog.ShowError(fmt.Errorf(i18n.Tf(i18n.KeyInvalidLocalPath, path)), p.app.window)
 			return
 		}
 	} else {

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/relaypane/relaypane/internal/config"
+	"github.com/relaypane/relaypane/internal/i18n"
 	"github.com/relaypane/relaypane/internal/remote"
 
 	"fyne.io/fyne/v2"
@@ -22,6 +23,7 @@ type App struct {
 	fyneApp fyne.App
 	window  fyne.Window
 
+	settings     *config.Settings
 	store        *config.Store
 	client       *remote.Client
 	activeServer *config.Server
@@ -29,6 +31,15 @@ type App struct {
 	serverList *widget.List
 	status     *widget.Label
 	selectedServerID int
+
+	sidebarTitle *widget.Label
+	btnAddServer *widget.Button
+	btnEdit      *widget.Button
+	btnDelete    *widget.Button
+	btnRefresh   *widget.Button
+	btnDisconnect *widget.Button
+	btnUpload    *widget.Button
+	btnDownload  *widget.Button
 
 	localPane  *FilePane
 	remotePane *FilePane
@@ -41,15 +52,35 @@ func NewApp(a fyne.App, w fyne.Window) *App {
 		store = &config.Store{}
 	}
 
+	settings, err := config.LoadSettings()
+	if err != nil {
+		dialog.ShowError(err, w)
+		settings = &config.Settings{}
+	}
+	initLanguage(settings)
+	if settings.Language != "" {
+		_ = config.SaveSettings(settings)
+	}
+
 	appUI := &App{
-		fyneApp: a,
-		window:  w,
-		store:   store,
-		status:  widget.NewLabel("Not connected"),
+		fyneApp:  a,
+		window:   w,
+		settings: settings,
+		store:    store,
+		status:   widget.NewLabel(i18n.T(i18n.KeyNotConnected)),
 	}
 
 	appUI.localPane = NewLocalPane(appUI)
 	appUI.remotePane = NewRemotePane(appUI)
+
+	appUI.sidebarTitle = widget.NewLabelWithStyle("", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+	appUI.btnAddServer = widget.NewButton("", appUI.showAddServer)
+	appUI.btnEdit = widget.NewButton("", appUI.showEditServer)
+	appUI.btnDelete = widget.NewButton("", appUI.showDeleteServer)
+	appUI.btnRefresh = widget.NewButton("", appUI.refreshPanes)
+	appUI.btnDisconnect = widget.NewButton("", appUI.disconnect)
+	appUI.btnUpload = widget.NewButton("", appUI.uploadSelectedLocal)
+	appUI.btnDownload = widget.NewButton("", appUI.downloadSelectedRemote)
 
 	appUI.serverList = widget.NewList(
 		func() int { return len(appUI.store.Servers) },
@@ -67,10 +98,10 @@ func NewApp(a fyne.App, w fyne.Window) *App {
 
 	sidebar := container.NewBorder(
 		container.NewVBox(
-			widget.NewLabelWithStyle("Servers", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
-			widget.NewButton("Add Server", appUI.showAddServer),
-			widget.NewButton("Edit", appUI.showEditServer),
-			widget.NewButton("Delete", appUI.showDeleteServer),
+			appUI.sidebarTitle,
+			appUI.btnAddServer,
+			appUI.btnEdit,
+			appUI.btnDelete,
 		),
 		nil, nil, nil,
 		appUI.serverList,
@@ -79,15 +110,11 @@ func NewApp(a fyne.App, w fyne.Window) *App {
 	panes := container.NewHSplit(appUI.localPane.Container(), appUI.remotePane.Container())
 	panes.SetOffset(0.5)
 
-	transferBar := container.NewHBox(
-		widget.NewButton("Upload  →", appUI.uploadSelectedLocal),
-		widget.NewButton("←  Download", appUI.downloadSelectedRemote),
-	)
-
 	toolbar := container.NewHBox(
-		widget.NewButton("Refresh", appUI.refreshPanes),
-		widget.NewButton("Disconnect", appUI.disconnect),
-		transferBar,
+		appUI.btnRefresh,
+		appUI.btnDisconnect,
+		appUI.btnUpload,
+		appUI.btnDownload,
 	)
 
 	content := container.NewBorder(
@@ -98,7 +125,29 @@ func NewApp(a fyne.App, w fyne.Window) *App {
 
 	w.SetContent(content)
 	w.SetOnDropped(appUI.onWindowDropped)
+	appUI.applyLanguage()
 	return appUI
+}
+
+func (a *App) applyLanguage() {
+	a.window.SetTitle(i18n.T(i18n.KeyAppTitle))
+	a.buildMainMenu()
+
+	a.sidebarTitle.SetText(i18n.T(i18n.KeyServers))
+	a.btnAddServer.SetText(i18n.T(i18n.KeyAddServer))
+	a.btnEdit.SetText(i18n.T(i18n.KeyEdit))
+	a.btnDelete.SetText(i18n.T(i18n.KeyDelete))
+	a.btnRefresh.SetText(i18n.T(i18n.KeyRefresh))
+	a.btnDisconnect.SetText(i18n.T(i18n.KeyDisconnect))
+	a.btnUpload.SetText(i18n.T(i18n.KeyUpload))
+	a.btnDownload.SetText(i18n.T(i18n.KeyDownload))
+
+	a.localPane.ApplyLanguage()
+	a.remotePane.ApplyLanguage()
+
+	if a.client == nil {
+		a.status.SetText(i18n.T(i18n.KeyNotConnected))
+	}
 }
 
 func (a *App) onWindowDropped(pos fyne.Position, uris []fyne.URI) {
@@ -113,7 +162,7 @@ func (a *App) connectServer(s *config.Server) {
 		a.client = nil
 	}
 
-	a.status.SetText(fmt.Sprintf("Connecting to %s…", s.Name))
+	a.status.SetText(i18n.Tf(i18n.KeyConnecting, s.Name))
 	go func() {
 		client, err := remote.Connect(remote.ConnectOptions{
 			Host:       s.Host,
@@ -124,7 +173,7 @@ func (a *App) connectServer(s *config.Server) {
 		})
 		fyne.Do(func() {
 			if err != nil {
-				a.status.SetText("Connection failed")
+				a.status.SetText(i18n.T(i18n.KeyConnectionFailed))
 				dialog.ShowError(err, a.window)
 				return
 			}
@@ -146,9 +195,9 @@ func (a *App) connectServer(s *config.Server) {
 				})
 			}
 
-			status := fmt.Sprintf("Connected: %s (%s@%s)", s.Name, s.Username, s.Host)
+			status := i18n.Tf(i18n.KeyConnected, s.Name, s.Username, s.Host)
 			if interval > 0 {
-				status += fmt.Sprintf(" · heartbeat %ds", int(interval.Seconds()))
+				status += i18n.Tf(i18n.KeyHeartbeatSuffix, int(interval.Seconds()))
 			}
 			a.status.SetText(status)
 		})
@@ -163,7 +212,7 @@ func (a *App) handleHeartbeatFailure(s *config.Server, err error) {
 	a.client = nil
 	a.activeServer = nil
 	a.remotePane.SetConnected(false)
-	a.status.SetText("Connection lost (heartbeat failed)")
+	a.status.SetText(i18n.T(i18n.KeyConnectionLost))
 	dialog.ShowError(fmt.Errorf("connection to %s lost: %w", s.Name, err), a.window)
 }
 
@@ -174,7 +223,7 @@ func (a *App) disconnect() {
 	}
 	a.activeServer = nil
 	a.remotePane.SetConnected(false)
-	a.status.SetText("Disconnected")
+	a.status.SetText(i18n.T(i18n.KeyDisconnected))
 }
 
 func (a *App) refreshPanes() {
@@ -188,8 +237,8 @@ func (a *App) openRemoteEditor(entry remote.FileInfo) {
 	}
 	if entry.Size > config.MaxEditBytes {
 		dialog.ShowConfirm(
-			"File too large",
-			fmt.Sprintf("%s is %.1f MB. Open anyway? (Ctrl+S saves back to server)", entry.Name, float64(entry.Size)/(1024*1024)),
+			i18n.T(i18n.KeyFileTooLarge),
+			i18n.Tf(i18n.KeyFileTooLargeMsg, entry.Name, float64(entry.Size)/(1024*1024)),
 			func(ok bool) {
 				if ok {
 					a.loadEditor(entry)
@@ -236,7 +285,7 @@ func (a *App) showAddServer() {
 func (a *App) showEditServer() {
 	id := a.selectedServerID
 	if id < 0 || id >= len(a.store.Servers) {
-		dialog.ShowInformation("Select server", "Choose a server to edit.", a.window)
+		dialogShow(a, i18n.T(i18n.KeySelectServer), i18n.T(i18n.KeyChooseEdit))
 		return
 	}
 	s := a.store.Servers[id]
@@ -253,11 +302,11 @@ func (a *App) showEditServer() {
 func (a *App) showDeleteServer() {
 	id := a.selectedServerID
 	if id < 0 || id >= len(a.store.Servers) {
-		dialog.ShowInformation("Select server", "Choose a server to delete.", a.window)
+		dialogShow(a, i18n.T(i18n.KeySelectServer), i18n.T(i18n.KeyChooseDelete))
 		return
 	}
 	name := a.store.Servers[id].Name
-	dialog.ShowConfirm("Delete server", fmt.Sprintf("Delete %q?", name), func(ok bool) {
+	dialog.ShowConfirm(i18n.T(i18n.KeyDelete), i18n.Tf(i18n.KeyDeleteConfirm, name), func(ok bool) {
 		if !ok {
 			return
 		}
@@ -294,15 +343,15 @@ func showServerForm(a *App, initial config.Server, onSave func(config.Server)) {
 	heartbeat.SetText(strconv.Itoa(hbSec))
 	heartbeat.SetPlaceHolder("30")
 
-	form := dialog.NewForm("Server", "Save", "Cancel", []*widget.FormItem{
-		{Text: "Name", Widget: name},
-		{Text: "Host", Widget: host},
-		{Text: "Port", Widget: port},
-		{Text: "Username", Widget: user},
-		{Text: "Password", Widget: pass},
-		{Text: "Private key file", Widget: keyPath},
-		{Text: "Remote root", Widget: root},
-		{Text: "Heartbeat (seconds, 0=off)", Widget: heartbeat},
+	form := dialog.NewForm(i18n.T(i18n.KeyServerFormTitle), i18n.T(i18n.KeySave), i18n.T(i18n.KeyCancel), []*widget.FormItem{
+		{Text: i18n.T(i18n.KeyFormName), Widget: name},
+		{Text: i18n.T(i18n.KeyFormHost), Widget: host},
+		{Text: i18n.T(i18n.KeyFormPort), Widget: port},
+		{Text: i18n.T(i18n.KeyFormUsername), Widget: user},
+		{Text: i18n.T(i18n.KeyFormPassword), Widget: pass},
+		{Text: i18n.T(i18n.KeyFormPrivateKey), Widget: keyPath},
+		{Text: i18n.T(i18n.KeyFormRemoteRoot), Widget: root},
+		{Text: i18n.T(i18n.KeyFormHeartbeat), Widget: heartbeat},
 	}, func(ok bool) {
 		if !ok {
 			return
@@ -325,8 +374,6 @@ func showServerForm(a *App, initial config.Server, onSave func(config.Server)) {
 	form.Resize(fyne.NewSize(480, 460))
 	form.Show()
 }
-
-// Local file listing helpers used by FilePane.
 
 type localEntry struct {
 	name  string

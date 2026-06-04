@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 
+	"github.com/relaypane/relaypane/internal/i18n"
 	"github.com/relaypane/relaypane/internal/remote"
 
 	"fyne.io/fyne/v2"
@@ -13,11 +14,13 @@ import (
 )
 
 type EditorWindow struct {
-	app     *App
-	entry   remote.FileInfo
-	content *widget.Entry
-	dirty   bool
-	window  fyne.Window
+	app       *App
+	entry     remote.FileInfo
+	content   *widget.Entry
+	dirty     bool
+	window    fyne.Window
+	pathLabel *widget.Label
+	hintLabel *widget.Label
 }
 
 func ShowEditor(app *App, entry remote.FileInfo, text string) {
@@ -31,12 +34,14 @@ func ShowEditor(app *App, entry remote.FileInfo, text string) {
 	e.content.Wrapping = fyne.TextWrapWord
 	e.content.OnChanged = func(string) { e.dirty = true }
 
-	title := fmt.Sprintf("Edit: %s", entry.Name)
-	e.window = app.fyneApp.NewWindow(title)
+	e.pathLabel = widget.NewLabel(entry.Path)
+	e.hintLabel = widget.NewLabel(i18n.T(i18n.KeyCtrlSSave))
+
+	e.window = app.fyneApp.NewWindow(i18n.Tf(i18n.KeyEditTitle, entry.Name))
 	e.window.Resize(fyne.NewSize(900, 600))
 	e.window.SetContent(container.NewBorder(
-		widget.NewLabel(entry.Path),
-		widget.NewLabel("Ctrl+S to save to server"),
+		e.pathLabel,
+		e.hintLabel,
 		nil, nil,
 		container.NewScroll(e.content),
 	))
@@ -46,7 +51,7 @@ func ShowEditor(app *App, entry remote.FileInfo, text string) {
 
 	e.window.SetCloseIntercept(func() {
 		if e.dirty {
-			dialog.ShowConfirm("Unsaved changes", "Discard changes?", func(ok bool) {
+			dialog.ShowConfirm(i18n.T(i18n.KeyUnsaved), i18n.T(i18n.KeyDiscard), func(ok bool) {
 				if ok {
 					e.window.Close()
 				}
@@ -61,7 +66,7 @@ func ShowEditor(app *App, entry remote.FileInfo, text string) {
 
 func (e *EditorWindow) save() {
 	if e.app.client == nil {
-		dialog.ShowError(fmt.Errorf("not connected"), e.window)
+		dialog.ShowError(fmt.Errorf(i18n.T(i18n.KeyNotConnectedErr)), e.window)
 		return
 	}
 	data := []byte(e.content.Text)
@@ -69,11 +74,11 @@ func (e *EditorWindow) save() {
 		err := e.app.client.WriteFile(e.entry.Path, data)
 		fyne.Do(func() {
 			if err != nil {
-				dialog.ShowError(fmt.Errorf("save failed: %w", err), e.window)
+				dialog.ShowError(fmt.Errorf(i18n.Tf(i18n.KeySaveFailed, err.Error())), e.window)
 				return
 			}
 			e.dirty = false
-			dialog.ShowInformation("Saved", fmt.Sprintf("Saved to %s", e.entry.Path), e.window)
+			dialog.ShowInformation(i18n.T(i18n.KeySaved), i18n.Tf(i18n.KeySavedMsg, e.entry.Path), e.window)
 		})
 	}()
 }
