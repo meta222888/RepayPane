@@ -84,7 +84,8 @@ func loadSystemFont() fyne.Resource {
 		if windir == "" {
 			windir = `C:\Windows`
 		}
-		for _, name := range []string{"msyh.ttc", "msyhbd.ttc", "segoeui.ttf"} {
+		// Fyne cannot use .ttc font collections — only single .ttf files.
+		for _, name := range []string{"msyh.ttf", "simhei.ttf", "deng.ttf", "segoeui.ttf", "arial.ttf"} {
 			p := filepath.Join(windir, "Fonts", name)
 			if res, err := fyne.LoadResourceFromPath(p); err == nil {
 				return res
