@@ -1,0 +1,14 @@
+# Binaries
+*.exe
+*.dll
+
+# Go
+/vendor/
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+Thumbs.db
+Desktop.ini
