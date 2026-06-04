@@ -54,20 +54,19 @@ func (a *App) showConnectPicker() {
 		list.RefreshItem(id)
 	}
 
-	connectBtn := widget.NewButton(i18n.T(i18n.KeyConnect), func() {
+	connectBtn := newAccentButton(i18n.T(i18n.KeyConnect), func() {
 		if selected < 0 {
 			return
 		}
 		w.Close()
 		a.openServerTab(a.store.Servers[selected])
 	})
-	connectBtn.Importance = widget.HighImportance
 
-	newBtn := widget.NewButton(i18n.T(i18n.KeyNewConnection), func() {
+	newBtn := newAccentButton(i18n.T(i18n.KeyNewConnection), func() {
 		w.Close()
 		a.showAddServer()
 	})
-	cancelBtn := widget.NewButton(i18n.T(i18n.KeyCancel), func() { w.Close() })
+	cancelBtn := newAccentButton(i18n.T(i18n.KeyCancel), func() { w.Close() })
 
 	hint := widget.NewLabel(i18n.T(i18n.KeyConnectPickerHint))
 	buttons := container.NewHBox(cancelBtn, newBtn, connectBtn)

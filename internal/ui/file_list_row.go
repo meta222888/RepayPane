@@ -37,6 +37,15 @@ func (r *fileListRow) TappedSecondary(ev *fyne.PointEvent) {
 	}
 }
 
+func (r *fileListRow) setSelected(selected bool) {
+	if selected {
+		r.bg.FillColor = colorRowSelected
+	} else {
+		r.bg.FillColor = colorBG
+	}
+	canvas.Refresh(r.bg)
+}
+
 func (r *fileListRow) CreateRenderer() fyne.WidgetRenderer {
 	content := container.NewBorder(nil, nil, r.nameLbl, container.NewHBox(fixedWidth(r.metaLbl, 128), fixedWidth(r.sizeLbl, 72)), nil)
 	return &fileListRowRenderer{

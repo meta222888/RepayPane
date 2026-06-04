@@ -55,12 +55,11 @@ func showSSHKeyPicker(a *App, current string, onPick func(path string)) {
 	}
 
 	hint := widget.NewLabel(i18n.T(i18n.KeyKeyPickerHint))
-	okBtn := widget.NewButton(i18n.T(i18n.KeyOK), func() {
+	okBtn := newAccentButton(i18n.T(i18n.KeyOK), func() {
 		onPick(pathEntry.Text)
 		w.Close()
 	})
-	okBtn.Importance = widget.HighImportance
-	cancelBtn := widget.NewButton(i18n.T(i18n.KeyCancel), func() { w.Close() })
+	cancelBtn := newAccentButton(i18n.T(i18n.KeyCancel), func() { w.Close() })
 
 	buttons := container.NewHBox(cancelBtn, okBtn)
 	body := container.NewBorder(

@@ -34,6 +34,9 @@ func (a *App) showCheckUpdate() {
 }
 
 func (a *App) showAboutUs() {
+	title := i18n.T(i18n.KeyAboutTitle)
+	w := newThemedWindow(a.fyneApp, fyne.NewSize(420, 220))
+
 	intro := widget.NewLabel(i18n.T(i18n.KeyAboutIntro))
 	intro.Wrapping = fyne.TextWrapWord
 	versionLabel := widget.NewLabel(i18n.Tf(i18n.KeyAboutVersion, version.Version))
@@ -41,52 +44,68 @@ func (a *App) showAboutUs() {
 	website := widget.NewHyperlink(i18n.T(i18n.KeyAboutWebsite), site)
 
 	content := container.NewVBox(intro, versionLabel, website)
-	d := dialog.NewCustom(i18n.T(i18n.KeyAboutTitle), i18n.T(i18n.KeyOK), content, a.window)
-	d.Resize(fyne.NewSize(420, 200))
-	d.Show()
+	closeBtn := newAccentButton(i18n.T(i18n.KeyOK), func() { w.Close() })
+	body := container.NewBorder(nil, container.NewHBox(closeBtn), nil, nil, content)
+	w.SetContent(themedWindowChrome(w, title, body))
+	w.Show()
 }
 
 func (a *App) showMyServers() {
+	title := i18n.T(i18n.KeyMyServersTitle)
+	w := newThemedWindow(a.fyneApp, fyne.NewSize(480, 360))
+
+	selected := -1
+	prevSelected := -1
 	list := widget.NewList(
 		func() int { return len(a.store.Servers) },
-		func() fyne.CanvasObject { return widget.NewLabel("template") },
+		func() fyne.CanvasObject { return newConnectPickerRow() },
 		func(id widget.ListItemID, obj fyne.CanvasObject) {
 			s := a.store.Servers[id]
-			obj.(*widget.Label).SetText(s.Name + "  (" + s.Host + ")")
+			name := s.Name
+			if name == "" {
+				name = s.Host
+			}
+			obj.(*connectPickerRow).update(name, s.Host, int(id) == selected)
 		},
 	)
-	selected := -1
-	list.OnSelected = func(id widget.ListItemID) { selected = int(id) }
+	list.OnSelected = func(id widget.ListItemID) {
+		prevSelected = selected
+		selected = int(id)
+		if prevSelected >= 0 {
+			list.RefreshItem(widget.ListItemID(prevSelected))
+		}
+		list.RefreshItem(id)
+	}
 
 	buttons := container.NewHBox(
-		widget.NewButton(i18n.T(i18n.KeyAddServer), func() {
+		newAccentButton(i18n.T(i18n.KeyAddServer), func() {
+			w.Close()
 			a.onNewTab()
-			list.Refresh()
 		}),
-		widget.NewButton(i18n.T(i18n.KeyEdit), func() {
+		newAccentButton(i18n.T(i18n.KeyEdit), func() {
 			if selected < 0 {
 				dialogShow(a, i18n.T(i18n.KeySelectServer), i18n.T(i18n.KeyChooseEdit))
 				return
 			}
 			a.selectedServerID = selected
+			w.Close()
 			a.showEditServer()
-			list.Refresh()
 		}),
-		widget.NewButton(i18n.T(i18n.KeyDelete), func() {
+		newAccentButton(i18n.T(i18n.KeyDelete), func() {
 			if selected < 0 {
 				dialogShow(a, i18n.T(i18n.KeySelectServer), i18n.T(i18n.KeyChooseDelete))
 				return
 			}
 			a.selectedServerID = selected
+			w.Close()
 			a.showDeleteServer()
-			list.Refresh()
 		}),
+		newAccentButton(i18n.T(i18n.KeyOK), func() { w.Close() }),
 	)
 
-	content := container.NewBorder(nil, buttons, nil, nil, list)
-	d := dialog.NewCustom(i18n.T(i18n.KeyMyServersTitle), i18n.T(i18n.KeyOK), content, a.window)
-	d.Resize(fyne.NewSize(480, 360))
-	d.Show()
+	body := container.NewBorder(nil, buttons, nil, nil, list)
+	w.SetContent(themedWindowChrome(w, title, body))
+	w.Show()
 }
 
 func initLanguage(settings *config.Settings) {

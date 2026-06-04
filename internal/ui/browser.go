@@ -151,10 +151,16 @@ func (p *FilePane) rowCount() int {
 func (p *FilePane) updateListRow(i widget.ListItemID, obj fyne.CanvasObject) {
 	row := obj.(*fileListRow)
 	row.onSecondary = func(ev *fyne.PointEvent) {
+		prev := p.selectedRow
 		p.selectedRow = int(i)
 		p.list.Select(i)
+		if prev >= 0 && prev != int(i) {
+			p.list.RefreshItem(widget.ListItemID(prev))
+		}
+		p.list.RefreshItem(i)
 		p.showContextMenu(ev.AbsolutePosition)
 	}
+	row.setSelected(int(i) == p.selectedRow)
 
 	if p.kind == PaneLocal {
 		if int(i) >= len(p.local) {
@@ -344,15 +350,15 @@ func (p *FilePane) handleListSelect(id widget.ListItemID) {
 	isDouble := row == p.lastTapID && now.Sub(p.lastTap) < 500*time.Millisecond
 	p.lastTap = now
 	p.lastTapID = row
+	prev := p.selectedRow
 	p.selectedRow = row
+	if prev >= 0 && prev != row {
+		p.list.RefreshItem(widget.ListItemID(prev))
+	}
+	p.list.RefreshItem(id)
 	if isDouble {
 		p.activateRow(row)
-		return
 	}
-	listID := id
-	time.AfterFunc(100*time.Millisecond, func() {
-		fyne.Do(func() { p.list.Unselect(listID) })
-	})
 }
 
 func (p *FilePane) activateRow(row int) {

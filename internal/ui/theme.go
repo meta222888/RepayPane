@@ -19,15 +19,16 @@ var (
 	colorPanel        = color.NRGBA{R: 42, G: 45, B: 54, A: 255}
 	colorBorder       = color.NRGBA{R: 58, G: 62, B: 72, A: 255}
 	colorInput        = color.NRGBA{R: 48, G: 51, B: 60, A: 255}
-	colorAccent       = color.NRGBA{R: 56, G: 189, B: 220, A: 255} // primary cyan
+	colorAccent       = color.NRGBA{R: 0, G: 180, B: 204, A: 255}   // primary cyan button (#00B4CC)
+	colorAccentText   = color.NRGBA{R: 10, G: 10, B: 10, A: 255}    // black text on accent
 	colorForeground   = color.NRGBA{R: 232, G: 234, B: 240, A: 255}
 	colorMuted        = color.NRGBA{R: 148, G: 154, B: 168, A: 255}
 	colorConnected    = color.NRGBA{R: 74, G: 200, B: 130, A: 255} // success
 	colorDisconnected = color.NRGBA{R: 120, G: 126, B: 138, A: 255}
-	colorTabActive    = color.NRGBA{R: 46, G: 49, B: 58, A: 255}
+	colorTabActive    = color.NRGBA{R: 26, G: 72, B: 82, A: 255}   // same family as selection
 	colorTabInactive  = color.NRGBA{R: 38, G: 41, B: 50, A: 255}
 	colorHover        = color.NRGBA{R: 55, G: 60, B: 72, A: 255}
-	colorRowSelected  = color.NRGBA{R: 52, G: 72, B: 96, A: 255}
+	colorRowSelected  = color.NRGBA{R: 26, G: 72, B: 82, A: 255}   // dark teal selection (#1A4852)
 	colorRowHover     = color.NRGBA{R: 50, G: 54, B: 64, A: 255}
 	colorWarning      = color.NRGBA{R: 220, G: 180, B: 90, A: 255}
 )
@@ -109,6 +110,8 @@ func (relayPaneTheme) Color(name fyne.ThemeColorName, _ fyne.ThemeVariant) color
 		return colorMuted
 	case theme.ColorNamePrimary:
 		return colorAccent
+	case theme.ColorNameForegroundOnPrimary:
+		return colorAccentText
 	case theme.ColorNameHover:
 		return colorHover
 	case theme.ColorNameInputBackground:

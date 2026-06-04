@@ -133,10 +133,10 @@ func showServerForm(a *App, initial config.Server, editMode bool, onDone func(co
 		widget.NewFormItem(i18n.T(i18n.KeyFormHeartbeat), heartbeat),
 	)
 
-	cancelBtn := widget.NewButton(i18n.T(i18n.KeyCancel), func() { w.Close() })
+	cancelBtn := newAccentButton(i18n.T(i18n.KeyCancel), func() { w.Close() })
 	var buttons *fyne.Container
 	if editMode {
-		saveBtn := widget.NewButton(i18n.T(i18n.KeySave), func() {
+		saveBtn := newAccentButton(i18n.T(i18n.KeySave), func() {
 			s, ok := buildServer()
 			if !ok {
 				return
@@ -144,10 +144,9 @@ func showServerForm(a *App, initial config.Server, editMode bool, onDone func(co
 			w.Close()
 			onDone(s, true)
 		})
-		saveBtn.Importance = widget.HighImportance
 		buttons = container.NewHBox(cancelBtn, saveBtn)
 	} else {
-		connectOnlyBtn := widget.NewButton(i18n.T(i18n.KeyFormConnectOnly), func() {
+		connectOnlyBtn := newAccentButton(i18n.T(i18n.KeyFormConnectOnly), func() {
 			s, ok := buildServer()
 			if !ok {
 				return
@@ -155,7 +154,7 @@ func showServerForm(a *App, initial config.Server, editMode bool, onDone func(co
 			w.Close()
 			onDone(s, false)
 		})
-		saveBtn := widget.NewButton(i18n.T(i18n.KeyFormSaveConnect), func() {
+		saveBtn := newAccentButton(i18n.T(i18n.KeyFormSaveConnect), func() {
 			s, ok := buildServer()
 			if !ok {
 				return
@@ -163,7 +162,6 @@ func showServerForm(a *App, initial config.Server, editMode bool, onDone func(co
 			w.Close()
 			onDone(s, true)
 		})
-		saveBtn.Importance = widget.HighImportance
 		buttons = container.NewHBox(cancelBtn, connectOnlyBtn, saveBtn)
 	}
 

@@ -22,9 +22,8 @@ func (a *App) promptPassphrase(onOK func(string), onCancel func()) {
 	}
 	entry.OnSubmitted = func(string) { submit() }
 
-	okBtn := widget.NewButton(i18n.T(i18n.KeyOK), submit)
-	okBtn.Importance = widget.HighImportance
-	cancelBtn := widget.NewButton(i18n.T(i18n.KeyCancel), func() {
+	okBtn := newAccentButton(i18n.T(i18n.KeyOK), submit)
+	cancelBtn := newAccentButton(i18n.T(i18n.KeyCancel), func() {
 		w.Close()
 		onCancel()
 	})
