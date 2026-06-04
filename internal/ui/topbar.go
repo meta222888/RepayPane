@@ -89,8 +89,20 @@ func (a *App) settingsMenu() *fyne.Menu {
 }
 
 func (a *App) featuresMenu() *fyne.Menu {
+	syncItem := fyne.NewMenuItem(i18n.T(i18n.KeyFeatSync), nil)
+	syncItem.ChildMenu = fyne.NewMenu("",
+		fyne.NewMenuItem(i18n.T(i18n.KeyFeatSyncUp), a.syncLocalToRemote),
+		fyne.NewMenuItem(i18n.T(i18n.KeyFeatSyncDown), a.syncRemoteToLocal),
+	)
 	return fyne.NewMenu("",
-		fyne.NewMenuItem(i18n.T(i18n.KeyMenuComingSoon), a.showFeaturesSoon),
+		fyne.NewMenuItem(i18n.T(i18n.KeyFeatSysInfo), a.showSystemInfo),
+		fyne.NewMenuItem(i18n.T(i18n.KeyFeatNetwork), a.showNetworkInfo),
+		fyne.NewMenuItem(i18n.T(i18n.KeyFeatDisk), a.showDiskSpace),
+		fyne.NewMenuItem(i18n.T(i18n.KeyFeatDu), a.showDiskUsageTree),
+		fyne.NewMenuItem(i18n.T(i18n.KeyFeatResources), a.showResourceUsage),
+		syncItem,
+		fyne.NewMenuItemSeparator(),
+		fyne.NewMenuItem(i18n.T(i18n.KeyFeatShell), a.showRemoteShell),
 	)
 }
 

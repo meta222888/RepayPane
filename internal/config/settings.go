@@ -9,7 +9,8 @@ import (
 const SettingsFile = "settings.json"
 
 type Settings struct {
-	Language string `json:"language,omitempty"` // "en" or "zh"
+	Language     string   `json:"language,omitempty"` // "en" or "zh"
+	ShellHistory []string `json:"shell_history,omitempty"`
 }
 
 func settingsPath() (string, error) {

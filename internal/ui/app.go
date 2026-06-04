@@ -99,6 +99,7 @@ func NewApp(a fyne.App, w fyne.Window) *App {
 	appUI.applyLanguage()
 	appUI.tabBar.Refresh()
 	appUI.statusBar.Refresh()
+	appUI.registerShellShortcut()
 	return appUI
 }
 

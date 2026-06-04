@@ -175,6 +175,39 @@ const (
 	KeyDeleteFileConfirm  = "dialog.delete_file_confirm"
 	KeyFileExists         = "dialog.file_exists"
 	KeyCtrlSSaveLocal     = "editor.ctrl_s_local"
+
+	KeyFeatLoading        = "feat.loading"
+	KeyFeatNoData         = "feat.no_data"
+	KeyFeatSysInfo        = "feat.sysinfo"
+	KeyFeatNetwork        = "feat.network"
+	KeyFeatDisk           = "feat.disk"
+	KeyFeatDu             = "feat.du"
+	KeyFeatResources      = "feat.resources"
+	KeyFeatSync           = "feat.sync"
+	KeyFeatSyncUp         = "feat.sync_up"
+	KeyFeatSyncDown       = "feat.sync_down"
+	KeyFeatSyncConfirmUp  = "feat.sync_confirm_up"
+	KeyFeatSyncConfirmDown = "feat.sync_confirm_down"
+	KeyFeatShell          = "feat.shell"
+	KeyFeatShellHint      = "feat.shell_hint"
+	KeyFeatShellHistory   = "feat.shell_history"
+	KeyFeatShellNoHistory = "feat.shell_no_history"
+	KeyFeatShellRun       = "feat.shell_run"
+	KeyFeatShellDelOne    = "feat.shell_del_one"
+	KeyFeatShellDelAll    = "feat.shell_del_all"
+	KeyFeatRunning        = "feat.running"
+	KeyFeatNetTraffic     = "feat.net_traffic"
+	KeyFeatNetPorts       = "feat.net_ports"
+	KeyFeatNetAutoRefresh = "feat.net_auto_refresh"
+	KeyFeatRefreshTraffic = "feat.refresh_traffic"
+	KeyFeatRefreshPorts   = "feat.refresh_ports"
+	KeyFeatDiskDetail     = "feat.disk_detail"
+	KeyFeatResCPU         = "feat.res_cpu"
+	KeyFeatResMemory      = "feat.res_memory"
+	KeyFeatResUptime      = "feat.res_uptime"
+	KeyFeatResProcesses   = "feat.res_processes"
+	KeyFeatResCPUPct      = "feat.res_cpu_pct"
+	KeyFeatResMemDetail   = "feat.res_mem_detail"
 )
 
 var enStrings = map[string]string{
@@ -310,6 +343,39 @@ var enStrings = map[string]string{
 	KeyDeleteFileConfirm: "Delete %q?",
 	KeyFileExists:        "%q already exists",
 	KeyCtrlSSaveLocal:    "Ctrl+S to save",
+
+	KeyFeatLoading:        "Loading…",
+	KeyFeatNoData:         "No data",
+	KeyFeatSysInfo:        "System Info",
+	KeyFeatNetwork:        "Network Info",
+	KeyFeatDisk:           "Disk Space",
+	KeyFeatDu:             "Directory Usage",
+	KeyFeatResources:      "Resource Usage",
+	KeyFeatSync:           "Sync",
+	KeyFeatSyncUp:         "Sync local → server",
+	KeyFeatSyncDown:       "Sync server → local",
+	KeyFeatSyncConfirmUp:  "Sync local directory to server?\n\nLocal:\n%s\n\nRemote:\n%s",
+	KeyFeatSyncConfirmDown: "Sync server directory to local?\n\nRemote:\n%s\n\nLocal:\n%s",
+	KeyFeatShell:          "Remote Command (Ctrl+E)",
+	KeyFeatShellHint:      "Enter shell command…",
+	KeyFeatShellHistory:   "History:",
+	KeyFeatShellNoHistory: "No history",
+	KeyFeatShellRun:       "Run",
+	KeyFeatShellDelOne:    "Delete selected",
+	KeyFeatShellDelAll:    "Clear all",
+	KeyFeatRunning:        "Running…",
+	KeyFeatNetTraffic:     "Traffic",
+	KeyFeatNetPorts:       "Open Ports",
+	KeyFeatNetAutoRefresh: "Refresh every 5s",
+	KeyFeatRefreshTraffic: "Refresh traffic",
+	KeyFeatRefreshPorts:   "Refresh ports",
+	KeyFeatDiskDetail:     "Used %s / %s  ·  Free %s  ·  %s",
+	KeyFeatResCPU:         "Processor",
+	KeyFeatResMemory:      "Memory",
+	KeyFeatResUptime:      "Uptime",
+	KeyFeatResProcesses:   "Top processes (by memory)",
+	KeyFeatResCPUPct:      "In use: %.0f%%",
+	KeyFeatResMemDetail:   "Used %s / %s (%.0f%%)",
 }
 
 var zhStrings = map[string]string{
@@ -445,4 +511,37 @@ var zhStrings = map[string]string{
 	KeyDeleteFileConfirm: "确定删除 %q？",
 	KeyFileExists:        "%q 已存在",
 	KeyCtrlSSaveLocal:    "Ctrl+S 保存",
+
+	KeyFeatLoading:        "加载中…",
+	KeyFeatNoData:         "无数据",
+	KeyFeatSysInfo:        "系统信息",
+	KeyFeatNetwork:        "网络信息",
+	KeyFeatDisk:           "磁盘空间",
+	KeyFeatDu:             "详细占用空间",
+	KeyFeatResources:      "资源占用",
+	KeyFeatSync:           "同步",
+	KeyFeatSyncUp:         "同步本地目录到服务器",
+	KeyFeatSyncDown:       "同步服务器目录到本地",
+	KeyFeatSyncConfirmUp:  "确定将本地目录同步到服务器？\n\n本地：\n%s\n\n远程：\n%s",
+	KeyFeatSyncConfirmDown: "确定将服务器目录同步到本地？\n\n远程：\n%s\n\n本地：\n%s",
+	KeyFeatShell:          "执行远程命令 (Ctrl+E)",
+	KeyFeatShellHint:      "输入 shell 命令…",
+	KeyFeatShellHistory:   "历史：",
+	KeyFeatShellNoHistory: "无历史记录",
+	KeyFeatShellRun:       "执行",
+	KeyFeatShellDelOne:    "删除选中",
+	KeyFeatShellDelAll:    "全部删除",
+	KeyFeatRunning:        "执行中…",
+	KeyFeatNetTraffic:     "网络流量",
+	KeyFeatNetPorts:       "端口开放",
+	KeyFeatNetAutoRefresh: "每 5 秒刷新",
+	KeyFeatRefreshTraffic: "刷新流量",
+	KeyFeatRefreshPorts:   "刷新端口",
+	KeyFeatDiskDetail:     "已用 %s / %s  ·  可用 %s  ·  %s",
+	KeyFeatResCPU:         "处理器",
+	KeyFeatResMemory:      "内存",
+	KeyFeatResUptime:      "运行时间",
+	KeyFeatResProcesses:   "占用最高的进程（按内存）",
+	KeyFeatResCPUPct:      "使用率：%.0f%%",
+	KeyFeatResMemDetail:   "已用 %s / %s（%.0f%%）",
 }
