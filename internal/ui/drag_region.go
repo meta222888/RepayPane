@@ -40,4 +40,6 @@ func (d *dragRegion) MouseUp(*desktop.MouseEvent) {
 }
 
 func (d *dragRegion) MouseIn(*desktop.MouseEvent) {}
-func (d *dragRegion) MouseOut()                   {}
+func (d *dragRegion) MouseOut()                     {}
+
+var _ desktop.Mouseable = (*dragRegion)(nil)
