@@ -125,7 +125,7 @@ func (a *App) showDiskUsageTree() {
 	})
 	refreshBtn := newAccentButton(i18n.T(i18n.KeyRefresh), func() { loadDu(curPath) })
 	toolbar := container.NewHBox(upBtn, refreshBtn)
-	header := container.NewBorder(nil, nil, pathLbl, toolbar, nil)
+	header := container.NewBorder(nil, nil, wrapTitleLabel(pathLbl), toolbar, nil)
 	body := container.NewBorder(header, nil, nil, nil, listArea)
 	showThemedFeature(a, title, fyne.NewSize(640, 520), body)
 	loadDu("/")

@@ -130,7 +130,7 @@ func (b *localDriveButton) CreateRenderer() fyne.WidgetRenderer {
 	lbl := canvas.NewText(b.label, colorForeground)
 	lbl.TextSize = paneRowNameSize
 	chev := canvas.NewText("▾", colorMuted)
-	chev.TextSize = 10
+	chev.TextSize = AppTextSize
 	return &localDriveButtonRenderer{
 		btn:     b,
 		border:  canvas.NewRectangle(colorBorder),
@@ -262,7 +262,7 @@ var _ desktop.Cursorable = (*localNavMenuRow)(nil)
 
 func localNavSectionHeader(text string) fyne.CanvasObject {
 	lbl := canvas.NewText(text, colorMuted)
-	lbl.TextSize = 10
+	lbl.TextSize = AppTitleTextSize
 	return container.New(layout.NewCustomPaddedLayout(10, 2, 10, 0), lbl)
 }
 

@@ -90,7 +90,7 @@ func newStatusText(text string, muted bool) *canvas.Text {
 		c = colorMuted
 	}
 	t := canvas.NewText(text, c)
-	t.TextSize = 10
+	t.TextSize = AppTextSize
 	return t
 }
 

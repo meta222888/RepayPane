@@ -102,7 +102,7 @@ func (a *App) showNetworkInfo() {
 	trafficHeader := container.NewBorder(nil, nil, trafficLeft, autoRefresh, nil)
 	trafficBox := container.NewBorder(trafficHeader, refreshTraffic, nil, nil, trafficScroll)
 
-	portsHeader := widget.NewLabelWithStyle(i18n.T(i18n.KeyFeatNetPorts), fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+	portsHeader := titleLabel(i18n.T(i18n.KeyFeatNetPorts))
 	portsBox := container.NewBorder(portsHeader, refreshPorts, nil, nil, portsScroll)
 
 	split := container.NewVSplit(trafficBox, portsBox)
@@ -310,7 +310,7 @@ func renderNetTraffic(state *netTrafficState, ifaceOut, routeOut string, ifaceEr
 	if len(routes) > 0 || (routeErr != nil && strings.TrimSpace(routeOut) == "") {
 		state.routeObjs = []fyne.CanvasObject{
 			widget.NewLabel(""),
-			widget.NewLabelWithStyle(i18n.T(i18n.KeyFeatNetRouting), fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+			titleLabel(i18n.T(i18n.KeyFeatNetRouting)),
 		}
 		if len(routes) == 0 {
 			if routeErr != nil {
@@ -406,7 +406,7 @@ func newNetIfaceCardView(showRate bool) *netIfaceCardView {
 	title := widget.NewLabelWithStyle("", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
 	bar := newUsageProgressBar()
 	detail := widget.NewLabel("")
-	rows := []fyne.CanvasObject{title, bar, detail}
+	rows := []fyne.CanvasObject{wrapTitleLabel(title), bar, detail}
 	var rate *widget.Label
 	if showRate {
 		rate = widget.NewLabel("")

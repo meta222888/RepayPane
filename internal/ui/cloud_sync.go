@@ -221,7 +221,7 @@ func (a *App) showCloudSync() {
 	deleteBtn.Importance = widget.DangerImportance
 
 	configSection := container.NewVBox(
-		widget.NewLabel(i18n.T(i18n.KeyCloudSyncConfigSection)),
+		titleLabel(i18n.T(i18n.KeyCloudSyncConfigSection)),
 		widget.NewForm(
 			widget.NewFormItem(i18n.T(i18n.KeyCloudSyncAPISecret), container.NewVBox(apiSecret, apiSecretLink)),
 			widget.NewFormItem(i18n.T(i18n.KeyCloudSyncPassword), encPass),
@@ -231,13 +231,13 @@ func (a *App) showCloudSync() {
 	)
 
 	statusSection := container.NewVBox(
-		widget.NewLabel(i18n.T(i18n.KeyCloudSyncStatusSection)),
+		titleLabel(i18n.T(i18n.KeyCloudSyncStatusSection)),
 		container.NewHBox(widget.NewLabel(i18n.T(i18n.KeyCloudSyncLocalStatus)), localStatusBox),
 		container.NewHBox(widget.NewLabel(i18n.T(i18n.KeyCloudSyncCloudStatus)), cloudStatusLbl),
 	)
 
 	actionSection := container.NewVBox(
-		widget.NewLabel(i18n.T(i18n.KeyCloudSyncActionSection)),
+		titleLabel(i18n.T(i18n.KeyCloudSyncActionSection)),
 		container.NewHBox(syncUpBtn, syncDownBtn, layout.NewSpacer(), deleteBtn),
 	)
 

@@ -18,7 +18,6 @@ func dialogConfirmOn(parent fyne.Window, title, msg string, callback func(bool))
 
 	msgLbl := widget.NewLabel(msg)
 	msgLbl.Wrapping = fyne.TextWrapWord
-	titleLbl := widget.NewLabelWithStyle(title, fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
 
 	var pop *widget.PopUp
 	hide := func() {
@@ -40,7 +39,7 @@ func dialogConfirmOn(parent fyne.Window, title, msg string, callback func(bool))
 		}
 	})
 	buttons := container.NewHBox(layout.NewSpacer(), cancelBtn, okBtn)
-	card := withBackground(container.NewPadded(container.NewVBox(titleLbl, msgLbl, buttons)), colorPanel)
+	card := withBackground(container.NewPadded(container.NewVBox(titleLabel(title), msgLbl, buttons)), colorPanel)
 
 	pop = widget.NewModalPopUp(card, c)
 	size := card.MinSize().Add(fyne.NewSize(32, 24))

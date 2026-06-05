@@ -26,7 +26,7 @@ func NewTopBar(app *App) *TopBar {
 	logoImg.FillMode = canvas.ImageFillContain
 	logoImg.SetMinSize(fyne.NewSize(18, 18))
 	appName := canvas.NewText(i18n.T(i18n.KeyAppTitle), colorForeground)
-	appName.TextSize = 12
+	appName.TextSize = AppTitleTextSize
 	appName.TextStyle = fyne.TextStyle{Bold: true}
 	logo := container.NewHBox(logoImg, bandCanvasText(appName))
 	t.btnSet = widget.NewButtonWithIcon(i18n.T(i18n.KeyMenuSettings), theme.SettingsIcon(), func() {

@@ -12,7 +12,7 @@ import (
 
 const (
 	serverPickerIcon     = "🖥"
-	pickerRowNameSize    float32 = 14
+	pickerRowNameSize    float32 = AppTextSize
 	pickerRowMinHeight   float32 = 34
 )
 
@@ -111,7 +111,7 @@ func (r *connectPickerRow) CreateRenderer() fyne.WidgetRenderer {
 	r.bg = canvas.NewRectangle(r.rowBgColor())
 	r.bg.SetMinSize(fyne.NewSize(0, pickerRowMinHeight))
 	r.iconT = canvas.NewText(serverPickerIcon, colorAccent)
-	r.iconT.TextSize = 11
+	r.iconT.TextSize = AppTextSize
 	r.lineT = canvas.NewText("", colorForeground)
 	r.lineT.TextSize = pickerRowNameSize
 

@@ -53,13 +53,13 @@ func loadResources(client *remote.Client, box *fyne.Container) {
 			cpuPct := parseCPU(out)
 			uptimeLine := parseUptime(out)
 
-			box.Add(widget.NewLabelWithStyle(i18n.T(i18n.KeyFeatResCPU), fyne.TextAlignLeading, fyne.TextStyle{Bold: true}))
+			box.Add(titleLabel(i18n.T(i18n.KeyFeatResCPU)))
 			cpuBar := newUsageProgressBar()
 			cpuBar.SetUsage(cpuPct)
 			box.Add(cpuBar)
 			box.Add(widget.NewLabel(i18n.Tf(i18n.KeyFeatResCPUPct, cpuPct)))
 
-			box.Add(widget.NewLabelWithStyle(i18n.T(i18n.KeyFeatResMemory), fyne.TextAlignLeading, fyne.TextStyle{Bold: true}))
+			box.Add(titleLabel(i18n.T(i18n.KeyFeatResMemory)))
 			memPct := 0.0
 			if memTotal > 0 {
 				memPct = float64(memUsed) / float64(memTotal) * 100
@@ -70,13 +70,13 @@ func loadResources(client *remote.Client, box *fyne.Container) {
 			box.Add(widget.NewLabel(i18n.Tf(i18n.KeyFeatResMemDetail, formatBytes(memUsed), formatBytes(memTotal), memPct)))
 
 			if uptimeLine != "" {
-				box.Add(widget.NewLabelWithStyle(i18n.T(i18n.KeyFeatResUptime), fyne.TextAlignLeading, fyne.TextStyle{Bold: true}))
+				box.Add(titleLabel(i18n.T(i18n.KeyFeatResUptime)))
 				uptimeLbl := widget.NewLabel(uptimeLine)
 				uptimeLbl.Wrapping = fyne.TextWrapWord
 				box.Add(paddedWidgetLabel(uptimeLbl))
 			}
 
-			box.Add(widget.NewLabelWithStyle(i18n.T(i18n.KeyFeatResProcesses), fyne.TextAlignLeading, fyne.TextStyle{Bold: true}))
+			box.Add(titleLabel(i18n.T(i18n.KeyFeatResProcesses)))
 			procLbl := widget.NewLabel(extractProcessTable(out))
 			procLbl.Wrapping = fyne.TextWrapWord
 			box.Add(paddedWidgetLabel(procLbl))

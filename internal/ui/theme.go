@@ -45,7 +45,11 @@ var (
 
 const (
 	textDescenderPad     float32 = 4
+	AppTextSize          float32 = 12
+	AppTitleTextSize     float32 = 14
 	PaneRowHeight        float32 = 28
+	paneRowNameSize      float32 = AppTextSize
+	paneRowMetaSize      float32 = AppTextSize
 	paneRowPadH          float32 = 4
 	paneRowPadV          float32 = 2
 	topBarHeight         float32 = 28
@@ -108,12 +112,18 @@ func dotWidget(dot *canvas.Circle, size float32) fyne.CanvasObject {
 }
 
 func labelCText(text string, c color.Color, size float32) fyne.CanvasObject {
+	if size < 1 {
+		size = AppTextSize
+	}
 	t := canvas.NewText(text, c)
 	t.TextSize = size
 	return wrapCanvasText(t)
 }
 
 func labelCBandText(text string, c color.Color, size float32) fyne.CanvasObject {
+	if size < 1 {
+		size = AppTextSize
+	}
 	t := canvas.NewText(text, c)
 	t.TextSize = size
 	sz, _ := fyne.CurrentApp().Driver().RenderedTextSize(t.Text, t.TextSize, t.TextStyle, t.FontSource)
@@ -126,6 +136,20 @@ func labelCBandText(text string, c color.Color, size float32) fyne.CanvasObject 
 	spacer := canvas.NewRectangle(color.Transparent)
 	spacer.SetMinSize(sz)
 	return container.NewStack(spacer, t)
+}
+
+func titleLabel(text string) fyne.CanvasObject {
+	lbl := widget.NewLabelWithStyle(text, fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+	return container.NewThemeOverride(lbl, newTitleTextTheme())
+}
+
+func titleLabelAlign(text string, align fyne.TextAlign) fyne.CanvasObject {
+	lbl := widget.NewLabelWithStyle(text, align, fyne.TextStyle{Bold: true})
+	return container.NewThemeOverride(lbl, newTitleTextTheme())
+}
+
+func wrapTitleLabel(lbl *widget.Label) fyne.CanvasObject {
+	return container.NewThemeOverride(lbl, newTitleTextTheme())
 }
 
 // wrapCanvasText reserves vertical space so Latin descenders (g, j, p, y) are not clipped.
@@ -315,9 +339,9 @@ func (relayPaneTheme) Icon(name fyne.ThemeIconName) fyne.Resource {
 func (relayPaneTheme) Size(name fyne.ThemeSizeName) float32 {
 	switch name {
 	case theme.SizeNameText:
-		return 14
+		return AppTextSize
 	case theme.SizeNameCaptionText:
-		return 12
+		return AppTextSize
 	case theme.SizeNameLineSpacing:
 		return 6
 	case theme.SizeNamePadding:
@@ -381,7 +405,7 @@ func (t *compactToolbarTheme) Icon(name fyne.ThemeIconName) fyne.Resource {
 func (t *compactToolbarTheme) Size(name fyne.ThemeSizeName) float32 {
 	switch name {
 	case theme.SizeNameText:
-		return 11
+		return AppTextSize
 	case theme.SizeNamePadding:
 		return 2
 	case theme.SizeNameInnerPadding:
@@ -424,7 +448,7 @@ func (t *paneChromeToolbarTheme) Icon(name fyne.ThemeIconName) fyne.Resource {
 func (t *paneChromeToolbarTheme) Size(name fyne.ThemeSizeName) float32 {
 	switch name {
 	case theme.SizeNameText:
-		return 11
+		return AppTextSize
 	case theme.SizeNamePadding:
 		return 1
 	case theme.SizeNameInnerPadding:
@@ -526,7 +550,7 @@ type compactEntryTheme struct {
 
 func newCompactEntryTheme(textSize float32) fyne.Theme {
 	if textSize < 1 {
-		textSize = 11
+		textSize = AppTextSize
 	}
 	return &compactEntryTheme{
 		base:     fyne.CurrentApp().Settings().Theme(),
@@ -554,6 +578,33 @@ func (t *compactEntryTheme) Size(name fyne.ThemeSizeName) float32 {
 		return 2
 	case theme.SizeNameInnerPadding:
 		return 2
+	}
+	return t.base.Size(name)
+}
+
+type titleTextTheme struct {
+	base fyne.Theme
+}
+
+func newTitleTextTheme() fyne.Theme {
+	return &titleTextTheme{base: fyne.CurrentApp().Settings().Theme()}
+}
+
+func (t *titleTextTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) color.Color {
+	return t.base.Color(name, variant)
+}
+
+func (t *titleTextTheme) Font(style fyne.TextStyle) fyne.Resource {
+	return t.base.Font(style)
+}
+
+func (t *titleTextTheme) Icon(name fyne.ThemeIconName) fyne.Resource {
+	return t.base.Icon(name)
+}
+
+func (t *titleTextTheme) Size(name fyne.ThemeSizeName) float32 {
+	if name == theme.SizeNameText {
+		return AppTitleTextSize
 	}
 	return t.base.Size(name)
 }

@@ -46,12 +46,11 @@ func dialogNameFormOn(parent fyne.Window, title string, submit func(name string)
 	entry.OnSubmitted = func(string) { doOK() }
 
 	form := widget.NewForm(widget.NewFormItem(i18n.T(i18n.KeyFormName), entryField))
-	titleLbl := widget.NewLabelWithStyle(title, fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
 
 	okBtn := newAccentButton(i18n.T(i18n.KeyOK), doOK)
 	cancelBtn := widget.NewButton(i18n.T(i18n.KeyCancel), hide)
 	buttons := container.NewHBox(layout.NewSpacer(), cancelBtn, okBtn)
-	card := withBackground(container.NewPadded(container.NewVBox(titleLbl, form, buttons)), colorPanel)
+	card := withBackground(container.NewPadded(container.NewVBox(titleLabel(title), form, buttons)), colorPanel)
 
 	pop = widget.NewModalPopUp(card, c)
 	size := card.MinSize().Add(fyne.NewSize(32, 24))

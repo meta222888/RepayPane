@@ -135,11 +135,10 @@ func (r *usageProgressRenderer) Destroy() {}
 
 func diskUsageCard(mount, total, used, avail, pctStr string) fyne.CanvasObject {
 	pct, _ := strconv.ParseFloat(strings.TrimSuffix(strings.TrimSpace(pctStr), "%"), 64)
-	title := widget.NewLabelWithStyle(mount, fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
 	detail := widget.NewLabel(i18n.Tf(i18n.KeyFeatDiskDetail, used, total, avail, pctStr))
 	bar := newUsageProgressBar()
 	bar.SetUsage(pct)
-	row := container.NewVBox(title, bar, detail)
+	row := container.NewVBox(titleLabel(mount), bar, detail)
 	return withBackground(container.NewPadded(row), colorPanel)
 }
 
