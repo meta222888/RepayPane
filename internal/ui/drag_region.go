@@ -31,10 +31,20 @@ func (d *dragRegion) MouseDown(e *desktop.MouseEvent) {
 }
 
 func (d *dragRegion) MouseUp(*desktop.MouseEvent) {
-	if d.dragging {
-		winEndDrag()
-		d.dragging = false
+	d.dragging = false
+}
+
+func (d *dragRegion) Dragged(e *fyne.DragEvent) {
+	if !d.dragging {
+		return
 	}
+	fyne.Do(func() {
+		fyneMoveWindowBy(d.win, int(e.Dragged.DX), int(e.Dragged.DY))
+	})
+}
+
+func (d *dragRegion) DragEnd() {
+	d.dragging = false
 }
 
 func (d *dragRegion) MouseIn(*desktop.MouseEvent) {}
@@ -45,4 +55,5 @@ func (d *dragRegion) DoubleTapped(*fyne.PointEvent) {
 }
 
 var _ desktop.Mouseable = (*dragRegion)(nil)
+var _ fyne.Draggable = (*dragRegion)(nil)
 var _ fyne.DoubleTappable = (*dragRegion)(nil)

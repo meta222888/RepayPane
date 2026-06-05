@@ -4,6 +4,8 @@ package ui
 
 import "fyne.io/fyne/v2"
 
+func fyneMoveWindowBy(fyne.Window, int, int) bool { return false }
+
 func winBeginDrag(fyne.Window) bool { return false }
 func winContinueDrag(*dragRegion)    {}
 func winEndDrag()                     {}
