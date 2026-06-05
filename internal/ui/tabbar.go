@@ -36,7 +36,7 @@ func (t *TabBar) Refresh() {
 		active := i == t.app.activeTab
 		t.inner.Add(t.buildTab(idx, tab, active))
 	}
-	addBtn := widget.NewButton("+ "+i18n.T(i18n.KeyNewTabConnect), t.app.onNewTab)
+	addBtn := widget.NewButton(i18n.T(i18n.KeyNewTabConnect), t.app.onNewTab)
 	addBtn.Importance = widget.LowImportance
 	t.inner.Add(addBtn)
 	t.inner.Refresh()

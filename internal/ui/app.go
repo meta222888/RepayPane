@@ -103,7 +103,7 @@ func NewApp(a fyne.App, w fyne.Window) *App {
 }
 
 func (a *App) installWindowFrame() {
-	for i := 0; i < 40; i++ {
+	for i := 0; i < 80; i++ {
 		time.Sleep(50 * time.Millisecond)
 		var ready bool
 		fyne.Do(func() {

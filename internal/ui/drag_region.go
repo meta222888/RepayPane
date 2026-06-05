@@ -27,9 +27,7 @@ func (d *dragRegion) MouseDown(e *desktop.MouseEvent) {
 	if e.Button != desktop.MouseButtonPrimary {
 		return
 	}
-	if winBeginDrag(d) {
-		d.dragging = true
-	}
+	d.dragging = winBeginDrag(d)
 }
 
 func (d *dragRegion) MouseUp(*desktop.MouseEvent) {
