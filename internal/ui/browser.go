@@ -44,9 +44,8 @@ type FilePane struct {
 	history   []string
 	histIndex int
 
-	pathLabel     *widget.Label
-	panelHdrLabel *widget.Label
-	breadcrumb    *fyne.Container
+	pathEntry     *widget.Entry
+	panelPrefixLbl *widget.Label
 	list          *widget.List
 	listHeader    fyne.CanvasObject
 	toolbar       fyne.CanvasObject
@@ -73,8 +72,6 @@ func NewRemotePane(app *App) *FilePane {
 }
 
 func (p *FilePane) build() {
-	p.breadcrumb = container.NewHBox()
-
 	p.list = widget.NewList(
 		func() int { return p.rowCount() },
 		func() fyne.CanvasObject { return newFileListRow() },
@@ -120,30 +117,59 @@ func (p *FilePane) buildToolbar() fyne.CanvasObject {
 
 	if p.kind == PaneLocal {
 		p.localNav = NewLocalNav(p)
-		p.pathLabel = widget.NewLabel("")
 		left := container.NewHBox(p.localNav.Button(), btns)
-		row := container.NewBorder(nil, nil, left, p.pathLabel, nil)
-		return withPanelHeader(row)
+		return withPanelHeader(left)
 	}
 
 	serverIcon := widget.NewLabel("⬡")
-	pathBox := container.NewBorder(nil, nil, nil, nil, p.breadcrumb)
-	left := container.NewHBox(serverIcon, pathBox)
-	row := container.NewBorder(nil, nil, left, btns, nil)
-	return withPanelHeader(row)
+	left := container.NewHBox(serverIcon, btns)
+	return withPanelHeader(left)
 }
 
 func (p *FilePane) buildPanelHeader() fyne.CanvasObject {
-	p.panelHdrLabel = widget.NewLabel("")
-	p.panelHdrLabel.TextStyle = fyne.TextStyle{Bold: true}
-	return withPanelLabel(p.panelHdrLabel)
+	p.panelPrefixLbl = widget.NewLabel("")
+	p.panelPrefixLbl.TextStyle = fyne.TextStyle{Bold: true}
+	p.pathEntry = widget.NewEntry()
+	p.pathEntry.OnSubmitted = func(text string) {
+		text = strings.TrimSpace(text)
+		if text != "" {
+			p.Navigate(text)
+		}
+	}
+	row := container.NewBorder(nil, nil, p.panelPrefixLbl, nil, p.pathEntry)
+	return withPanelLabel(row)
+}
+
+func (p *FilePane) hasParentRow() bool {
+	if p.kind == PaneLocal {
+		return filepath.Dir(p.path) != p.path
+	}
+	return p.path != "/"
+}
+
+func (p *FilePane) isParentRow(row int) bool {
+	return p.hasParentRow() && row == 0
+}
+
+func (p *FilePane) dataRowIndex(row int) int {
+	if p.isParentRow(row) {
+		return -1
+	}
+	if p.hasParentRow() {
+		return row - 1
+	}
+	return row
 }
 
 func (p *FilePane) rowCount() int {
-	if p.kind == PaneLocal {
-		return len(p.local)
+	n := len(p.local)
+	if p.kind == PaneRemote {
+		n = len(p.remote)
 	}
-	return len(p.remote)
+	if p.hasParentRow() {
+		n++
+	}
+	return n
 }
 
 func (p *FilePane) updateListRow(i widget.ListItemID, obj fyne.CanvasObject) {
@@ -160,27 +186,31 @@ func (p *FilePane) updateListRow(i widget.ListItemID, obj fyne.CanvasObject) {
 	}
 	row.setSelected(idx == p.selectedRow)
 
+	if p.isParentRow(idx) {
+		row.nameLbl.SetText("📁  ..")
+		row.sizeLbl.SetText("—")
+		row.metaLbl.SetText("—")
+		return
+	}
+
+	dataIdx := p.dataRowIndex(idx)
 	if p.kind == PaneLocal {
-		if int(i) >= len(p.local) {
+		if dataIdx < 0 || dataIdx >= len(p.local) {
 			return
 		}
-		e := p.local[i]
+		e := p.local[dataIdx]
 		row.nameLbl.SetText(fileIcon(e.isDir) + "  " + e.name)
 		row.sizeLbl.SetText(formatSize(e.size, e.isDir))
 		row.metaLbl.SetText(formatTime(e.mod))
 		return
 	}
-	if int(i) >= len(p.remote) {
+	if dataIdx < 0 || dataIdx >= len(p.remote) {
 		return
 	}
-	e := p.remote[i]
+	e := p.remote[dataIdx]
 	row.nameLbl.SetText(fileIcon(e.IsDir) + "  " + e.Name)
 	row.sizeLbl.SetText(formatSize(e.Size, e.IsDir))
-	if p.kind == PaneRemote {
-		row.metaLbl.SetText(formatTime(e.ModTime))
-	} else {
-		row.metaLbl.SetText(formatTime(e.ModTime))
-	}
+	row.metaLbl.SetText(formatTime(e.ModTime))
 }
 
 func (p *FilePane) Toolbar() fyne.CanvasObject     { return p.toolbar }
@@ -206,21 +236,15 @@ func (p *FilePane) ApplyLanguage() {
 }
 
 func (p *FilePane) refreshPathDisplay() {
-	if p.kind == PaneLocal {
-		if p.pathLabel != nil {
-			p.pathLabel.SetText(p.path)
+	if p.panelPrefixLbl != nil {
+		if p.kind == PaneLocal {
+			p.panelPrefixLbl.SetText("💾  " + i18n.T(i18n.KeyPanelLocal))
+		} else {
+			p.panelPrefixLbl.SetText("⬡  " + i18n.T(i18n.KeyPanelRemote))
 		}
-		if p.panelHdrLabel != nil {
-			drive := p.path
-			if len(drive) >= 2 && drive[1] == ':' {
-				drive = strings.ToUpper(drive[:2]) + `\`
-			}
-			p.panelHdrLabel.SetText("💾  " + i18n.T(i18n.KeyPanelLocal) + " — " + drive)
-		}
-		return
 	}
-	if p.panelHdrLabel != nil {
-		p.panelHdrLabel.SetText("⬡  " + i18n.T(i18n.KeyPanelRemote) + " — " + p.path)
+	if p.pathEntry != nil {
+		p.pathEntry.SetText(p.path)
 	}
 }
 
@@ -230,6 +254,7 @@ func (p *FilePane) Navigate(path string) {
 		st, err := os.Stat(path)
 		if err != nil || !st.IsDir() {
 			dialog.ShowError(fmt.Errorf(i18n.Tf(i18n.KeyInvalidLocalPath, path)), p.app.window)
+			p.refreshPathDisplay()
 			return
 		}
 		p.pushHistory(path)
@@ -252,7 +277,6 @@ func (p *FilePane) Navigate(path string) {
 			sess.remotePath = path
 		}
 	}
-	p.refreshBreadcrumb()
 	p.refreshPathDisplay()
 	p.RefreshListing()
 }
@@ -282,35 +306,6 @@ func (p *FilePane) goUp() {
 	}
 	parent := filepath.Dir(strings.ReplaceAll(p.path, "\\", "/"))
 	p.Navigate(parent)
-}
-
-func (p *FilePane) refreshBreadcrumb() {
-	if p.kind != PaneRemote {
-		return
-	}
-	p.breadcrumb.Objects = nil
-	parts := strings.Split(p.path, "/")
-	acc := ""
-	rootBtn := widget.NewButton("/", func() { p.Navigate("/") })
-	rootBtn.Importance = widget.LowImportance
-	p.breadcrumb.Add(rootBtn)
-	for _, part := range parts {
-		if part == "" {
-			continue
-		}
-		if acc == "" || acc == "/" {
-			acc = "/" + part
-		} else {
-			acc = acc + "/" + part
-		}
-		target := acc
-		sep := widget.NewLabel(" › ")
-		btn := widget.NewButton(part, func() { p.Navigate(target) })
-		btn.Importance = widget.LowImportance
-		p.breadcrumb.Add(sep)
-		p.breadcrumb.Add(btn)
-	}
-	p.breadcrumb.Refresh()
 }
 
 func (p *FilePane) RefreshListing() {
@@ -360,20 +355,25 @@ func (p *FilePane) handleListSelect(id widget.ListItemID) {
 }
 
 func (p *FilePane) activateRow(row int) {
+	if p.isParentRow(row) {
+		p.goUp()
+		return
+	}
+	dataIdx := p.dataRowIndex(row)
 	if p.kind == PaneLocal {
-		if row < 0 || row >= len(p.local) {
+		if dataIdx < 0 || dataIdx >= len(p.local) {
 			return
 		}
-		e := p.local[row]
+		e := p.local[dataIdx]
 		if e.isDir {
 			p.Navigate(e.path)
 		}
 		return
 	}
-	if row < 0 || row >= len(p.remote) {
+	if dataIdx < 0 || dataIdx >= len(p.remote) {
 		return
 	}
-	e := p.remote[row]
+	e := p.remote[dataIdx]
 	if e.IsDir {
 		p.Navigate(e.Path)
 		return
@@ -388,7 +388,7 @@ func (p *FilePane) showContextMenu(at fyne.Position) {
 	newFileItem := fyne.NewMenuItem(i18n.T(i18n.KeyCtxNewFile), p.promptNewFile)
 	deleteItem := fyne.NewMenuItem(i18n.T(i18n.KeyCtxDelete), p.ctxDelete)
 
-	if p.selectedRow < 0 || p.selectedRow >= p.rowCount() {
+	if p.selectedRow < 0 || p.selectedRow >= p.rowCount() || p.isParentRow(p.selectedRow) {
 		copyItem.Disabled = true
 		deleteItem.Disabled = true
 	}
@@ -417,51 +417,54 @@ func (p *FilePane) showContextMenu(at fyne.Position) {
 }
 
 func (p *FilePane) selectedName() string {
-	if p.selectedRow < 0 {
+	if p.selectedRow < 0 || p.isParentRow(p.selectedRow) {
 		return ""
 	}
+	dataIdx := p.dataRowIndex(p.selectedRow)
 	if p.kind == PaneLocal {
-		if p.selectedRow >= len(p.local) {
+		if dataIdx < 0 || dataIdx >= len(p.local) {
 			return ""
 		}
-		return p.local[p.selectedRow].name
+		return p.local[dataIdx].name
 	}
-	if p.selectedRow >= len(p.remote) {
+	if dataIdx < 0 || dataIdx >= len(p.remote) {
 		return ""
 	}
-	return p.remote[p.selectedRow].Name
+	return p.remote[dataIdx].Name
 }
 
 func (p *FilePane) selectedFullPath() string {
-	if p.selectedRow < 0 {
+	if p.selectedRow < 0 || p.isParentRow(p.selectedRow) {
 		return ""
 	}
+	dataIdx := p.dataRowIndex(p.selectedRow)
 	if p.kind == PaneLocal {
-		if p.selectedRow >= len(p.local) {
+		if dataIdx < 0 || dataIdx >= len(p.local) {
 			return ""
 		}
-		return p.local[p.selectedRow].path
+		return p.local[dataIdx].path
 	}
-	if p.selectedRow >= len(p.remote) {
+	if dataIdx < 0 || dataIdx >= len(p.remote) {
 		return ""
 	}
-	return p.remote[p.selectedRow].Path
+	return p.remote[dataIdx].Path
 }
 
 func (p *FilePane) selectedIsDir() bool {
-	if p.selectedRow < 0 {
+	if p.selectedRow < 0 || p.isParentRow(p.selectedRow) {
 		return false
 	}
+	dataIdx := p.dataRowIndex(p.selectedRow)
 	if p.kind == PaneLocal {
-		if p.selectedRow >= len(p.local) {
+		if dataIdx < 0 || dataIdx >= len(p.local) {
 			return false
 		}
-		return p.local[p.selectedRow].isDir
+		return p.local[dataIdx].isDir
 	}
-	if p.selectedRow >= len(p.remote) {
+	if dataIdx < 0 || dataIdx >= len(p.remote) {
 		return false
 	}
-	return p.remote[p.selectedRow].IsDir
+	return p.remote[dataIdx].IsDir
 }
 
 func (p *FilePane) ctxCopy() {
@@ -680,10 +683,14 @@ func formatTime(t time.Time) string {
 }
 
 func (p *FilePane) SelectedPath() string {
-	if p.kind != PaneLocal || p.selectedRow < 0 || p.selectedRow >= len(p.local) {
+	if p.kind != PaneLocal {
 		return ""
 	}
-	e := p.local[p.selectedRow]
+	dataIdx := p.dataRowIndex(p.selectedRow)
+	if dataIdx < 0 || dataIdx >= len(p.local) {
+		return ""
+	}
+	e := p.local[dataIdx]
 	if e.isDir {
 		return ""
 	}
@@ -691,9 +698,13 @@ func (p *FilePane) SelectedPath() string {
 }
 
 func (p *FilePane) SelectedEntry() *remote.FileInfo {
-	if p.kind != PaneRemote || p.selectedRow < 0 || p.selectedRow >= len(p.remote) {
+	if p.kind != PaneRemote {
 		return nil
 	}
-	e := p.remote[p.selectedRow]
+	dataIdx := p.dataRowIndex(p.selectedRow)
+	if dataIdx < 0 || dataIdx >= len(p.remote) {
+		return nil
+	}
+	e := p.remote[dataIdx]
 	return &e
 }
