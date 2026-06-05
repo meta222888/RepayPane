@@ -31,6 +31,7 @@ func (a *App) showDiskUsageTree() {
 	pathLbl.TextStyle = fyne.TextStyle{Bold: true}
 
 	var entries []duEntry
+	var loadGen int
 
 	list := widget.NewList(
 		func() int { return len(entries) },
@@ -65,16 +66,29 @@ func (a *App) showDiskUsageTree() {
 		},
 	)
 
+	loadingPanel := featureLoadingPanel()
+	listArea := container.NewStack(list, loadingPanel)
+
 	var loadDu func(string)
 	loadDu = func(dir string) {
+		loadGen++
+		gen := loadGen
 		curPath = dir
 		pathLbl.SetText(dir)
 		entries = nil
 		list.Refresh()
+		loadingPanel.Show()
+		list.Hide()
+
 		go func() {
 			cmd := `du -sh "` + shellQuote(dir) + `"/* 2>/dev/null`
 			out, err := client.RunCombined(cmd)
 			fyne.Do(func() {
+				if gen != loadGen {
+					return
+				}
+				loadingPanel.Hide()
+				list.Show()
 				if err != nil && strings.TrimSpace(out) == "" {
 					entries = []duEntry{{size: "—", name: err.Error(), path: dir}}
 					list.Refresh()
@@ -88,6 +102,9 @@ func (a *App) showDiskUsageTree() {
 					}
 				}
 				entries = parsed
+				if len(entries) == 0 {
+					entries = []duEntry{{size: "—", name: i18n.T(i18n.KeyFeatNoData), path: dir}}
+				}
 				list.Refresh()
 			})
 		}()
@@ -113,7 +130,7 @@ func (a *App) showDiskUsageTree() {
 	refreshBtn := newAccentButton(i18n.T(i18n.KeyRefresh), func() { loadDu(curPath) })
 	toolbar := container.NewHBox(upBtn, refreshBtn)
 	header := container.NewBorder(nil, nil, pathLbl, toolbar, nil)
-	body := container.NewBorder(header, nil, nil, nil, list)
+	body := container.NewBorder(header, nil, nil, nil, listArea)
 	showThemedFeature(a, title, fyne.NewSize(640, 520), body)
 	loadDu("/")
 }
