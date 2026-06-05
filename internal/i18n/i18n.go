@@ -123,6 +123,7 @@ const (
 	KeyEditorRevert     = "editor.revert"
 	KeyEditorRevertConfirm = "editor.revert_confirm"
 	KeyEditorRevertFailed  = "editor.revert_failed"
+	KeyEditorEncoding      = "editor.encoding"
 	KeyUnsaved       = "editor.unsaved"
 	KeyDiscard       = "editor.discard"
 	KeyEditTitle     = "editor.title"
@@ -354,6 +355,7 @@ var enStrings = map[string]string{
 	KeyEditorRevert:     "Revert",
 	KeyEditorRevertConfirm: "Discard unsaved changes and reload from file?",
 	KeyEditorRevertFailed:  "Reload failed: %s",
+	KeyEditorEncoding:      "Encoding: %s",
 	KeyUnsaved:         "Unsaved changes",
 	KeyDiscard:         "Discard changes?",
 	KeyEditTitle:       "Edit: %s",
@@ -585,6 +587,7 @@ var zhStrings = map[string]string{
 	KeyEditorRevert:     "还原",
 	KeyEditorRevertConfirm: "放弃未保存的更改并从文件重新读取？",
 	KeyEditorRevertFailed:  "读取失败：%s",
+	KeyEditorEncoding:      "编码：%s",
 	KeyUnsaved:         "未保存的更改",
 	KeyDiscard:         "放弃更改？",
 	KeyEditTitle:       "编辑：%s",

@@ -11,6 +11,7 @@ import (
 
 	"github.com/relaypane/relaypane/internal/i18n"
 	"github.com/relaypane/relaypane/internal/remote"
+	"github.com/relaypane/relaypane/internal/textencoding"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -59,8 +60,6 @@ type FilePane struct {
 	selectedRow int
 	lastTapRow  int
 	lastTapTime time.Time
-	lastOpenRow int
-	lastOpenAt  time.Time
 	lastDragAbs fyne.Position
 	dragReady   bool
 	listGen     int
@@ -220,11 +219,19 @@ func (p *FilePane) updateListRow(i widget.ListItemID, obj fyne.CanvasObject) {
 	selected := idx == p.selectedRow
 
 	row.onPrimary = func() {
-		p.handleRowPrimary(idx)
+		now := time.Now()
+		if idx == p.lastTapRow && now.Sub(p.lastTapTime) <= paneDoubleClickInterval {
+			p.lastTapRow = -1
+			p.activateRow(idx)
+			return
+		}
+		p.lastTapRow = idx
+		p.lastTapTime = now
+		p.selectRow(idx)
 	}
 	row.onDouble = func() {
 		p.lastTapRow = -1
-		p.openRow(idx)
+		p.activateRow(idx)
 	}
 	row.onSecondary = func(ev *fyne.PointEvent) {
 		p.showContextMenu(ev.AbsolutePosition, idx)
@@ -435,38 +442,11 @@ func (p *FilePane) selectRow(row int) {
 		return
 	}
 	p.selectedRow = row
-	if prev >= 0 {
-		p.list.RefreshItem(widget.ListItemID(prev))
-	}
-	p.list.RefreshItem(widget.ListItemID(row))
+	p.list.Select(widget.ListItemID(row))
 }
 
 func (p *FilePane) handleListSelect(id widget.ListItemID) {
 	p.selectRow(int(id))
-}
-
-func (p *FilePane) handleRowPrimary(row int) {
-	p.dismissContextMenu()
-	now := time.Now()
-	if row == p.lastTapRow && now.Sub(p.lastTapTime) <= paneDoubleClickInterval {
-		p.lastTapRow = -1
-		p.openRow(row)
-		return
-	}
-	p.lastTapRow = row
-	p.lastTapTime = now
-	p.selectRow(row)
-}
-
-func (p *FilePane) openRow(row int) {
-	now := time.Now()
-	if row == p.lastOpenRow && now.Sub(p.lastOpenAt) <= paneDoubleClickInterval {
-		return
-	}
-	p.lastOpenRow = row
-	p.lastOpenAt = now
-	p.selectRow(row)
-	p.activateRow(row)
 }
 
 func (p *FilePane) activateRow(row int) {
@@ -854,7 +834,7 @@ func (p *FilePane) createFile(name string) {
 			return
 		}
 		p.RefreshListing()
-		ShowLocalEditor(p.app, dst, name, "")
+		ShowLocalEditor(p.app, dst, name, "", textencoding.Info{Encoding: textencoding.UTF8})
 		return
 	}
 	client := p.app.activeClient()
@@ -867,7 +847,7 @@ func (p *FilePane) createFile(name string) {
 	}
 	p.RefreshListing()
 	entry := remote.FileInfo{Name: name, Path: dst}
-	ShowEditor(p.app, entry, "")
+	ShowEditor(p.app, entry, "", textencoding.Info{Encoding: textencoding.UTF8})
 }
 
 func (p *FilePane) joinPath(name string) string {

@@ -11,6 +11,7 @@ import (
 
 	"github.com/relaypane/relaypane/internal/config"
 	"github.com/relaypane/relaypane/internal/i18n"
+	"github.com/relaypane/relaypane/internal/textencoding"
 	"github.com/relaypane/relaypane/internal/remote"
 
 	"fyne.io/fyne/v2"
@@ -318,7 +319,12 @@ func (a *App) loadLocalEditor(path, name string) {
 				dialog.ShowError(err, a.window)
 				return
 			}
-			ShowLocalEditor(a, path, name, string(data))
+			text, enc, err := textencoding.Decode(data)
+			if err != nil {
+				dialog.ShowError(err, a.window)
+				return
+			}
+			ShowLocalEditor(a, path, name, text, enc)
 		})
 	}()
 }
@@ -335,7 +341,12 @@ func (a *App) loadEditor(entry remote.FileInfo) {
 				dialog.ShowError(err, a.window)
 				return
 			}
-			ShowEditor(a, entry, string(data))
+			text, enc, err := textencoding.Decode(data)
+			if err != nil {
+				dialog.ShowError(err, a.window)
+				return
+			}
+			ShowEditor(a, entry, text, enc)
 		})
 	}()
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/relaypane/relaypane/internal/i18n"
 	"github.com/relaypane/relaypane/internal/remote"
+	"github.com/relaypane/relaypane/internal/textencoding"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -16,21 +17,22 @@ import (
 )
 
 type EditorWindow struct {
-	app        *App
-	path       string
-	saveFn     func([]byte) error
-	loadFn     func() (string, error)
-	content    *widget.Entry
-	statusLbl  *widget.Label
-	hintText   string
-	dirty      bool
-	saving     bool
-	window     fyne.Window
+	app       *App
+	path      string
+	saveFn    func([]byte) error
+	loadRawFn func() ([]byte, error)
+	encInfo   textencoding.Info
+	content   *widget.Entry
+	statusLbl *widget.Label
+	hintBase  string
+	dirty     bool
+	saving    bool
+	window    fyne.Window
 }
 
-func ShowEditor(app *App, entry remote.FileInfo, text string) {
+func ShowEditor(app *App, entry remote.FileInfo, text string, enc textencoding.Info) {
 	path := entry.Path
-	showTextEditor(app, i18n.Tf(i18n.KeyEditTitle, entry.Name), path, text, i18n.T(i18n.KeyCtrlSSave),
+	showTextEditor(app, i18n.Tf(i18n.KeyEditTitle, entry.Name), path, text, enc, i18n.T(i18n.KeyCtrlSSave),
 		func(data []byte) error {
 			client := app.activeClient()
 			if client == nil {
@@ -38,49 +40,42 @@ func ShowEditor(app *App, entry remote.FileInfo, text string) {
 			}
 			return client.WriteFile(path, data)
 		},
-		func() (string, error) {
+		func() ([]byte, error) {
 			client := app.activeClient()
 			if client == nil {
-				return "", fmt.Errorf(i18n.T(i18n.KeyNotConnectedErr))
+				return nil, fmt.Errorf(i18n.T(i18n.KeyNotConnectedErr))
 			}
-			data, err := client.ReadFile(path)
-			if err != nil {
-				return "", err
-			}
-			return string(data), nil
+			return client.ReadFile(path)
 		},
 	)
 }
 
-func ShowLocalEditor(app *App, path, name, text string) {
-	showTextEditor(app, i18n.Tf(i18n.KeyEditTitle, name), path, text, i18n.T(i18n.KeyCtrlSSaveLocal),
+func ShowLocalEditor(app *App, path, name, text string, enc textencoding.Info) {
+	showTextEditor(app, i18n.Tf(i18n.KeyEditTitle, name), path, text, enc, i18n.T(i18n.KeyCtrlSSaveLocal),
 		func(data []byte) error {
 			return os.WriteFile(path, data, 0o644)
 		},
-		func() (string, error) {
-			data, err := os.ReadFile(path)
-			if err != nil {
-				return "", err
-			}
-			return string(data), nil
+		func() ([]byte, error) {
+			return os.ReadFile(path)
 		},
 	)
 }
 
-func showTextEditor(app *App, title, path, text, hint string, saveFn func([]byte) error, loadFn func() (string, error)) {
+func showTextEditor(app *App, title, path, text string, enc textencoding.Info, hint string, saveFn func([]byte) error, loadRawFn func() ([]byte, error)) {
 	e := &EditorWindow{
-		app:      app,
-		path:     path,
-		saveFn:   saveFn,
-		loadFn:   loadFn,
-		hintText: hint,
+		app:       app,
+		path:      path,
+		saveFn:    saveFn,
+		loadRawFn: loadRawFn,
+		encInfo:   enc,
+		hintBase:  hint,
 	}
 	e.content = widget.NewMultiLineEntry()
 	e.content.SetText(text)
 	e.content.Wrapping = fyne.TextWrapWord
 	e.content.OnChanged = func(string) { e.dirty = true }
 
-	e.statusLbl = widget.NewLabel(hint)
+	e.statusLbl = widget.NewLabel(e.statusHint())
 
 	revertBtn := widget.NewButton(i18n.T(i18n.KeyEditorRevert), func() { e.revert() })
 	saveBtn := newAccentButton(i18n.T(i18n.KeySave), func() { e.save() })
@@ -112,6 +107,10 @@ func showTextEditor(app *App, title, path, text, hint string, saveFn func([]byte
 	e.window.Show()
 }
 
+func (e *EditorWindow) statusHint() string {
+	return fmt.Sprintf("%s · %s", e.hintBase, i18n.Tf(i18n.KeyEditorEncoding, e.encInfo.Label()))
+}
+
 func (e *EditorWindow) registerSaveShortcut() {
 	ctrlS := &desktop.CustomShortcut{KeyName: fyne.KeyS, Modifier: desktop.ControlModifier}
 	save := func() { e.save() }
@@ -131,8 +130,15 @@ func (e *EditorWindow) save() {
 	}
 	e.saving = true
 	e.setStatus(i18n.T(i18n.KeyEditorSaving))
-	data := []byte(e.content.Text)
 	go func() {
+		data, encErr := textencoding.Encode(e.content.Text, e.encInfo)
+		if encErr != nil {
+			fyne.Do(func() {
+				e.saving = false
+				e.setStatus(i18n.Tf(i18n.KeySaveFailedAt, encErr.Error(), time.Now().Format("2006-01-02 15:04:05")))
+			})
+			return
+		}
 		err := e.saveFn(data)
 		fyne.Do(func() {
 			e.saving = false
@@ -151,15 +157,23 @@ func (e *EditorWindow) revert() {
 	doReload := func() {
 		e.setStatus(i18n.T(i18n.KeyEditorSaving))
 		go func() {
-			text, err := e.loadFn()
+			raw, err := e.loadRawFn()
+			if err != nil {
+				fyne.Do(func() {
+					e.setStatus(i18n.Tf(i18n.KeyEditorRevertFailed, err.Error()))
+				})
+				return
+			}
+			text, enc, err := textencoding.Decode(raw)
 			fyne.Do(func() {
 				if err != nil {
 					e.setStatus(i18n.Tf(i18n.KeyEditorRevertFailed, err.Error()))
 					return
 				}
+				e.encInfo = enc
 				e.content.SetText(text)
 				e.dirty = false
-				e.setStatus(e.hintText)
+				e.setStatus(e.statusHint())
 			})
 		}()
 	}
