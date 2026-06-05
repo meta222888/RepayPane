@@ -126,7 +126,7 @@ func (p *FilePane) build() {
 func (p *FilePane) buildLocalListHeader() fyne.CanvasObject {
 	nameCol := labelCBandText(i18n.T(i18n.KeyColName), colorMuted, paneRowMetaSize)
 	rightCol := labelCBandText(i18n.T(i18n.KeyColSize)+"       "+i18n.T(i18n.KeyColModified), colorMuted, paneRowMetaSize)
-	row := container.NewBorder(nil, nil, nil, rightCol, nameCol)
+	row := container.NewBorder(nil, nil, nil, fixedWidth(rightCol, paneLocalMetaColWidth), nameCol)
 	return paneBand(row)
 }
 
@@ -158,7 +158,7 @@ func (p *FilePane) buildRemoteListHeader() fyne.CanvasObject {
 	nameCol := labelCBandText(i18n.T(i18n.KeyColName), colorMuted, paneRowMetaSize)
 	sizeCol := labelCBandText(i18n.T(i18n.KeyColSize), colorMuted, paneRowMetaSize)
 	metaCol := labelCBandText(i18n.T(i18n.KeyColModified), colorMuted, paneRowMetaSize)
-	right := container.NewHBox(fixedWidth(metaCol, 128), fixedWidth(sizeCol, 72))
+	right := container.NewHBox(fixedWidth(metaCol, paneRemoteMetaColWidth), fixedWidth(sizeCol, paneRemoteSizeColWidth))
 	row := container.NewBorder(nil, nil, nil, right, nameCol)
 	return paneBand(row)
 }

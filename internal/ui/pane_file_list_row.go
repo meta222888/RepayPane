@@ -27,7 +27,7 @@ type paneFileListRow struct {
 	renaming bool
 
 	bg        *canvas.Rectangle
-	nameT     *canvas.Text
+	nameT     *paneEllipsisText
 	nameEntry *widget.Entry
 	sizeT     *canvas.Text
 	metaT     *canvas.Text
@@ -62,7 +62,7 @@ func (r *paneFileListRow) startRename(name string, onCommit func(string), onCanc
 	r.nameEntry.SetText(name)
 	r.nameT.Hide()
 	r.nameEntry.Show()
-	canvas.Refresh(r.nameT)
+	r.nameT.Refresh()
 	canvas.Refresh(r.nameEntry)
 	r.Refresh()
 	fyne.Do(func() {
@@ -81,7 +81,7 @@ func (r *paneFileListRow) endRename() {
 	}
 	r.nameEntry.Hide()
 	r.nameT.Show()
-	canvas.Refresh(r.nameT)
+	r.nameT.Refresh()
 	canvas.Refresh(r.nameEntry)
 }
 
@@ -95,10 +95,10 @@ func (r *paneFileListRow) updateLocal(rowIndex int, name, size, modified string,
 		return
 	}
 	if isParent {
-		r.nameT.Text = "↩  .."
+		r.nameT.SetText("↩  ..")
 		r.rightT.Text = "—   —"
 	} else {
-		r.nameT.Text = fileIcon(isDir) + "  " + name
+		r.nameT.SetText(fileIcon(isDir) + "  " + name)
 		if size != "—" {
 			r.rightT.Text = size + "   " + modified
 		} else {
@@ -118,11 +118,11 @@ func (r *paneFileListRow) updateRemote(rowIndex int, name, size, modified string
 		return
 	}
 	if isParent {
-		r.nameT.Text = "↩  .."
+		r.nameT.SetText("↩  ..")
 		r.sizeT.Text = "—"
 		r.metaT.Text = "—"
 	} else {
-		r.nameT.Text = fileIcon(isDir) + "  " + name
+		r.nameT.SetText(fileIcon(isDir) + "  " + name)
 		r.sizeT.Text = size
 		r.metaT.Text = modified
 	}
@@ -148,12 +148,12 @@ func (r *paneFileListRow) refreshStyle() {
 	}
 	r.bg.FillColor = r.rowBgColor()
 	if r.selected {
-		r.nameT.Color = colorTextHighlight
+		r.nameT.SetColor(colorTextHighlight)
 	} else {
-		r.nameT.Color = colorForeground
+		r.nameT.SetColor(colorForeground)
 	}
 	canvas.Refresh(r.bg)
-	canvas.Refresh(r.nameT)
+	r.nameT.Refresh()
 	if r.remote {
 		canvas.Refresh(r.sizeT)
 		canvas.Refresh(r.metaT)
@@ -230,8 +230,7 @@ func (r *paneFileListRow) MouseOut() {
 func (r *paneFileListRow) CreateRenderer() fyne.WidgetRenderer {
 	r.bg = canvas.NewRectangle(r.rowBgColor())
 	r.bg.SetMinSize(fyne.NewSize(0, paneRowMinHeight))
-	r.nameT = canvas.NewText("", colorForeground)
-	r.nameT.TextSize = paneRowNameSize
+	r.nameT = newPaneEllipsisText(paneRowNameSize, colorForeground)
 	r.nameEntry = widget.NewEntry()
 	r.nameEntry.Hide()
 	r.nameEntry.OnSubmitted = func(text string) {
@@ -248,12 +247,13 @@ func (r *paneFileListRow) CreateRenderer() fyne.WidgetRenderer {
 		r.sizeT.TextSize = paneRowMetaSize
 		r.metaT = canvas.NewText("", colorMuted)
 		r.metaT.TextSize = paneRowMetaSize
-		right := container.NewHBox(fixedWidth(r.metaT, 128), fixedWidth(r.sizeT, 72))
+		right := container.NewHBox(fixedWidth(r.metaT, paneRemoteMetaColWidth), fixedWidth(r.sizeT, paneRemoteSizeColWidth))
 		row = container.NewBorder(nil, nil, nil, right, nameCol)
 	} else {
 		r.rightT = canvas.NewText("", colorMuted)
 		r.rightT.TextSize = paneRowMetaSize
-		row = container.NewBorder(nil, nil, nil, r.rightT, nameCol)
+		right := fixedWidth(r.rightT, paneLocalMetaColWidth)
+		row = container.NewBorder(nil, nil, nil, right, nameCol)
 	}
 
 	padded := container.New(layout.NewCustomPaddedLayout(paneRowPadH, paneRowPadV, paneRowPadH, paneRowPadV), row)
