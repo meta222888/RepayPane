@@ -276,18 +276,15 @@ func (p *FilePane) syncListView() {
 		return
 	}
 	p.pendingListRefresh = false
-	p.list.UnselectAll()
 	p.list.ScrollToTop()
-	p.list.Refresh()
-	n := p.rowCount()
-	limit := n
-	if limit > 64 {
-		limit = 64
-	}
-	for i := 0; i < limit; i++ {
-		p.list.RefreshItem(widget.ListItemID(i))
-	}
 	p.relayoutListPane()
+	p.list.UnselectAll()
+	// Full refresh must run after relayout: list.Resize triggers updateList(newOnly)
+	// which reuses visible rows without rebinding when row IDs stay the same.
+	p.list.Refresh()
+	if p.listPaneArea != nil {
+		canvas.Refresh(p.listPaneArea)
+	}
 }
 
 func (p *FilePane) updateListRow(i widget.ListItemID, obj fyne.CanvasObject) {
@@ -342,6 +339,8 @@ func (p *FilePane) updateListRow(i widget.ListItemID, obj fyne.CanvasObject) {
 	dataIdx := p.dataRowIndex(idx)
 	if p.kind == PaneLocal {
 		if dataIdx < 0 || dataIdx >= len(p.local) {
+			row.updateLocal(idx, "", "—", "—", false, false, false)
+			row.endRename()
 			return
 		}
 		e := p.local[dataIdx]
@@ -350,6 +349,8 @@ func (p *FilePane) updateListRow(i widget.ListItemID, obj fyne.CanvasObject) {
 		return
 	}
 	if dataIdx < 0 || dataIdx >= len(p.remote) {
+		row.updateRemote(idx, "", "—", "—", false, false, false)
+		row.endRename()
 		return
 	}
 	e := p.remote[dataIdx]
@@ -491,7 +492,14 @@ func (p *FilePane) RefreshListing() {
 			return
 		}
 		p.local = entries
+		gen := p.listGen
 		p.syncListView()
+		fyne.Do(func() {
+			if gen != p.listGen {
+				return
+			}
+			p.syncListView()
+		})
 		return
 	}
 	if !p.connected || p.app.activeClient() == nil {
