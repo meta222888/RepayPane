@@ -3,7 +3,6 @@ package ui
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/relaypane/relaypane/internal/config"
 	"github.com/relaypane/relaypane/internal/i18n"
@@ -15,48 +14,35 @@ import (
 
 func (a *App) showConnectPicker() {
 	selected := -1
-	prevSelected := -1
-	var lastTap time.Time
-	var lastID int
-
 	var dlg *modalDialog
 
-	list := widget.NewList(
+	var list *widget.List
+	list = widget.NewList(
 		func() int { return len(a.store.Servers) },
 		func() fyne.CanvasObject { return newConnectPickerRow() },
 		func(id widget.ListItemID, obj fyne.CanvasObject) {
-			if int(id) >= len(a.store.Servers) {
+			idx := int(id)
+			if idx >= len(a.store.Servers) {
 				return
 			}
 			row := obj.(*connectPickerRow)
-			s := a.store.Servers[id]
+			s := a.store.Servers[idx]
 			name := s.Name
 			if name == "" {
 				name = s.Host
 			}
-			row.update(name, serverSubtitle(s), int(id) == selected)
+			row.onPrimary = func() { selectPickerRow(list, &selected, idx) }
+			row.onDouble = func() {
+				selectPickerRow(list, &selected, idx)
+				dlg.Close()
+				a.openServerTab(a.store.Servers[idx])
+			}
+			row.update(name, serverSubtitle(s), idx == selected)
 		},
 	)
 
 	list.OnSelected = func(id widget.ListItemID) {
-		idx := int(id)
-		if idx < 0 || idx >= len(a.store.Servers) {
-			return
-		}
-		now := time.Now()
-		if idx == lastID && now.Sub(lastTap) < 500*time.Millisecond {
-			dlg.Close()
-			a.openServerTab(a.store.Servers[idx])
-			return
-		}
-		lastTap = now
-		lastID = idx
-		prevSelected = selected
-		selected = idx
-		if prevSelected >= 0 {
-			list.RefreshItem(widget.ListItemID(prevSelected))
-		}
-		list.RefreshItem(id)
+		selectPickerRow(list, &selected, int(id))
 	}
 
 	connectBtn := newAccentButton(i18n.T(i18n.KeyConnect), func() {
@@ -79,6 +65,19 @@ func (a *App) showConnectPicker() {
 
 	title := i18n.T(i18n.KeyConnectPickerTitle)
 	dlg = newModalDialog(a.window, title, fyne.NewSize(520, 420), body)
+}
+
+func selectPickerRow(list *widget.List, selected *int, row int) {
+	if row < 0 {
+		return
+	}
+	prev := *selected
+	*selected = row
+	list.Select(widget.ListItemID(row))
+	if prev >= 0 && prev != row {
+		list.RefreshItem(widget.ListItemID(prev))
+	}
+	list.RefreshItem(widget.ListItemID(row))
 }
 
 func serverSubtitle(s config.Server) string {

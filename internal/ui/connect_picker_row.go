@@ -10,13 +10,16 @@ import (
 type connectPickerRow struct {
 	widget.BaseWidget
 
-	bg     *canvas.Rectangle
+	bg      *canvas.Rectangle
 	lineLbl *widget.Label
+
+	onPrimary func()
+	onDouble  func()
 }
 
 func newConnectPickerRow() *connectPickerRow {
 	r := &connectPickerRow{
-		bg:      canvas.NewRectangle(colorBG),
+		bg:      canvas.NewRectangle(colorPanel),
 		lineLbl: widget.NewLabel(""),
 	}
 	r.ExtendBaseWidget(r)
@@ -32,9 +35,21 @@ func (r *connectPickerRow) update(name, subtitle string, selected bool) {
 	if selected {
 		r.bg.FillColor = colorRowSelected
 	} else {
-		r.bg.FillColor = colorBG
+		r.bg.FillColor = colorPanel
 	}
 	canvas.Refresh(r.bg)
+}
+
+func (r *connectPickerRow) Tapped(*fyne.PointEvent) {
+	if r.onPrimary != nil {
+		r.onPrimary()
+	}
+}
+
+func (r *connectPickerRow) DoubleTapped(*fyne.PointEvent) {
+	if r.onDouble != nil {
+		r.onDouble()
+	}
 }
 
 func (r *connectPickerRow) CreateRenderer() fyne.WidgetRenderer {
@@ -69,3 +84,6 @@ func (rr *connectPickerRowRenderer) Refresh() {
 
 func (rr *connectPickerRowRenderer) Objects() []fyne.CanvasObject { return rr.objects }
 func (rr *connectPickerRowRenderer) Destroy()                       {}
+
+var _ fyne.Tappable = (*connectPickerRow)(nil)
+var _ fyne.DoubleTappable = (*connectPickerRow)(nil)
