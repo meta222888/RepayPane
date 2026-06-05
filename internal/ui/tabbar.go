@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
@@ -51,14 +52,76 @@ func (t *TabBar) Refresh() {
 }
 
 func (t *TabBar) buildAddTab() fyne.CanvasObject {
-	label := canvas.NewText(i18n.T(i18n.KeyNewTabConnect), colorAccent)
-	label.TextSize = 11
-	bg := canvas.NewRectangle(colorTabInactive)
-	bg.SetMinSize(fyne.NewSize(72, tabChipHeight))
-	tap := widget.NewButton("", t.app.onNewTab)
-	tap.Importance = widget.LowImportance
-	return container.NewStack(bg, container.NewCenter(compactTabText(label)), tap)
+	return newTabAddChip(t.app.onNewTab)
 }
+
+type tabAddChip struct {
+	widget.BaseWidget
+	hovered bool
+	bg      *canvas.Rectangle
+	label   *canvas.Text
+	tap     func()
+}
+
+func newTabAddChip(tap func()) *tabAddChip {
+	c := &tabAddChip{tap: tap}
+	c.ExtendBaseWidget(c)
+	return c
+}
+
+func (c *tabAddChip) bgColor() color.Color {
+	if c.hovered {
+		return colorRowHover
+	}
+	return colorTabInactive
+}
+
+func (c *tabAddChip) refreshStyle() {
+	if c.bg == nil {
+		return
+	}
+	c.bg.FillColor = c.bgColor()
+	canvas.Refresh(c.bg)
+}
+
+func (c *tabAddChip) Tapped(*fyne.PointEvent) {
+	if c.tap != nil {
+		c.tap()
+	}
+}
+
+func (c *tabAddChip) MouseIn(_ *desktop.MouseEvent) {
+	c.hovered = true
+	c.refreshStyle()
+}
+
+func (c *tabAddChip) MouseMoved(_ *desktop.MouseEvent) {}
+
+func (c *tabAddChip) MouseOut() {
+	c.hovered = false
+	c.refreshStyle()
+}
+
+func (c *tabAddChip) Cursor() desktop.Cursor {
+	return desktop.PointerCursor
+}
+
+func (c *tabAddChip) CreateRenderer() fyne.WidgetRenderer {
+	c.bg = canvas.NewRectangle(c.bgColor())
+	c.bg.SetMinSize(fyne.NewSize(72, tabChipHeight))
+	c.label = canvas.NewText(i18n.T(i18n.KeyNewTabConnect), colorAccent)
+	c.label.TextSize = 11
+	content := container.NewStack(c.bg, container.NewCenter(compactTabText(c.label)))
+	return widget.NewSimpleRenderer(content)
+}
+
+func (c *tabAddChip) MinSize() fyne.Size {
+	return fyne.NewSize(72, tabChipHeight)
+}
+
+var _ fyne.Tappable = (*tabAddChip)(nil)
+var _ desktop.Hoverable = (*tabAddChip)(nil)
+var _ desktop.Cursorable = (*tabAddChip)(nil)
 
 func (t *TabBar) buildTab(idx int, tab *TabSession, active bool) fyne.CanvasObject {
 	dotColor := colorDisconnected
