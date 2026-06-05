@@ -249,6 +249,8 @@ const (
 	KeyCloudSyncPassword        = "cloudsync.password"
 	KeyCloudSyncPasswordHint    = "cloudsync.password_hint"
 	KeyCloudSyncPrivacyNote     = "cloudsync.privacy_note"
+	KeyCloudSyncSaveLocal       = "cloudsync.save_local"
+	KeyCloudSyncSaveLocalOK     = "cloudsync.save_local_ok"
 	KeyCloudSyncQueryCloud      = "cloudsync.query_cloud"
 	KeyCloudSyncLocalStatus     = "cloudsync.local_status"
 	KeyCloudSyncCloudStatus     = "cloudsync.cloud_status"
@@ -263,7 +265,9 @@ const (
 	KeyCloudSyncDeleteCloud     = "cloudsync.delete_cloud"
 	KeyCloudSyncDeleteTitle     = "cloudsync.delete_title"
 	KeyCloudSyncDeleteConfirm   = "cloudsync.delete_confirm"
+	KeyCloudSyncDeleteResultTitle = "cloudsync.delete_result_title"
 	KeyCloudSyncDeleteOK        = "cloudsync.delete_ok"
+	KeyCloudSyncDeleteFail      = "cloudsync.delete_fail"
 	KeyCloudSyncNeedSecret      = "cloudsync.need_secret"
 	KeyCloudSyncNeedPassword    = "cloudsync.need_password"
 	KeyCloudSyncNoLocalData     = "cloudsync.no_local_data"
@@ -481,6 +485,8 @@ var enStrings = map[string]string{
 	KeyCloudSyncPassword:        "Encryption password",
 	KeyCloudSyncPasswordHint:    "Required; any length (even one character)",
 	KeyCloudSyncPrivacyNote:     "Server configs and private key contents are encrypted before upload. EasyStorage API Secret and encryption password are stored on this device only — never uploaded to the cloud.",
+	KeyCloudSyncSaveLocal:       "Save credentials (local)",
+	KeyCloudSyncSaveLocalOK:     "API Secret and encryption password saved on this device.",
 	KeyCloudSyncQueryCloud:      "Query cloud status",
 	KeyCloudSyncLocalStatus:     "This device:",
 	KeyCloudSyncCloudStatus:     "Cloud:",
@@ -495,7 +501,9 @@ var enStrings = map[string]string{
 	KeyCloudSyncDeleteCloud:     "Delete cloud data",
 	KeyCloudSyncDeleteTitle:     "Delete cloud data",
 	KeyCloudSyncDeleteConfirm:   "This permanently deletes cloud server data. It cannot be recovered. Continue?",
-	KeyCloudSyncDeleteOK:        "Cloud data deleted.",
+	KeyCloudSyncDeleteResultTitle: "Delete result",
+	KeyCloudSyncDeleteOK:        "Success: cloud server data has been permanently deleted.",
+	KeyCloudSyncDeleteFail:      "Failed: %s",
 	KeyCloudSyncNeedSecret:      "Please enter your EasyStorage API Secret.",
 	KeyCloudSyncNeedPassword:    "Please enter an encryption password (cannot be empty).",
 	KeyCloudSyncNoLocalData:     "No local server database to upload.",
@@ -713,6 +721,8 @@ var zhStrings = map[string]string{
 	KeyCloudSyncPassword:        "加密密码",
 	KeyCloudSyncPasswordHint:    "必填，长度不限（一位也可以）",
 	KeyCloudSyncPrivacyNote:     "上传前会对服务器配置与私钥内容加密，没有密码无法解密。易储 API Secret 与加密密码仅保存在本机，不会上传到云端。",
+	KeyCloudSyncSaveLocal:       "保存密钥（本地）",
+	KeyCloudSyncSaveLocalOK:     "已保存 API Secret 与加密密码到本机。",
 	KeyCloudSyncQueryCloud:      "查询云端状态",
 	KeyCloudSyncLocalStatus:     "本机：",
 	KeyCloudSyncCloudStatus:     "云端：",
@@ -727,7 +737,9 @@ var zhStrings = map[string]string{
 	KeyCloudSyncDeleteCloud:     "删除云端数据",
 	KeyCloudSyncDeleteTitle:     "删除云端数据",
 	KeyCloudSyncDeleteConfirm:   "将永久删除云端服务器数据，不可恢复。确定继续？",
-	KeyCloudSyncDeleteOK:        "云端数据已删除。",
+	KeyCloudSyncDeleteResultTitle: "删除结果",
+	KeyCloudSyncDeleteOK:        "删除成功：云端服务器数据已永久删除。",
+	KeyCloudSyncDeleteFail:      "删除失败：%s",
 	KeyCloudSyncNeedSecret:      "请填写易储 API Secret。",
 	KeyCloudSyncNeedPassword:    "请填写加密密码（不能为空）。",
 	KeyCloudSyncNoLocalData:     "本地没有服务器数据库。",

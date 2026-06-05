@@ -9,8 +9,11 @@ import (
 const SettingsFile = "settings.json"
 
 type Settings struct {
-	Language     string   `json:"language,omitempty"` // "en" or "zh"
-	ShellHistory []string `json:"shell_history,omitempty"`
+	Language            string   `json:"language,omitempty"` // "en" or "zh"
+	ShellHistory        []string `json:"shell_history,omitempty"`
+	CloudSyncAPISecret  string   `json:"cloud_sync_api_secret,omitempty"`
+	CloudSyncPassword   string   `json:"cloud_sync_password,omitempty"`
+	CloudSyncLastSyncAt string   `json:"cloud_sync_last_sync_at,omitempty"`
 }
 
 func settingsPath() (string, error) {

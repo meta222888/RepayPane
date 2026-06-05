@@ -73,6 +73,7 @@ func (a *App) settingsMenu() *fyne.Menu {
 	return fyne.NewMenu("",
 		langItem,
 		fyne.NewMenuItem(i18n.T(i18n.KeyMenuMyServers), a.showMyServers),
+		fyne.NewMenuItem(i18n.T(i18n.KeyMenuCloudSync), a.showCloudSync),
 		fyne.NewMenuItemSeparator(),
 		fyne.NewMenuItem(i18n.T(i18n.KeyMenuExit), a.prepareQuit),
 	)

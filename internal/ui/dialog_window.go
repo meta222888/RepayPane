@@ -57,6 +57,34 @@ func newModalDialog(a *App, title string, size fyne.Size, body fyne.CanvasObject
 	return md
 }
 
+func newModalDialogAuto(a *App, title string, minWidth float32, body fyne.CanvasObject) *modalDialog {
+	w := a.fyneApp.NewWindow(title)
+	w.SetPadded(true)
+	content := container.NewPadded(withBackground(body, colorBG))
+	w.SetContent(content)
+	min := content.MinSize()
+	w.Resize(fyne.NewSize(max(minWidth, min.Width), min.Height))
+	w.CenterOnScreen()
+
+	md := &modalDialog{window: w}
+	w.SetCloseIntercept(func() {
+		if md.onClose != nil {
+			md.onClose()
+		}
+		w.SetCloseIntercept(nil)
+		w.Close()
+	})
+	w.Show()
+	return md
+}
+
+func max(a, b float32) float32 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
 func showThemedWindow(a *App, title string, size fyne.Size, body fyne.CanvasObject) *modalDialog {
 	return newModalDialog(a, title, size, body)
 }
