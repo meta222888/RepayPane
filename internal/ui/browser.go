@@ -62,8 +62,7 @@ type FilePane struct {
 	list           *widget.List
 	listArea       fyne.CanvasObject
 	listHeader     fyne.CanvasObject
-	listLoading    fyne.CanvasObject
-	listLoadingLbl *widget.Label
+	listLoading    *paneListLoadingOverlay
 	root           fyne.CanvasObject
 
 	selectedRows      map[int]struct{}
@@ -112,12 +111,7 @@ func (p *FilePane) build() {
 			container.NewBorder(p.listHeader, nil, nil, nil, p.listArea))
 	} else {
 		p.listHeader = p.buildRemoteListHeader()
-		p.listLoadingLbl = widget.NewLabel(i18n.T(i18n.KeyPaneListingLoading))
-		p.listLoading = container.NewStack(
-			canvas.NewRectangle(colorPanel),
-			container.NewCenter(p.listLoadingLbl),
-		)
-		p.listLoading.Hide()
+		p.listLoading = newPaneListLoadingOverlay()
 		base := newPaneListArea(p, p.list)
 		p.listArea = container.NewStack(base, p.listLoading)
 		p.root = container.NewBorder(p.buildRemoteChrome(), nil, nil, nil,
@@ -269,11 +263,8 @@ func (p *FilePane) setListLoading(v bool) {
 	if p.kind != PaneRemote || p.listLoading == nil {
 		return
 	}
-	if v {
-		p.listLoading.Show()
-	} else {
-		p.listLoading.Hide()
-	}
+	p.listLoading.setActive(v)
+	canvas.Refresh(p.listArea)
 }
 
 func (p *FilePane) updateListRow(i widget.ListItemID, obj fyne.CanvasObject) {
@@ -379,8 +370,8 @@ func (p *FilePane) ApplyLanguage() {
 	if p.localNav != nil {
 		p.localNav.ApplyLanguage()
 	}
-	if p.listLoadingLbl != nil {
-		p.listLoadingLbl.SetText(i18n.T(i18n.KeyPaneListingLoading))
+	if p.listLoading != nil {
+		p.listLoading.setText(i18n.T(i18n.KeyPaneListingLoading))
 	}
 	p.refreshPathDisplay()
 	p.list.Refresh()
