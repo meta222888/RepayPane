@@ -95,7 +95,7 @@ func (p *FilePane) build() {
 	}
 	p.ApplyLanguage()
 	p.refreshPathDisplay()
-	p.refreshBlankRowHeight()
+	p.initBlankRowHeight()
 }
 
 func (p *FilePane) buildLocalListHeader() fyne.CanvasObject {
@@ -205,7 +205,6 @@ func (p *FilePane) updateListRow(i widget.ListItemID, obj fyne.CanvasObject) {
 	selected := idx == p.selectedRow
 
 	if p.isBlankRow(idx) {
-		p.refreshBlankRowHeight()
 		row.showBlank(selected)
 		row.onPrimary = func() { p.clearSelection() }
 		row.onDouble = nil
@@ -380,7 +379,7 @@ func (p *FilePane) RefreshListing() {
 		}
 		p.local = entries
 		p.list.Refresh()
-		p.refreshBlankRowHeight()
+		p.initBlankRowHeight()
 		return
 	}
 	if !p.connected || p.app.activeClient() == nil {
@@ -399,36 +398,25 @@ func (p *FilePane) RefreshListing() {
 	})
 	p.remote = entries
 	p.list.Refresh()
-	p.refreshBlankRowHeight()
+	p.initBlankRowHeight()
 }
 
-func (p *FilePane) refreshBlankRowHeight() {
-	if p.list == nil {
+// Fixed blank row height — do not derive from list.Size() during row refresh (causes window shrink loop).
+const paneBlankRowHeight float32 = 256
+
+func (p *FilePane) initBlankRowHeight() {
+	if p.list == nil || p.rowCount() == 0 {
 		return
 	}
-	blankID := widget.ListItemID(p.rowCount() - 1)
-	viewH := p.list.Size().Height
-	if viewH < paneRowMinHeight*2 {
-		viewH = paneRowMinHeight * 4
-	}
-	dataRows := p.rowCount() - 1
-	contentH := float32(dataRows) * paneRowMinHeight
-	filler := viewH - contentH
-	if filler < paneRowMinHeight {
-		filler = paneRowMinHeight
-	}
-	p.list.SetItemHeight(blankID, filler)
+	p.list.SetItemHeight(widget.ListItemID(p.rowCount()-1), paneBlankRowHeight)
 }
 
 func (p *FilePane) clearSelection() {
 	prev := p.selectedRow
 	p.selectedRow = -1
 	p.list.UnselectAll()
-	if prev >= 0 {
+	if prev >= 0 && !p.isBlankRow(prev) {
 		p.list.RefreshItem(widget.ListItemID(prev))
-	}
-	if blank := p.rowCount() - 1; blank >= 0 {
-		p.list.RefreshItem(widget.ListItemID(blank))
 	}
 }
 
