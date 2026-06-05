@@ -9,53 +9,37 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-const paneBlankMinHeight float32 = 48
-
-type paneBlankPad struct {
+type paneListUnderlay struct {
 	widget.BaseWidget
-	pane        *FilePane
-	transparent bool
+	pane *FilePane
 }
 
-func newPaneBlankPad(p *FilePane) *paneBlankPad {
-	b := &paneBlankPad{pane: p}
+func newPaneListUnderlay(p *FilePane) *paneListUnderlay {
+	b := &paneListUnderlay{pane: p}
 	b.ExtendBaseWidget(b)
 	return b
 }
 
-func newPaneListUnderlay(p *FilePane) *paneBlankPad {
-	b := &paneBlankPad{pane: p, transparent: true}
-	b.ExtendBaseWidget(b)
-	return b
-}
-
-func (b *paneBlankPad) CreateRenderer() fyne.WidgetRenderer {
-	var fill color.Color = colorPanel
-	if b.transparent {
-		fill = color.NRGBA{A: 0}
-	}
-	bg := canvas.NewRectangle(fill)
+func (b *paneListUnderlay) CreateRenderer() fyne.WidgetRenderer {
+	bg := canvas.NewRectangle(color.NRGBA{A: 0})
 	return widget.NewSimpleRenderer(bg)
 }
 
-func (b *paneBlankPad) MinSize() fyne.Size {
-	if b.transparent {
-		return fyne.NewSize(0, 0)
-	}
-	return fyne.NewSize(0, paneBlankMinHeight)
+func (b *paneListUnderlay) MinSize() fyne.Size {
+	return fyne.NewSize(0, 0)
 }
 
-func (b *paneBlankPad) Tapped(*fyne.PointEvent) {
+func (b *paneListUnderlay) Tapped(*fyne.PointEvent) {
 	b.pane.clearSelectionQuiet()
 }
 
-func (b *paneBlankPad) TappedSecondary(ev *fyne.PointEvent) {
+func (b *paneListUnderlay) TappedSecondary(ev *fyne.PointEvent) {
 	b.pane.clearSelectionQuiet()
 	b.pane.showContextMenu(ev.AbsolutePosition)
 }
 
-var _ fyne.Tappable = (*paneBlankPad)(nil)
-var _ fyne.SecondaryTappable = (*paneBlankPad)(nil)
+var _ fyne.Tappable = (*paneListUnderlay)(nil)
+var _ fyne.SecondaryTappable = (*paneListUnderlay)(nil)
 
 type paneListStackLayout struct {
 	pane *FilePane
@@ -88,6 +72,5 @@ func (l paneListStackLayout) Layout(objects []fyne.CanvasObject, size fyne.Size)
 }
 
 func newPaneListArea(p *FilePane, list *widget.List) fyne.CanvasObject {
-	listStack := container.New(&paneListStackLayout{pane: p}, list, newPaneListUnderlay(p))
-	return container.NewBorder(nil, newPaneBlankPad(p), nil, nil, listStack)
+	return container.New(&paneListStackLayout{pane: p}, list, newPaneListUnderlay(p))
 }
