@@ -418,7 +418,7 @@ var enStrings = map[string]string{
 	KeyReconnect:      "Reconnect",
 
 	KeySidebarPlaces:  "Places",
-	KeySidebarDrive:   "Drive",
+	KeySidebarDrive:   "Drives",
 	KeyPlaceHome:      "Home",
 	KeyPlaceDesktop:   "Desktop",
 	KeyPlaceDocuments: "Documents",
@@ -667,7 +667,7 @@ var zhStrings = map[string]string{
 	KeyReconnect:      "重新连接",
 
 	KeySidebarPlaces:  "常用目录",
-	KeySidebarDrive:   "磁盘",
+	KeySidebarDrive:   "驱动器",
 	KeyPlaceHome:      "主目录",
 	KeyPlaceDesktop:   "桌面",
 	KeyPlaceDocuments: "我的文档",

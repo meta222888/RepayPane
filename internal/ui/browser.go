@@ -150,7 +150,8 @@ func (p *FilePane) buildLocalChrome() fyne.CanvasObject {
 		}
 	}
 	left := container.NewHBox(p.localDriveLbl, p.localNav.Widget())
-	pathRow := container.NewBorder(nil, nil, left, actions, paneChromeEntry(p.pathEntry))
+	pathField := container.NewBorder(nil, nil, paneChromeVSeparator(), nil, paneChromeEntry(p.pathEntry))
+	pathRow := container.NewBorder(nil, nil, left, actions, pathField)
 	return paneBand(pathRow)
 }
 

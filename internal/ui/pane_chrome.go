@@ -230,3 +230,9 @@ func paneChromeEntry(entry *widget.Entry) fyne.CanvasObject {
 	themed := container.NewThemeOverride(entry, newPanePathEntryTheme(paneRowNameSize))
 	return newPaneFixedHeight(paneBandInnerHeight(), themed)
 }
+
+func paneChromeVSeparator() fyne.CanvasObject {
+	line := canvas.NewRectangle(colorBorder)
+	line.SetMinSize(fyne.NewSize(1, paneBandInnerHeight()-6))
+	return container.NewCenter(line)
+}

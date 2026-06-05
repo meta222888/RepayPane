@@ -8,33 +8,40 @@ import (
 	"github.com/relaypane/relaypane/internal/i18n"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/theme"
 )
 
 type placeEntry struct {
 	label string
 	path  string
+	short string
+	icon  fyne.Resource
 }
 
 type LocalNav struct {
-	pane *FilePane
-	tap  *paneTapLabel
+	pane     *FilePane
+	driveBtn *localDriveButton
 }
 
 func NewLocalNav(pane *FilePane) *LocalNav {
 	n := &LocalNav{pane: pane}
-	n.tap = newPaneTapLabel(n.rootLabel(), colorAccent, paneRowNameSize, n.showRootMenu)
+	n.driveBtn = newLocalDriveButton(n.showRootMenu)
+	n.driveBtn.SetLabel(n.rootLabel())
 	return n
 }
 
-func (n *LocalNav) Widget() fyne.CanvasObject { return n.tap }
+func (n *LocalNav) Widget() fyne.CanvasObject {
+	return newPaneFixedHeight(paneBandInnerHeight(), n.driveBtn)
+}
 
 func (n *LocalNav) ApplyLanguage() {
-	n.tap.SetText(n.rootLabel())
+	n.driveBtn.SetLabel(n.rootLabel())
 }
 
 func (n *LocalNav) syncFromPath(path string) {
 	_ = path
-	n.tap.SetText(n.rootLabel())
+	n.driveBtn.SetLabel(n.rootLabel())
 }
 
 func (n *LocalNav) rootLabel() string {
@@ -46,19 +53,30 @@ func (n *LocalNav) rootLabel() string {
 }
 
 func (n *LocalNav) showRootMenu() {
-	var items []*fyne.MenuItem
-	for _, d := range listWindowsDrives() {
-		drive := d
-		items = append(items, fyne.NewMenuItem(drive, func() { n.pane.Navigate(drive) }))
-	}
-	items = append(items, fyne.NewMenuItemSeparator())
-	for _, place := range commonPlaces() {
-		p := place
-		items = append(items, fyne.NewMenuItem(p.label, func() { n.pane.Navigate(p.path) }))
-	}
-	menu := fyne.NewMenu("", items...)
-	pos := fyne.CurrentApp().Driver().AbsolutePositionForObject(n.tap)
-	showWidePopUpMenu(n.pane.app.window.Canvas(), menu, pos.Add(fyne.NewPos(0, n.tap.MinSize().Height)))
+	c := n.pane.app.window.Canvas()
+	showLocalNavPopup(c, n.driveBtn, func(dismiss func()) fyne.CanvasObject {
+		current := n.rootLabel()
+		var rows []fyne.CanvasObject
+		rows = append(rows, localNavSectionHeader(i18n.T(i18n.KeySidebarDrive)))
+		for _, d := range listWindowsDrives() {
+			drive := d
+			active := strings.EqualFold(drive, current)
+			rows = append(rows, newLocalNavMenuRow(theme.ComputerIcon(), drive, "", active, func() {
+				dismiss()
+				n.pane.Navigate(drive)
+			}))
+		}
+		rows = append(rows, localNavPopupSeparator())
+		rows = append(rows, localNavSectionHeader(i18n.T(i18n.KeySidebarPlaces)))
+		for _, place := range commonPlaces() {
+			p := place
+			rows = append(rows, newLocalNavMenuRow(p.icon, p.label, p.short, false, func() {
+				dismiss()
+				n.pane.Navigate(p.path)
+			}))
+		}
+		return container.NewVBox(rows...)
+	})
 }
 
 func commonPlaces() []placeEntry {
@@ -67,15 +85,16 @@ func commonPlaces() []placeEntry {
 		key      string
 		sub      string
 		fallback string
+		icon     fyne.Resource
 	}
 	candidates := []candidate{
-		{i18n.KeyPlaceDesktop, "Desktop", filepath.Join(home, "Desktop")},
-		{i18n.KeyPlaceDocuments, "Documents", filepath.Join(home, "Documents")},
-		{i18n.KeyPlacePictures, "Pictures", filepath.Join(home, "Pictures")},
-		{i18n.KeyPlaceDownloads, "Downloads", filepath.Join(home, "Downloads")},
-		{i18n.KeyPlaceMusic, "Music", filepath.Join(home, "Music")},
-		{i18n.KeyPlaceVideos, "Videos", filepath.Join(home, "Videos")},
-		{i18n.KeyPlaceHome, "", home},
+		{i18n.KeyPlaceDesktop, "Desktop", filepath.Join(home, "Desktop"), theme.ComputerIcon()},
+		{i18n.KeyPlaceDocuments, "Documents", filepath.Join(home, "Documents"), theme.DocumentIcon()},
+		{i18n.KeyPlacePictures, "Pictures", filepath.Join(home, "Pictures"), theme.MediaPhotoIcon()},
+		{i18n.KeyPlaceDownloads, "Downloads", filepath.Join(home, "Downloads"), theme.DownloadIcon()},
+		{i18n.KeyPlaceMusic, "Music", filepath.Join(home, "Music"), theme.MediaMusicIcon()},
+		{i18n.KeyPlaceVideos, "Videos", filepath.Join(home, "Videos"), theme.MediaVideoIcon()},
+		{i18n.KeyPlaceHome, "", home, theme.HomeIcon()},
 	}
 	var out []placeEntry
 	for _, c := range candidates {
@@ -86,13 +105,16 @@ func commonPlaces() []placeEntry {
 		if st, err := os.Stat(p); err != nil || !st.IsDir() {
 			continue
 		}
-		label := i18n.T(c.key)
+		short := "~"
 		if c.sub != "" {
-			label += "  ~\\" + c.sub
-		} else {
-			label += "  ~"
+			short = `~\` + c.sub
 		}
-		out = append(out, placeEntry{label: label, path: p})
+		out = append(out, placeEntry{
+			label: i18n.T(c.key),
+			path:  p,
+			short: short,
+			icon:  c.icon,
+		})
 	}
 	return out
 }
