@@ -844,7 +844,7 @@ func (p *FilePane) ctxDelete() {
 	if len(rows) > 1 {
 		msg = i18n.Tf(i18n.KeyDeleteMultiConfirm, len(rows))
 	}
-	dialog.ShowConfirm(i18n.T(i18n.KeyDelete), msg, func(ok bool) {
+	dialogConfirmOn(p.app.window, i18n.T(i18n.KeyDelete), msg, func(ok bool) {
 		if !ok {
 			return
 		}
@@ -885,7 +885,7 @@ func (p *FilePane) ctxDelete() {
 		}
 		p.clearSelectionQuiet()
 		p.RefreshListing()
-	}, p.app.window)
+	})
 }
 
 func (p *FilePane) promptNewFolder() {

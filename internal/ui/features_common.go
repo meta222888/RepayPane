@@ -148,15 +148,9 @@ func showThemedFeature(a *App, title string, size fyne.Size, body fyne.CanvasObj
 }
 
 func confirmThemed(a *App, title, msg string, onOK func()) {
-	var dlg *modalDialog
-	ok := newAccentButton(i18n.T(i18n.KeyOK), func() {
-		dlg.Close()
-		onOK()
+	dialogConfirmOn(a.window, title, msg, func(ok bool) {
+		if ok && onOK != nil {
+			onOK()
+		}
 	})
-	cancel := newAccentButton(i18n.T(i18n.KeyCancel), func() { dlg.Close() })
-	btns := container.NewHBox(cancel, ok)
-	lbl := widget.NewLabel(msg)
-	lbl.Wrapping = fyne.TextWrapWord
-	body := container.NewBorder(nil, btns, nil, nil, lbl)
-	dlg = newModalDialog(a, title, fyne.NewSize(480, 220), body)
 }

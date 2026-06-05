@@ -55,12 +55,12 @@ func showPopUpContextMenu(w fyne.Window, at fyne.Position, menu *fyne.Menu, onDi
 	c := w.Canvas()
 	dismissPopUpMenus(c)
 
-	menuW := widget.NewMenu(menu)
-	menuW.OnDismiss = func() { hideActiveContextMenu() }
-	menuSize := menuW.MinSize()
+	menuWidget, menuContent := newPaddedMenu(menu)
+	menuWidget.OnDismiss = func() { hideActiveContextMenu() }
+	menuSize := menuContent.MinSize()
 	menuPos := adjustMenuPosition(at, menuSize, c)
 
-	pop := widget.NewPopUp(menuW, c)
+	pop := widget.NewPopUp(menuContent, c)
 	pop.Resize(menuSize)
 
 	activeCtxMenu = &ctxMenuState{popup: pop, onDismiss: onDismiss}

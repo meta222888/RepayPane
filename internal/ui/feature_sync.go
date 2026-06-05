@@ -8,8 +8,6 @@ import (
 	"github.com/relaypane/relaypane/internal/remote"
 
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/widget"
 )
 
 func (a *App) syncLocalToRemote() {
@@ -34,22 +32,17 @@ func (a *App) confirmSync(upload bool) {
 	} else {
 		msg = i18n.Tf(i18n.KeyFeatSyncConfirmDown, remotePath, localPath)
 	}
-	lbl := widget.NewLabel(msg)
-	lbl.Wrapping = fyne.TextWrapWord
-
 	title := i18n.T(i18n.KeyFeatSync)
-	var dlg *modalDialog
-	okBtn := newAccentButton(i18n.T(i18n.KeyOK), func() {
-		dlg.Close()
+	dialogConfirmOn(a.window, title, msg, func(ok bool) {
+		if !ok {
+			return
+		}
 		if upload {
 			a.runSyncUpload(client, localPath, remotePath)
 		} else {
 			a.runSyncDownload(client, remotePath, localPath)
 		}
 	})
-	cancelBtn := newAccentButton(i18n.T(i18n.KeyCancel), func() { dlg.Close() })
-	body := container.NewBorder(nil, container.NewHBox(cancelBtn, okBtn), nil, nil, lbl)
-	dlg = newModalDialog(a, title, fyne.NewSize(520, 240), body)
 }
 
 func (a *App) runSyncUpload(client *remote.Client, localDir, remoteDir string) {

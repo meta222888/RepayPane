@@ -62,9 +62,8 @@ func (n *LocalNav) showRootMenu() {
 		items = append(items, fyne.NewMenuItem(p.label, func() { n.pane.Navigate(p.path) }))
 	}
 	menu := fyne.NewMenu("", items...)
-	pop := widget.NewPopUpMenu(menu, n.pane.app.window.Canvas())
 	pos := fyne.CurrentApp().Driver().AbsolutePositionForObject(n.rootBtn)
-	pop.ShowAtPosition(pos.Add(fyne.NewPos(0, n.rootBtn.MinSize().Height)))
+	showPaddedPopUpMenu(n.pane.app.window.Canvas(), menu, pos.Add(fyne.NewPos(0, n.rootBtn.MinSize().Height)))
 }
 
 func commonPlaces() []placeEntry {

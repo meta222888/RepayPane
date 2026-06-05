@@ -42,6 +42,7 @@ func dialogShowOn(parent fyne.Window, title, msg string) {
 		return
 	}
 	dialog.ShowInformation(title, msg, parent)
+	raiseWindow(parent)
 }
 
 // dialogShowErrorOn shows an error dialog as an overlay on parent (stays above that window).
@@ -50,4 +51,5 @@ func dialogShowErrorOn(parent fyne.Window, err error) {
 		return
 	}
 	dialog.ShowError(err, parent)
+	raiseWindow(parent)
 }

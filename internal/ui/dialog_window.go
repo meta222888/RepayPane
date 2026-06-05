@@ -54,6 +54,8 @@ func newModalDialog(a *App, title string, size fyne.Size, body fyne.CanvasObject
 		w.Close()
 	})
 	w.Show()
+	setWindowOwner(w, a.window)
+	raiseWindow(w)
 	return md
 }
 
@@ -75,6 +77,8 @@ func newModalDialogAuto(a *App, title string, minWidth float32, body fyne.Canvas
 		w.Close()
 	})
 	w.Show()
+	setWindowOwner(w, a.window)
+	raiseWindow(w)
 	return md
 }
 

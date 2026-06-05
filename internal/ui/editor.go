@@ -11,7 +11,6 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/widget"
 )
@@ -96,16 +95,18 @@ func showTextEditor(app *App, title, path, text string, enc textencoding.Info, h
 
 	e.window.SetCloseIntercept(func() {
 		if e.dirty {
-			dialog.ShowConfirm(i18n.T(i18n.KeyUnsaved), i18n.T(i18n.KeyDiscard), func(ok bool) {
+			dialogConfirmOn(e.window, i18n.T(i18n.KeyUnsaved), i18n.T(i18n.KeyDiscard), func(ok bool) {
 				if ok {
 					e.window.Close()
 				}
-			}, e.window)
+			})
 			return
 		}
 		e.window.Close()
 	})
 	e.window.Show()
+	setWindowOwner(e.window, app.window)
+	raiseWindow(e.window)
 }
 
 func (e *EditorWindow) statusHint() string {
@@ -182,9 +183,9 @@ func (e *EditorWindow) revert() {
 		doReload()
 		return
 	}
-	dialog.ShowConfirm(i18n.T(i18n.KeyEditorRevert), i18n.T(i18n.KeyEditorRevertConfirm), func(ok bool) {
+	dialogConfirmOn(e.window, i18n.T(i18n.KeyEditorRevert), i18n.T(i18n.KeyEditorRevertConfirm), func(ok bool) {
 		if ok {
 			doReload()
 		}
-	}, e.window)
+	})
 }

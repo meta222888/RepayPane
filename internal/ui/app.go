@@ -314,7 +314,7 @@ func (a *App) openRemoteEditor(entry remote.FileInfo) {
 		return
 	}
 	if entry.Size > config.MaxEditBytes {
-		dialog.ShowConfirm(
+		dialogConfirmOn(a.window,
 			i18n.T(i18n.KeyFileTooLarge),
 			i18n.Tf(i18n.KeyFileTooLargeMsg, entry.Name, float64(entry.Size)/(1024*1024)),
 			func(ok bool) {
@@ -322,7 +322,6 @@ func (a *App) openRemoteEditor(entry remote.FileInfo) {
 					a.loadEditor(entry)
 				}
 			},
-			a.window,
 		)
 		return
 	}
@@ -337,7 +336,7 @@ func (a *App) openLocalEditor(path, name string, size int64) {
 		return
 	}
 	if size > config.MaxEditBytes {
-		dialog.ShowConfirm(
+		dialogConfirmOn(a.window,
 			i18n.T(i18n.KeyFileTooLarge),
 			i18n.Tf(i18n.KeyFileTooLargeMsg, name, float64(size)/(1024*1024)),
 			func(ok bool) {
@@ -345,7 +344,6 @@ func (a *App) openLocalEditor(path, name string, size int64) {
 					a.loadLocalEditor(path, name)
 				}
 			},
-			a.window,
 		)
 		return
 	}
@@ -548,7 +546,7 @@ func (a *App) showDeleteServer() {
 		return
 	}
 	name := a.store.Servers[id]
-	dialog.ShowConfirm(i18n.T(i18n.KeyDelete), i18n.Tf(i18n.KeyDeleteConfirm, name.Name), func(ok bool) {
+	dialogConfirmOn(a.window, i18n.T(i18n.KeyDelete), i18n.Tf(i18n.KeyDeleteConfirm, name.Name), func(ok bool) {
 		if !ok {
 			return
 		}
@@ -560,7 +558,7 @@ func (a *App) showDeleteServer() {
 				a.closeTab(i)
 			}
 		}
-	}, a.window)
+	})
 }
 
 type localEntry struct {

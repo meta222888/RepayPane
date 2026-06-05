@@ -11,7 +11,6 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 )
@@ -159,7 +158,8 @@ func (a *App) showCloudSync() {
 					dialogShowOn(parent(), i18n.T(i18n.KeyCloudSyncTitle), i18n.T(i18n.KeyCloudSyncCloudNoData))
 					return
 				}
-				dialog.ShowConfirm(
+				dialogConfirmOn(
+					parent(),
 					i18n.T(i18n.KeyCloudSyncTitle),
 					i18n.T(i18n.KeyCloudSyncDownloadConfirm),
 					func(ok bool) {
@@ -184,7 +184,6 @@ func (a *App) showCloudSync() {
 							})
 						}()
 					},
-					parent(),
 				)
 			})
 		}()
@@ -196,7 +195,8 @@ func (a *App) showCloudSync() {
 			dialogShowOn(parent(), i18n.T(i18n.KeyCloudSyncTitle), i18n.T(i18n.KeyCloudSyncNeedSecret))
 			return
 		}
-		dialog.ShowConfirm(
+		dialogConfirmOn(
+			parent(),
 			i18n.T(i18n.KeyCloudSyncDeleteTitle),
 			i18n.T(i18n.KeyCloudSyncDeleteConfirm),
 			func(ok bool) {
@@ -216,7 +216,6 @@ func (a *App) showCloudSync() {
 					})
 				}()
 			},
-			parent(),
 		)
 	})
 	deleteBtn.Importance = widget.DangerImportance
