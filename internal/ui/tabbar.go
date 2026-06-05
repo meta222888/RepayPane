@@ -14,11 +14,14 @@ import (
 )
 
 const (
-	tabBarHeight    float32 = 20
-	tabChipHeight   float32 = 20
+	tabBarHeight    float32 = 30
+	tabChipHeight   float32 = 30
 	tabChipMinWidth float32 = 148
 	tabCloseWidth   float32 = 18
 	tabAccentLineH  float32 = 2
+	tabNameTextSize float32 = 11
+	tabHostTextSize float32 = 10
+	tabIconTextSize float32 = 10
 )
 
 type TabBar struct {
@@ -30,13 +33,40 @@ func NewTabBar(app *App) *TabBar {
 	return &TabBar{app: app, inner: container.NewHBox()}
 }
 
+type tabBarBottomLayout struct{}
+
+func (tabBarBottomLayout) MinSize(objects []fyne.CanvasObject) fyne.Size {
+	if len(objects) == 0 {
+		return fyne.NewSize(0, tabBarHeight)
+	}
+	min := objects[0].MinSize()
+	if min.Height < tabBarHeight {
+		min.Height = tabBarHeight
+	}
+	return min
+}
+
+func (tabBarBottomLayout) Layout(objects []fyne.CanvasObject, size fyne.Size) {
+	if len(objects) == 0 {
+		return
+	}
+	child := objects[0]
+	childH := child.MinSize().Height
+	if childH > size.Height {
+		childH = size.Height
+	}
+	child.Resize(fyne.NewSize(size.Width, childH))
+	child.Move(fyne.NewPos(0, size.Height-childH))
+}
+
 func (t *TabBar) Container() fyne.CanvasObject {
 	scroll := container.NewHScroll(t.inner)
-	scroll.SetMinSize(fyne.NewSize(0, tabBarHeight))
+	scroll.SetMinSize(fyne.NewSize(0, tabChipHeight))
 	tabBg := canvas.NewRectangle(colorTabInactive)
+	tabBg.SetMinSize(fyne.NewSize(0, tabBarHeight))
 	stack := container.NewStack(tabBg, container.New(
-		layout.NewCustomPaddedLayout(4, 0, 4, 0),
-		scroll,
+		layout.NewCustomPaddedLayout(0, 0, 4, 0),
+		container.New(tabBarBottomLayout{}, scroll),
 	))
 	return container.NewVBox(stack, separatorLine())
 }
@@ -111,7 +141,7 @@ func (c *tabAddChip) CreateRenderer() fyne.WidgetRenderer {
 	c.bg = canvas.NewRectangle(c.bgColor())
 	c.bg.SetMinSize(fyne.NewSize(64, tabChipHeight))
 	c.label = canvas.NewText(i18n.T(i18n.KeyNewTabConnect), colorAccent)
-	c.label.TextSize = 10
+	c.label.TextSize = tabNameTextSize
 	content := container.NewStack(c.bg, container.NewCenter(compactTabText(c.label)))
 	return widget.NewSimpleRenderer(content)
 }
@@ -147,13 +177,13 @@ func (t *TabBar) buildTab(idx int, tab *TabSession, active bool) fyne.CanvasObje
 		nameColor = colorMuted
 	}
 	nameT := canvas.NewText(name, nameColor)
-	nameT.TextSize = 10
+	nameT.TextSize = tabNameTextSize
 	hostT := canvas.NewText(tab.tabAddrShort(), colorMuted)
-	hostT.TextSize = 9
+	hostT.TextSize = tabHostTextSize
 	serverIcon := canvas.NewText("🖥", colorAccent)
-	serverIcon.TextSize = 9
+	serverIcon.TextSize = tabIconTextSize
 	selectArea := container.NewHBox(
-		dotWidget(dot, 6),
+		dotWidget(dot, 7),
 		compactTabText(serverIcon),
 		compactTabText(nameT),
 		compactTabText(hostT),
@@ -411,7 +441,7 @@ func (c *tabCloseChip) Cursor() desktop.Cursor { return desktop.PointerCursor }
 func (c *tabCloseChip) CreateRenderer() fyne.WidgetRenderer {
 	c.bg = canvas.NewRectangle(color.Transparent)
 	c.label = canvas.NewText("×", colorMuted)
-	c.label.TextSize = 12
+	c.label.TextSize = 13
 	c.label.TextStyle = fyne.TextStyle{Bold: true}
 	return widget.NewSimpleRenderer(container.NewStack(c.bg, container.NewCenter(compactTabText(c.label))))
 }
