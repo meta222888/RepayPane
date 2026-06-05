@@ -401,14 +401,22 @@ func (p *FilePane) RefreshListing() {
 	p.initBlankRowHeight()
 }
 
-// Fixed blank row height — do not derive from list.Size() during row refresh (causes window shrink loop).
-const paneBlankRowHeight float32 = 256
+// Blank filler row for right-click on empty list area (fixed height; never read list.Size during row update).
+const paneBlankRowHeight float32 = 64
 
 func (p *FilePane) initBlankRowHeight() {
-	if p.list == nil || p.rowCount() == 0 {
+	if p.list == nil {
 		return
 	}
-	p.list.SetItemHeight(widget.ListItemID(p.rowCount()-1), paneBlankRowHeight)
+	count := p.rowCount()
+	if count == 0 {
+		return
+	}
+	// Clear stale per-row heights when row indices shift (otherwise the first file keeps the old blank height).
+	for i := 0; i < count-1; i++ {
+		p.list.SetItemHeight(widget.ListItemID(i), paneRowMinHeight)
+	}
+	p.list.SetItemHeight(widget.ListItemID(count-1), paneBlankRowHeight)
 }
 
 func (p *FilePane) clearSelection() {

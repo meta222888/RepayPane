@@ -23,6 +23,9 @@ var (
 	kernel32                     = syscall.NewLazyDLL("kernel32.dll")
 	procGetWindowThreadProcessId = user32.NewProc("GetWindowThreadProcessId")
 	procGetCurrentProcessId      = kernel32.NewProc("GetCurrentProcessId")
+	procGetWindowLongPtrW        = user32.NewProc("GetWindowLongPtrW")
+	procSetWindowLongPtrW        = user32.NewProc("SetWindowLongPtrW")
+	procSetWindowPos             = user32.NewProc("SetWindowPos")
 	procShowWindow               = user32.NewProc("ShowWindow")
 	procIsZoomed                 = user32.NewProc("IsZoomed")
 	procIsWindow                 = user32.NewProc("IsWindow")
@@ -32,6 +35,7 @@ var (
 )
 
 const (
+	gwlStyle        = ^uintptr(15) // GWL_STYLE (-16)
 	wmNcLButtonDown = 0x00A1
 	swMinimize      = 6
 	swMaximize      = 3
@@ -45,12 +49,19 @@ const (
 	htBottom        = 15
 	htBottomLeft    = 16
 	htBottomRight   = 17
+	wsThickFrame    = 0x00040000
+	wsMaximizeBox   = 0x00010000
+	swpNoMove       = 0x0002
+	swpNoSize       = 0x0001
+	swpNoZOrder     = 0x0004
+	swpFrameChanged = 0x0020
 	gripThickness   float32 = 8
 )
 
 var (
-	frameMainWindow fyne.Window
-	hwndCache       sync.Map
+	frameMainWindow    fyne.Window
+	frameResizeStyled  uintptr
+	hwndCache          sync.Map
 )
 
 func doubleClickInterval() time.Duration {
@@ -134,9 +145,30 @@ func resolveHWND(w fyne.Window) uintptr {
 	return 0
 }
 
+func enableWindowResizeFrame(hwnd uintptr) {
+	if hwnd == 0 || frameResizeStyled == hwnd {
+		return
+	}
+	style, _, _ := procGetWindowLongPtrW.Call(hwnd, gwlStyle)
+	if style == 0 {
+		return
+	}
+	procSetWindowLongPtrW.Call(hwnd, gwlStyle, style|wsThickFrame|wsMaximizeBox)
+	procSetWindowPos.Call(
+		hwnd, 0, 0, 0, 0, 0,
+		swpNoMove|swpNoSize|swpNoZOrder|swpFrameChanged,
+	)
+	frameResizeStyled = hwnd
+}
+
 func winInstallResizeHook(w fyne.Window) bool {
 	frameMainWindow = w
-	return winHWND(w) != 0
+	hwnd := winHWND(w)
+	if hwnd == 0 {
+		return false
+	}
+	enableWindowResizeFrame(hwnd)
+	return true
 }
 
 func wrapWindowResizePlatform(w fyne.Window, content fyne.CanvasObject) fyne.CanvasObject {
