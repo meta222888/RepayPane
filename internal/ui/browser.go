@@ -519,7 +519,7 @@ func (p *FilePane) showContextMenu(at fyne.Position, row int) {
 				p.list.RefreshItem(widget.ListItemID(idx))
 			}
 		}
-	}, p.app.routeContextMenu)
+	})
 }
 
 func (p *FilePane) selectedName() string {
