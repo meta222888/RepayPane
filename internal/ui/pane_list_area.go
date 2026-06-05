@@ -34,8 +34,7 @@ func (b *paneListUnderlay) Tapped(*fyne.PointEvent) {
 }
 
 func (b *paneListUnderlay) TappedSecondary(ev *fyne.PointEvent) {
-	b.pane.clearSelectionQuiet()
-	b.pane.showContextMenu(ev.AbsolutePosition)
+	b.pane.showContextMenu(ev.AbsolutePosition, -1)
 }
 
 var _ fyne.Tappable = (*paneListUnderlay)(nil)

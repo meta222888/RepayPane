@@ -208,8 +208,7 @@ func (p *FilePane) updateListRow(i widget.ListItemID, obj fyne.CanvasObject) {
 		p.activateRow(idx)
 	}
 	row.onSecondary = func(ev *fyne.PointEvent) {
-		p.selectRowQuiet(idx)
-		p.showContextMenu(ev.AbsolutePosition)
+		p.showContextMenu(ev.AbsolutePosition, idx)
 	}
 	row.onDragged = func(e *fyne.DragEvent) {
 		if !p.dragReady {
@@ -397,21 +396,6 @@ func (p *FilePane) clearSelectionQuiet() {
 	p.list.RefreshItem(widget.ListItemID(prev))
 }
 
-func (p *FilePane) selectRowQuiet(row int) {
-	if row < 0 || row >= p.rowCount() {
-		return
-	}
-	prev := p.selectedRow
-	if prev == row {
-		return
-	}
-	p.selectedRow = row
-	if prev >= 0 {
-		p.list.RefreshItem(widget.ListItemID(prev))
-	}
-	p.list.RefreshItem(widget.ListItemID(row))
-}
-
 func (p *FilePane) selectRow(row int) {
 	if row < 0 || row >= p.rowCount() {
 		return
@@ -457,7 +441,31 @@ func (p *FilePane) activateRow(row int) {
 	p.app.openRemoteEditor(e)
 }
 
-func (p *FilePane) showContextMenu(at fyne.Position) {
+// beginContextMenuSelection updates selection for a context menu without RefreshItem
+// (avoids EnsureMinSize fighting the popup overlay). Returns row indices to refresh after dismiss.
+func (p *FilePane) beginContextMenuSelection(row int) []int {
+	if row < 0 {
+		prev := p.selectedRow
+		if prev < 0 {
+			return nil
+		}
+		p.selectedRow = -1
+		return []int{prev}
+	}
+	prev := p.selectedRow
+	if prev == row {
+		return nil
+	}
+	p.selectedRow = row
+	if prev >= 0 {
+		return []int{prev, row}
+	}
+	return []int{row}
+}
+
+func (p *FilePane) showContextMenu(at fyne.Position, row int) {
+	deferRefresh := p.beginContextMenuSelection(row)
+
 	copyItem := fyne.NewMenuItem(i18n.T(i18n.KeyCtxCopy), p.ctxCopy)
 	pasteItem := fyne.NewMenuItem(i18n.T(i18n.KeyCtxPaste), p.ctxPaste)
 	newFolderItem := fyne.NewMenuItem(i18n.T(i18n.KeyCtxNewFolder), p.promptNewFolder)
@@ -496,35 +504,33 @@ func (p *FilePane) showContextMenu(at fyne.Position) {
 		deleteItem,
 	)
 	w := p.app.window
-	saved := w.Canvas().Size()
 	fyne.Do(func() {
 		popup := widget.NewPopUpMenu(menu, w.Canvas())
 		popup.ShowAtPosition(at)
-		restoreWindowSizeIfShrunk(w, saved)
 	})
-	guardWindowSizeWhileMenuOpen(w, saved)
-}
-
-func restoreWindowSizeIfShrunk(w fyne.Window, want fyne.Size) {
-	cur := w.Canvas().Size()
-	if cur.Width < want.Width-2 || cur.Height < want.Height-2 {
-		w.Resize(want)
+	if len(deferRefresh) > 0 {
+		watchContextMenuDismiss(w, func() {
+			for _, idx := range deferRefresh {
+				if idx >= 0 && idx < p.rowCount() {
+					p.list.RefreshItem(widget.ListItemID(idx))
+				}
+			}
+		})
 	}
 }
 
-func guardWindowSizeWhileMenuOpen(w fyne.Window, want fyne.Size) {
+func watchContextMenuDismiss(w fyne.Window, after func()) {
 	go func() {
-		for i := 0; i < 60; i++ {
+		for i := 0; i < 120; i++ {
 			time.Sleep(50 * time.Millisecond)
-			stop := false
+			done := false
 			fyne.Do(func() {
 				if len(w.Canvas().Overlays().List()) == 0 {
-					stop = true
-					return
+					after()
+					done = true
 				}
-				restoreWindowSizeIfShrunk(w, want)
 			})
-			if stop {
+			if done {
 				return
 			}
 		}

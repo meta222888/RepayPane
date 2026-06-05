@@ -8,7 +8,7 @@ alwaysApply: true
 **Tag:** `stable-baseline` → commit `5268dc3`  
 **Message:** Remove fixed blank strip below file list panes.
 
-This is the **current most stable** build. Only known issue: a **small one-time jitter** when the file-browser context menu opens.
+This is the **current most stable** build. Right-click menu must not call `w.Resize()`; defer list `RefreshItem` until the popup overlay dismisses.
 
 ## When to revert
 

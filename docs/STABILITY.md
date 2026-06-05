@@ -10,10 +10,8 @@
 
 Most stable version in current testing. Known issues on this baseline:
 
-1. **~13 px shrink** when opening the file-browser right-click menu (one frame).
-2. **Edge resize while menu is open** — resize blocked or window snaps to minimum.
-
-Both are side effects of the current “fix” in `browser.go` (`restoreWindowSizeIfShrunk` / `guardWindowSizeWhileMenuOpen`). Do **not** add more `w.Resize()` or Win32 pinning to fight them.
+- ~~**~13 px shrink** on right-click menu~~ — fixed by removing `w.Resize` guards; selection refresh deferred until menu dismiss.
+- ~~**Edge resize while menu open**~~ — same fix; do **not** re-add guards or Win32 pinning.
 
 ## Revert
 
