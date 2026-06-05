@@ -16,6 +16,8 @@ type fileListRow struct {
 	bg      *canvas.Rectangle
 
 	onSecondary func(*fyne.PointEvent)
+	onPrimary   func()
+	onDouble    func()
 }
 
 func newFileListRow() *fileListRow {
@@ -29,6 +31,18 @@ func newFileListRow() *fileListRow {
 	r.metaLbl.Alignment = fyne.TextAlignTrailing
 	r.ExtendBaseWidget(r)
 	return r
+}
+
+func (r *fileListRow) Tapped(*fyne.PointEvent) {
+	if r.onPrimary != nil {
+		r.onPrimary()
+	}
+}
+
+func (r *fileListRow) DoubleTapped(*fyne.PointEvent) {
+	if r.onDouble != nil {
+		r.onDouble()
+	}
 }
 
 func (r *fileListRow) TappedSecondary(ev *fyne.PointEvent) {
@@ -79,3 +93,5 @@ func (rr *fileListRowRenderer) Objects() []fyne.CanvasObject { return rr.objects
 func (rr *fileListRowRenderer) Destroy()                       {}
 
 var _ fyne.SecondaryTappable = (*fileListRow)(nil)
+var _ fyne.Tappable = (*fileListRow)(nil)
+var _ fyne.DoubleTappable = (*fileListRow)(nil)

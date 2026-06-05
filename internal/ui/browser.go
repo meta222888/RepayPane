@@ -54,8 +54,6 @@ type FilePane struct {
 	root          fyne.CanvasObject
 
 	selectedRow int
-	lastTap     time.Time
-	lastTapID   int
 
 	localNav *LocalNav
 }
@@ -150,17 +148,17 @@ func (p *FilePane) rowCount() int {
 
 func (p *FilePane) updateListRow(i widget.ListItemID, obj fyne.CanvasObject) {
 	row := obj.(*fileListRow)
+	idx := int(i)
+	row.onPrimary = func() { p.selectRow(idx) }
+	row.onDouble = func() {
+		p.selectRow(idx)
+		p.activateRow(idx)
+	}
 	row.onSecondary = func(ev *fyne.PointEvent) {
-		prev := p.selectedRow
-		p.selectedRow = int(i)
-		p.list.Select(i)
-		if prev >= 0 && prev != int(i) {
-			p.list.RefreshItem(widget.ListItemID(prev))
-		}
-		p.list.RefreshItem(i)
+		p.selectRow(idx)
 		p.showContextMenu(ev.AbsolutePosition)
 	}
-	row.setSelected(int(i) == p.selectedRow)
+	row.setSelected(idx == p.selectedRow)
 
 	if p.kind == PaneLocal {
 		if int(i) >= len(p.local) {
@@ -344,21 +342,21 @@ func (p *FilePane) RefreshListing() {
 	p.list.Refresh()
 }
 
-func (p *FilePane) handleListSelect(id widget.ListItemID) {
-	row := int(id)
-	now := time.Now()
-	isDouble := row == p.lastTapID && now.Sub(p.lastTap) < 500*time.Millisecond
-	p.lastTap = now
-	p.lastTapID = row
+func (p *FilePane) selectRow(row int) {
+	if row < 0 || row >= p.rowCount() {
+		return
+	}
 	prev := p.selectedRow
 	p.selectedRow = row
+	p.list.Select(widget.ListItemID(row))
 	if prev >= 0 && prev != row {
 		p.list.RefreshItem(widget.ListItemID(prev))
 	}
-	p.list.RefreshItem(id)
-	if isDouble {
-		p.activateRow(row)
-	}
+	p.list.RefreshItem(widget.ListItemID(row))
+}
+
+func (p *FilePane) handleListSelect(id widget.ListItemID) {
+	p.selectRow(int(id))
 }
 
 func (p *FilePane) activateRow(row int) {
