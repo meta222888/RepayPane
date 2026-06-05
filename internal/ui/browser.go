@@ -193,6 +193,10 @@ func (p *FilePane) rowCount() int {
 	return n
 }
 
+func (p *FilePane) listContentHeight() float32 {
+	return float32(p.rowCount()) * paneRowMinHeight
+}
+
 func (p *FilePane) updateListRow(i widget.ListItemID, obj fyne.CanvasObject) {
 	idx := int(i)
 	row := obj.(*paneFileListRow)
@@ -616,11 +620,21 @@ func (p *FilePane) pasteClipboard(clip *PaneClipboard) {
 	if clip == nil {
 		return
 	}
-	dst := p.joinPath(clip.Name)
-	if p.pathExistsAt(dst) {
-		dialog.ShowError(fmt.Errorf(i18n.Tf(i18n.KeyFileExists, clip.Name)), p.app.window)
+	exists := func(name string) bool { return p.pathExistsAt(p.joinPath(name)) }
+	if exists(clip.Name) {
+		p.app.resolveFileConflict(clip.Name, exists, func(name string) {
+			if name == "" {
+				return
+			}
+			p.pasteClipboardAs(clip, name)
+		})
 		return
 	}
+	p.pasteClipboardAs(clip, clip.Name)
+}
+
+func (p *FilePane) pasteClipboardAs(clip *PaneClipboard, destName string) {
+	dst := p.joinPath(destName)
 	if p.kind == PaneLocal {
 		if err := copyPathLocal(clip.Path, dst); err != nil {
 			dialog.ShowError(err, p.app.window)

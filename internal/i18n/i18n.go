@@ -175,6 +175,11 @@ const (
 	KeyCtxNewFile         = "ctx.new_file"
 	KeyDeleteFileConfirm  = "dialog.delete_file_confirm"
 	KeyFileExists         = "dialog.file_exists"
+	KeyFileExistsTitle    = "dialog.file_exists_title"
+	KeyFileExistsConflict = "dialog.file_exists_conflict"
+	KeyOverwrite          = "dialog.overwrite"
+	KeyRename             = "dialog.rename"
+	KeyRenamePrompt       = "dialog.rename_prompt"
 	KeyCtrlSSaveLocal     = "editor.ctrl_s_local"
 
 	KeyFeatLoading        = "feat.loading"
@@ -348,6 +353,11 @@ var enStrings = map[string]string{
 	KeyCtxNewFile:        "New File",
 	KeyDeleteFileConfirm: "Delete %q?",
 	KeyFileExists:        "%q already exists",
+	KeyFileExistsTitle:   "File Already Exists",
+	KeyFileExistsConflict: "%q already exists.\nChoose an action:",
+	KeyOverwrite:         "Overwrite",
+	KeyRename:            "Rename",
+	KeyRenamePrompt:      "Enter a new name:",
 	KeyCtrlSSaveLocal:    "Ctrl+S to save",
 
 	KeyFeatLoading:        "Loading…",
@@ -521,6 +531,11 @@ var zhStrings = map[string]string{
 	KeyCtxNewFile:        "新建文件",
 	KeyDeleteFileConfirm: "确定删除 %q？",
 	KeyFileExists:        "%q 已存在",
+	KeyFileExistsTitle:   "文件已存在",
+	KeyFileExistsConflict: "%q 已存在。\n请选择操作：",
+	KeyOverwrite:         "覆盖",
+	KeyRename:            "重命名",
+	KeyRenamePrompt:      "请输入新名称：",
 	KeyCtrlSSaveLocal:    "Ctrl+S 保存",
 
 	KeyFeatLoading:        "加载中…",

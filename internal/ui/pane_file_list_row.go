@@ -138,6 +138,7 @@ func (r *paneFileListRow) Dragged(e *fyne.DragEvent) {
 	if r.onDragged == nil {
 		return
 	}
+	r.dragActive = true
 	r.onDragged(e)
 }
 
@@ -146,6 +147,19 @@ func (r *paneFileListRow) DragEnd() {
 		r.onDragEnd()
 	}
 	r.dragActive = false
+}
+
+func (r *paneFileListRow) Cursor() desktop.Cursor {
+	if r.onDragged == nil {
+		return desktop.DefaultCursor
+	}
+	if r.dragActive {
+		return desktop.CrosshairCursor
+	}
+	if r.hovered {
+		return desktop.PointerCursor
+	}
+	return desktop.DefaultCursor
 }
 
 func (r *paneFileListRow) MouseIn(_ *desktop.MouseEvent) {
@@ -193,3 +207,4 @@ var _ fyne.DoubleTappable = (*paneFileListRow)(nil)
 var _ fyne.SecondaryTappable = (*paneFileListRow)(nil)
 var _ fyne.Draggable = (*paneFileListRow)(nil)
 var _ desktop.Hoverable = (*paneFileListRow)(nil)
+var _ desktop.Cursorable = (*paneFileListRow)(nil)

@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -65,11 +64,29 @@ func (a *App) uploadClipboardToRemote(clip *PaneClipboard, remoteDir string, onD
 		dialogShow(a, i18n.T(i18n.KeyNotConnectedTitle), i18n.T(i18n.KeyNotConnectedUpload))
 		return
 	}
-	dst := filepath.ToSlash(filepath.Join(remoteDir, clip.Name))
-	if destExistsRemote(client, dst) {
-		dialogShowError(a, fmt.Errorf(i18n.Tf(i18n.KeyFileExists, clip.Name)))
+	exists := func(name string) bool {
+		dst := filepath.ToSlash(filepath.Join(remoteDir, name))
+		return destExistsRemote(client, dst)
+	}
+	start := func(name string) {
+		if name == "" {
+			return
+		}
+		a.doUploadClipboardToRemote(clip, remoteDir, name, onDone)
+	}
+	if exists(clip.Name) {
+		a.resolveFileConflict(clip.Name, exists, start)
 		return
 	}
+	start(clip.Name)
+}
+
+func (a *App) doUploadClipboardToRemote(clip *PaneClipboard, remoteDir, destName string, onDone func()) {
+	client := a.activeClient()
+	if client == nil {
+		return
+	}
+	dst := filepath.ToSlash(filepath.Join(remoteDir, destName))
 	if clip.IsDir {
 		a.enqueueUploadTree(client, clip.Path, dst, onDone)
 		return
@@ -93,11 +110,29 @@ func (a *App) downloadClipboardToLocal(clip *PaneClipboard, localDir string, onD
 		dialogShow(a, i18n.T(i18n.KeyNotConnectedTitle), i18n.T(i18n.KeyNotConnectedFirst))
 		return
 	}
-	dst := filepath.Join(localDir, clip.Name)
-	if _, err := os.Stat(dst); err == nil {
-		dialogShowError(a, fmt.Errorf(i18n.Tf(i18n.KeyFileExists, clip.Name)))
+	exists := func(name string) bool {
+		_, err := os.Stat(filepath.Join(localDir, name))
+		return err == nil
+	}
+	start := func(name string) {
+		if name == "" {
+			return
+		}
+		a.doDownloadClipboardToLocal(clip, localDir, name, onDone)
+	}
+	if exists(clip.Name) {
+		a.resolveFileConflict(clip.Name, exists, start)
 		return
 	}
+	start(clip.Name)
+}
+
+func (a *App) doDownloadClipboardToLocal(clip *PaneClipboard, localDir, destName string, onDone func()) {
+	client := a.activeClient()
+	if client == nil {
+		return
+	}
+	dst := filepath.Join(localDir, destName)
 	if clip.IsDir {
 		a.enqueueDownloadTree(client, clip.Path, dst, onDone)
 		return
