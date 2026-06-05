@@ -418,6 +418,42 @@ func (t *compactToolbarTheme) Size(name fyne.ThemeSizeName) float32 {
 
 const topMenuButtonMinWidth float32 = 88
 
+// menuItemInnerPadding is applied via Fyne SizeNameInnerPadding inside each menu row
+// (row height = text + inner padding). Do not simulate row spacing with outer margins.
+const menuItemInnerPadding float32 = 6
+
+type menuPopupTheme struct {
+	base fyne.Theme
+}
+
+func newMenuPopupTheme() fyne.Theme {
+	return &menuPopupTheme{base: fyne.CurrentApp().Settings().Theme()}
+}
+
+func (t *menuPopupTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) color.Color {
+	return t.base.Color(name, variant)
+}
+
+func (t *menuPopupTheme) Font(style fyne.TextStyle) fyne.Resource {
+	return t.base.Font(style)
+}
+
+func (t *menuPopupTheme) Icon(name fyne.ThemeIconName) fyne.Resource {
+	return t.base.Icon(name)
+}
+
+func (t *menuPopupTheme) Size(name fyne.ThemeSizeName) float32 {
+	switch name {
+	case theme.SizeNameText:
+		return AppTextSize
+	case theme.SizeNameInnerPadding:
+		return menuItemInnerPadding
+	case theme.SizeNamePadding:
+		return 0
+	}
+	return t.base.Size(name)
+}
+
 func wrapTopMenuButton(btn *widget.Button) fyne.CanvasObject {
 	minW := canvas.NewRectangle(color.Transparent)
 	minW.SetMinSize(fyne.NewSize(topMenuButtonMinWidth, 0))

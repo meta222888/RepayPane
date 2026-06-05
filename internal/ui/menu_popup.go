@@ -6,13 +6,12 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
 
-// menuItemInnerPadding is the target horizontal inset per side; Fyne uses one
-// InnerPadding for both axes, so we only widen via min width, not theme padding.
-const menuItemInnerPadding float32 = 14
+// menuItemHorizontalPad is the target horizontal inset per side. Row spacing uses
+// menuItemInnerPadding via theme; extra width is added without outer margin wrappers.
+const menuItemHorizontalPad float32 = 14
 
 func newWideMenu(menu *fyne.Menu, overlay fyne.Theme) (*widget.Menu, fyne.CanvasObject) {
 	m := widget.NewMenu(menu)
@@ -20,8 +19,7 @@ func newWideMenu(menu *fyne.Menu, overlay fyne.Theme) (*widget.Menu, fyne.Canvas
 	if overlay != nil {
 		content = container.NewThemeOverride(m, overlay)
 	}
-	basePad := fyne.CurrentApp().Settings().Theme().Size(theme.SizeNameInnerPadding)
-	extraW := (menuItemInnerPadding - basePad) * 2
+	extraW := (menuItemHorizontalPad - menuItemInnerPadding) * 2
 	if extraW < 1 {
 		return m, content
 	}
@@ -36,7 +34,7 @@ func minMenuWidth(minW float32, obj fyne.CanvasObject) fyne.CanvasObject {
 }
 
 func showWidePopUpMenu(c fyne.Canvas, menu *fyne.Menu, at fyne.Position) *widget.PopUp {
-	_, content := newWideMenu(menu, newCompactToolbarTheme())
+	_, content := newWideMenu(menu, newMenuPopupTheme())
 	size := content.MinSize()
 	pos := adjustMenuPosition(at, size, c)
 	pop := widget.NewPopUp(content, c)
