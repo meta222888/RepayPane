@@ -79,6 +79,7 @@ type FilePane struct {
 	lastDragAbs fyne.Position
 	dragReady   bool
 	listGen     int
+	deleteBusy  bool
 
 	localNav *LocalNav
 }
@@ -257,6 +258,13 @@ func (p *FilePane) setListLoading(v bool) {
 		return
 	}
 	setPaneLoadingHint(p.listLoadingHint, i18n.T(i18n.KeyPaneListingLoading), v)
+}
+
+func (p *FilePane) setPaneDeleting(v bool) {
+	if p.listLoadingHint == nil {
+		return
+	}
+	setPaneLoadingHint(p.listLoadingHint, i18n.T(i18n.KeyPaneDeleting), v)
 }
 
 func (p *FilePane) relayoutListPane() {
@@ -1004,6 +1012,11 @@ func (p *FilePane) isDirForRow(row int) bool {
 	return p.remote[dataIdx].IsDir
 }
 
+type paneDeleteItem struct {
+	path  string
+	isDir bool
+}
+
 func (p *FilePane) ctxDelete() {
 	rows := p.selectedFileRows()
 	if len(rows) == 0 {
@@ -1017,44 +1030,80 @@ func (p *FilePane) ctxDelete() {
 		if !ok {
 			return
 		}
-		if p.kind == PaneLocal {
-			for _, row := range rows {
-				path := p.fullPathForRow(row)
-				if path == "" {
-					continue
-				}
-				if err := removePathLocal(path); err != nil {
-					dialog.ShowError(err, p.app.window)
-					return
-				}
+		items := make([]paneDeleteItem, 0, len(rows))
+		for _, row := range rows {
+			path := p.fullPathForRow(row)
+			if path == "" {
+				continue
 			}
-			p.clearSelectionQuiet()
-			p.RefreshListing()
+			items = append(items, paneDeleteItem{path: path, isDir: p.isDirForRow(row)})
+		}
+		if len(items) == 0 {
+			return
+		}
+		p.clearSelectionQuiet()
+		if p.kind == PaneLocal {
+			p.runDeleteLocalAsync(items)
 			return
 		}
 		client := p.app.activeClient()
 		if client == nil {
 			return
 		}
-		for _, row := range rows {
-			path := p.fullPathForRow(row)
-			if path == "" {
-				continue
-			}
-			var err error
-			if p.isDirForRow(row) {
-				err = client.RemoveAll(path)
-			} else {
-				err = client.Remove(path)
-			}
-			if err != nil {
-				dialog.ShowError(err, p.app.window)
-				return
+		p.runDeleteRemoteAsync(client, items)
+	})
+}
+
+func (p *FilePane) runDeleteLocalAsync(items []paneDeleteItem) {
+	if p.deleteBusy {
+		return
+	}
+	p.deleteBusy = true
+	go func() {
+		var firstErr error
+		for _, item := range items {
+			if err := removePathLocal(item.path); err != nil && firstErr == nil {
+				firstErr = err
 			}
 		}
-		p.clearSelectionQuiet()
-		p.RefreshListing()
-	})
+		fyne.Do(func() {
+			p.deleteBusy = false
+			if firstErr != nil {
+				dialog.ShowError(firstErr, p.app.window)
+			}
+			p.RefreshListing()
+		})
+	}()
+}
+
+func (p *FilePane) runDeleteRemoteAsync(client *remote.Client, items []paneDeleteItem) {
+	if p.deleteBusy {
+		return
+	}
+	p.deleteBusy = true
+	p.setPaneDeleting(true)
+	go func() {
+		var firstErr error
+		for _, item := range items {
+			var err error
+			if item.isDir {
+				err = client.RemoveAll(item.path)
+			} else {
+				err = client.Remove(item.path)
+			}
+			if err != nil && firstErr == nil {
+				firstErr = err
+			}
+		}
+		fyne.Do(func() {
+			p.deleteBusy = false
+			p.setPaneDeleting(false)
+			if firstErr != nil {
+				dialog.ShowError(firstErr, p.app.window)
+			}
+			p.RefreshListing()
+		})
+	}()
 }
 
 func (p *FilePane) promptNewFolder() {

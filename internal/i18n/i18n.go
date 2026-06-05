@@ -154,6 +154,7 @@ const (
 	KeyPanelLocal     = "pane.panel_local"
 	KeyPanelRemote    = "pane.panel_remote"
 	KeyPaneListingLoading = "pane.listing_loading"
+	KeyPaneDeleting       = "pane.deleting"
 	KeyLocalHeader   = "pane.local_header"
 	KeyRemoteHeader  = "pane.remote_header"
 	KeyStatusBarConnected = "status.bar_connected"
@@ -405,6 +406,7 @@ var enStrings = map[string]string{
 	KeyPanelLocal:     "Local",
 	KeyPanelRemote:    "Remote",
 	KeyPaneListingLoading: "Loading…",
+	KeyPaneDeleting:       "Deleting…",
 	KeyLocalHeader:    "Local — %s",
 	KeyRemoteHeader:   "Remote — %s",
 	KeyStatusBarConnected: "Connected to %s",
@@ -656,6 +658,7 @@ var zhStrings = map[string]string{
 	KeyPanelLocal:     "本地",
 	KeyPanelRemote:    "远程",
 	KeyPaneListingLoading: "正在加载中……",
+	KeyPaneDeleting:       "正在删除……",
 	KeyLocalHeader:    "本地 — %s",
 	KeyRemoteHeader:   "远程 — %s",
 	KeyStatusBarConnected: "已连接到 %s",
