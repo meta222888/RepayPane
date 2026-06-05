@@ -193,10 +193,6 @@ func (p *FilePane) rowCount() int {
 	return n
 }
 
-func (p *FilePane) listContentHeight() float32 {
-	return float32(p.rowCount()) * paneRowMinHeight
-}
-
 func (p *FilePane) updateListRow(i widget.ListItemID, obj fyne.CanvasObject) {
 	idx := int(i)
 	row := obj.(*paneFileListRow)
@@ -208,7 +204,7 @@ func (p *FilePane) updateListRow(i widget.ListItemID, obj fyne.CanvasObject) {
 		p.activateRow(idx)
 	}
 	row.onSecondary = func(ev *fyne.PointEvent) {
-		p.selectRow(idx)
+		p.selectRowQuiet(idx)
 		p.showContextMenu(ev.AbsolutePosition)
 	}
 	row.onDragged = func(e *fyne.DragEvent) {
@@ -385,12 +381,31 @@ func (p *FilePane) RefreshListing() {
 }
 
 func (p *FilePane) clearSelection() {
+	p.clearSelectionQuiet()
+}
+
+func (p *FilePane) clearSelectionQuiet() {
 	prev := p.selectedRow
+	if prev < 0 {
+		return
+	}
 	p.selectedRow = -1
-	p.list.UnselectAll()
+	p.list.RefreshItem(widget.ListItemID(prev))
+}
+
+func (p *FilePane) selectRowQuiet(row int) {
+	if row < 0 || row >= p.rowCount() {
+		return
+	}
+	prev := p.selectedRow
+	if prev == row {
+		return
+	}
+	p.selectedRow = row
 	if prev >= 0 {
 		p.list.RefreshItem(widget.ListItemID(prev))
 	}
+	p.list.RefreshItem(widget.ListItemID(row))
 }
 
 func (p *FilePane) selectRow(row int) {
@@ -403,10 +418,6 @@ func (p *FilePane) selectRow(row int) {
 	}
 	p.selectedRow = row
 	p.list.Select(widget.ListItemID(row))
-	if prev >= 0 {
-		p.list.RefreshItem(widget.ListItemID(prev))
-	}
-	p.list.RefreshItem(widget.ListItemID(row))
 }
 
 func (p *FilePane) handleListSelect(id widget.ListItemID) {
@@ -480,8 +491,40 @@ func (p *FilePane) showContextMenu(at fyne.Position) {
 		fyne.NewMenuItemSeparator(),
 		deleteItem,
 	)
-	popup := widget.NewPopUpMenu(menu, p.app.window.Canvas())
-	popup.ShowAtPosition(at)
+	w := p.app.window
+	saved := w.Canvas().Size()
+	fyne.Do(func() {
+		popup := widget.NewPopUpMenu(menu, w.Canvas())
+		popup.ShowAtPosition(at)
+		restoreWindowSizeIfShrunk(w, saved)
+	})
+	guardWindowSizeWhileMenuOpen(w, saved)
+}
+
+func restoreWindowSizeIfShrunk(w fyne.Window, want fyne.Size) {
+	cur := w.Canvas().Size()
+	if cur.Width < want.Width-2 || cur.Height < want.Height-2 {
+		w.Resize(want)
+	}
+}
+
+func guardWindowSizeWhileMenuOpen(w fyne.Window, want fyne.Size) {
+	go func() {
+		for i := 0; i < 60; i++ {
+			time.Sleep(50 * time.Millisecond)
+			stop := false
+			fyne.Do(func() {
+				if len(w.Canvas().Overlays().List()) == 0 {
+					stop = true
+					return
+				}
+				restoreWindowSizeIfShrunk(w, want)
+			})
+			if stop {
+				return
+			}
+		}
+	}()
 }
 
 func (p *FilePane) selectedName() string {
