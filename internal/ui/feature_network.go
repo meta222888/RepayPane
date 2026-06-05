@@ -33,11 +33,24 @@ type netIfaceStat struct {
 }
 
 type netTrafficState struct {
-	box      *fyne.Container
-	summary  *widget.Label
-	prev     map[string]netIfaceStat
-	prevAt   time.Time
-	showRate bool
+	box        *fyne.Container
+	summary    *widget.Label
+	prev       map[string]netIfaceStat
+	prevAt     time.Time
+	showRate   bool
+	hasContent bool
+	hint       fyne.CanvasObject
+	cards      map[string]*netIfaceCardView
+	cardOrder  []string
+	routeObjs  []fyne.CanvasObject
+}
+
+type netIfaceCardView struct {
+	root   fyne.CanvasObject
+	title  *widget.Label
+	bar    *usageProgressBar
+	detail *widget.Label
+	rate   *widget.Label
 }
 
 func (a *App) showNetworkInfo() {
@@ -49,6 +62,7 @@ func (a *App) showNetworkInfo() {
 	trafficState := &netTrafficState{
 		box:     container.NewVBox(),
 		summary: widget.NewLabel(i18n.T(i18n.KeyFeatNetRatePending)),
+		cards:   make(map[string]*netIfaceCardView),
 	}
 	trafficState.summary.Importance = widget.MediumImportance
 	trafficScroll := container.NewVScroll(trafficState.box)
@@ -76,7 +90,7 @@ func (a *App) showNetworkInfo() {
 	}
 
 	refreshTraffic := newAccentButton(i18n.T(i18n.KeyFeatRefreshTraffic), func() {
-		loadNetTraffic(client, trafficState)
+		loadNetTraffic(client, trafficState, true)
 	})
 	refreshPorts := newAccentButton(i18n.T(i18n.KeyFeatRefreshPorts), func() {
 		loadNetPorts(client, setPorts)
@@ -108,22 +122,159 @@ func (a *App) showNetworkInfo() {
 	loadNetPorts(client, setPorts)
 }
 
-func loadNetTraffic(client *remote.Client, state *netTrafficState) {
-	state.box.Objects = nil
-	state.box.Add(featureLoadingLabel())
-	state.box.Refresh()
+func loadNetTraffic(client *remote.Client, state *netTrafficState, full bool) {
+	if full || !state.hasContent {
+		state.box.Objects = nil
+		state.box.Add(featureLoadingLabel())
+		state.box.Refresh()
+	}
 
 	go func() {
 		ifaceOut, ifaceErr := client.RunCombined(netIfaceCmd)
-		routeOut, routeErr := client.RunCombined(netRouteCmd)
+		var routeOut string
+		var routeErr error
+		if full || !state.hasContent {
+			routeOut, routeErr = client.RunCombined(netRouteCmd)
+		}
 		fyne.Do(func() {
+			if !full && state.hasContent {
+				updateNetTraffic(state, ifaceOut, ifaceErr)
+				return
+			}
 			renderNetTraffic(state, ifaceOut, routeOut, ifaceErr, routeErr)
+			state.hasContent = true
 		})
 	}()
 }
 
+func updateNetTraffic(state *netTrafficState, ifaceOut string, ifaceErr error) {
+	stats := filterNetIfaces(parseNetIfaces(ifaceOut))
+	if len(stats) == 0 {
+		if ifaceErr != nil && strings.TrimSpace(ifaceOut) == "" {
+			state.summary.SetText(ifaceErr.Error())
+		}
+		return
+	}
+
+	showRates, rxRates, txRates := applyNetSample(state, stats)
+
+	orderChanged := len(stats) != len(state.cardOrder)
+	if !orderChanged {
+		for i, stat := range stats {
+			if state.cardOrder[i] != stat.name {
+				orderChanged = true
+				break
+			}
+		}
+	}
+
+	for name := range state.cards {
+		found := false
+		for _, stat := range stats {
+			if stat.name == name {
+				found = true
+				break
+			}
+		}
+		if !found {
+			delete(state.cards, name)
+			orderChanged = true
+		}
+	}
+
+	for _, stat := range stats {
+		card, ok := state.cards[stat.name]
+		if !ok {
+			card = newNetIfaceCardView(state.showRate)
+			state.cards[stat.name] = card
+			orderChanged = true
+		}
+		card.update(stat, rxRates[stat.name], txRates[stat.name], showRates)
+	}
+
+	state.cardOrder = statNames(stats)
+	if orderChanged {
+		rebuildTrafficBox(state, stats)
+		return
+	}
+	for _, stat := range stats {
+		state.cards[stat.name].refresh()
+	}
+}
+
+func applyNetSample(state *netTrafficState, stats []netIfaceStat) (showRates bool, rxRates, txRates map[string]float64) {
+	now := time.Now()
+	elapsed := now.Sub(state.prevAt).Seconds()
+	if state.prevAt.IsZero() || elapsed <= 0 {
+		elapsed = 0
+	}
+	showRates = state.showRate && state.prev != nil && elapsed > 0
+	rxRates = make(map[string]float64, len(stats))
+	txRates = make(map[string]float64, len(stats))
+	var totalRxRate, totalTxRate float64
+	for _, stat := range stats {
+		rxRate, txRate := 0.0, 0.0
+		if showRates {
+			if prev, ok := state.prev[stat.name]; ok {
+				rxRate = float64(stat.rx-prev.rx) / elapsed
+				txRate = float64(stat.tx-prev.tx) / elapsed
+				if rxRate < 0 {
+					rxRate = 0
+				}
+				if txRate < 0 {
+					txRate = 0
+				}
+			}
+			totalRxRate += rxRate
+			totalTxRate += txRate
+		}
+		rxRates[stat.name] = rxRate
+		txRates[stat.name] = txRate
+	}
+	if state.showRate {
+		if showRates {
+			state.summary.SetText(i18n.Tf(i18n.KeyFeatNetBandwidthTotal,
+				formatBytesPerSec(totalRxRate), formatBytesPerSec(totalTxRate)))
+		} else {
+			state.summary.SetText(i18n.T(i18n.KeyFeatNetRatePending))
+		}
+		next := make(map[string]netIfaceStat, len(stats))
+		for _, stat := range stats {
+			next[stat.name] = stat
+		}
+		state.prev = next
+		state.prevAt = now
+	}
+	return showRates, rxRates, txRates
+}
+
+func statNames(stats []netIfaceStat) []string {
+	names := make([]string, len(stats))
+	for i, stat := range stats {
+		names[i] = stat.name
+	}
+	return names
+}
+
+func rebuildTrafficBox(state *netTrafficState, stats []netIfaceStat) {
+	objs := make([]fyne.CanvasObject, 0, 1+len(stats)+len(state.routeObjs))
+	if state.hint != nil {
+		objs = append(objs, state.hint)
+	}
+	for _, stat := range stats {
+		objs = append(objs, state.cards[stat.name].root)
+	}
+	objs = append(objs, state.routeObjs...)
+	state.box.Objects = objs
+	state.box.Refresh()
+}
+
 func renderNetTraffic(state *netTrafficState, ifaceOut, routeOut string, ifaceErr, routeErr error) {
 	state.box.Objects = nil
+	state.cards = make(map[string]*netIfaceCardView)
+	state.cardOrder = nil
+	state.routeObjs = nil
+	state.hint = nil
 
 	stats := filterNetIfaces(parseNetIfaces(ifaceOut))
 	if len(stats) == 0 {
@@ -132,69 +283,44 @@ func renderNetTraffic(state *netTrafficState, ifaceOut, routeOut string, ifaceEr
 		} else {
 			state.box.Add(widget.NewLabel(i18n.T(i18n.KeyFeatNoData)))
 		}
-	} else {
-		now := time.Now()
-		elapsed := now.Sub(state.prevAt).Seconds()
-		if state.prevAt.IsZero() || elapsed <= 0 {
-			elapsed = 0
-		}
+		state.box.Refresh()
+		return
+	}
 
-		var totalRxRate, totalTxRate float64
-		showRates := state.showRate && state.prev != nil && elapsed > 0
+	showRates, rxRates, txRates := applyNetSample(state, stats)
 
-		hint := widget.NewLabel(i18n.T(i18n.KeyFeatNetSinceBoot))
-		hint.Importance = widget.LowImportance
-		state.box.Add(hint)
+	hint := widget.NewLabel(i18n.T(i18n.KeyFeatNetSinceBoot))
+	hint.Importance = widget.LowImportance
+	state.hint = hint
+	state.box.Add(hint)
 
-		for _, stat := range stats {
-			var rxRate, txRate float64
-			if showRates {
-				if prev, ok := state.prev[stat.name]; ok {
-					rxRate = float64(stat.rx-prev.rx) / elapsed
-					txRate = float64(stat.tx-prev.tx) / elapsed
-					if rxRate < 0 {
-						rxRate = 0
-					}
-					if txRate < 0 {
-						txRate = 0
-					}
-				}
-				totalRxRate += rxRate
-				totalTxRate += txRate
-			}
-			state.box.Add(netIfaceCard(stat, rxRate, txRate, showRates))
-		}
-
-		if state.showRate {
-			if showRates {
-				state.summary.SetText(i18n.Tf(i18n.KeyFeatNetBandwidthTotal,
-					formatBytesPerSec(totalRxRate), formatBytesPerSec(totalTxRate)))
-			} else {
-				state.summary.SetText(i18n.T(i18n.KeyFeatNetRatePending))
-			}
-			next := make(map[string]netIfaceStat, len(stats))
-			for _, stat := range stats {
-				next[stat.name] = stat
-			}
-			state.prev = next
-			state.prevAt = now
-		}
+	state.cardOrder = statNames(stats)
+	for _, stat := range stats {
+		card := newNetIfaceCardView(state.showRate)
+		card.update(stat, rxRates[stat.name], txRates[stat.name], showRates)
+		state.cards[stat.name] = card
+		state.box.Add(card.root)
 	}
 
 	routes := parseNetRoutes(routeOut)
 	if len(routes) > 0 || (routeErr != nil && strings.TrimSpace(routeOut) == "") {
-		state.box.Add(widget.NewLabel(""))
-		state.box.Add(widget.NewLabelWithStyle(i18n.T(i18n.KeyFeatNetRouting), fyne.TextAlignLeading, fyne.TextStyle{Bold: true}))
+		state.routeObjs = []fyne.CanvasObject{
+			widget.NewLabel(""),
+			widget.NewLabelWithStyle(i18n.T(i18n.KeyFeatNetRouting), fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+		}
 		if len(routes) == 0 {
 			if routeErr != nil {
-				state.box.Add(widget.NewLabel(routeErr.Error()))
+				state.routeObjs = append(state.routeObjs, widget.NewLabel(routeErr.Error()))
 			}
 		} else {
 			for _, route := range routes {
 				lbl := widget.NewLabel(route)
 				lbl.Wrapping = fyne.TextWrapWord
-				state.box.Add(lbl)
+				state.routeObjs = append(state.routeObjs, lbl)
 			}
+		}
+		for _, obj := range state.routeObjs {
+			state.box.Add(obj)
 		}
 	}
 
@@ -272,26 +398,53 @@ func parseNetRoutes(out string) []string {
 	return routes
 }
 
-func netIfaceCard(stat netIfaceStat, rxRate, txRate float64, showRate bool) fyne.CanvasObject {
-	title := widget.NewLabelWithStyle(stat.name, fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+func newNetIfaceCardView(showRate bool) *netIfaceCardView {
+	title := widget.NewLabelWithStyle("", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+	bar := newUsageProgressBar()
+	detail := widget.NewLabel("")
+	rows := []fyne.CanvasObject{title, bar, detail}
+	var rate *widget.Label
+	if showRate {
+		rate = widget.NewLabel("")
+		rate.Importance = widget.MediumImportance
+		rows = append(rows, rate)
+	}
+	v := &netIfaceCardView{
+		title:  title,
+		bar:    bar,
+		detail: detail,
+		rate:   rate,
+	}
+	v.root = withBackground(container.NewPadded(container.NewVBox(rows...)), colorPanel)
+	return v
+}
 
+func (v *netIfaceCardView) update(stat netIfaceStat, rxRate, txRate float64, showRate bool) {
+	v.title.SetText(stat.name)
 	total := stat.rx + stat.tx
 	rxShare := 0.0
 	if total > 0 {
 		rxShare = float64(stat.rx) / float64(total) * 100
 	}
-	bar := newUsageProgressBar()
-	bar.SetUsage(rxShare)
-
-	detail := widget.NewLabel(i18n.Tf(i18n.KeyFeatNetIfaceDetail, formatBytes(stat.rx), formatBytes(stat.tx)))
-
-	rows := []fyne.CanvasObject{title, bar, detail}
-	if showRate {
-		rateLbl := widget.NewLabel(i18n.Tf(i18n.KeyFeatNetRate, formatBytesPerSec(rxRate), formatBytesPerSec(txRate)))
-		rateLbl.Importance = widget.MediumImportance
-		rows = append(rows, rateLbl)
+	v.bar.SetUsage(rxShare)
+	v.detail.SetText(i18n.Tf(i18n.KeyFeatNetIfaceDetail, formatBytes(stat.rx), formatBytes(stat.tx)))
+	if v.rate != nil {
+		if showRate {
+			v.rate.SetText(i18n.Tf(i18n.KeyFeatNetRate, formatBytesPerSec(rxRate), formatBytesPerSec(txRate)))
+			v.rate.Show()
+		} else {
+			v.rate.Hide()
+		}
 	}
-	return withBackground(container.NewPadded(container.NewVBox(rows...)), colorPanel)
+}
+
+func (v *netIfaceCardView) refresh() {
+	v.bar.Refresh()
+	v.title.Refresh()
+	v.detail.Refresh()
+	if v.rate != nil {
+		v.rate.Refresh()
+	}
 }
 
 func formatBytesPerSec(bps float64) string {
@@ -347,7 +500,7 @@ func loadNetPorts(client *remote.Client, setText func(string)) {
 }
 
 func netTrafficLoop(client *remote.Client, state *netTrafficState, stop <-chan struct{}) {
-	loadNetTraffic(client, state)
+	loadNetTraffic(client, state, !state.hasContent)
 	// Second sample soon so current bandwidth appears without waiting a full interval.
 	quick := time.NewTimer(1 * time.Second)
 	defer quick.Stop()
@@ -355,7 +508,7 @@ func netTrafficLoop(client *remote.Client, state *netTrafficState, stop <-chan s
 	case <-stop:
 		return
 	case <-quick.C:
-		loadNetTraffic(client, state)
+		loadNetTraffic(client, state, false)
 	}
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
@@ -364,7 +517,7 @@ func netTrafficLoop(client *remote.Client, state *netTrafficState, stop <-chan s
 		case <-stop:
 			return
 		case <-ticker.C:
-			loadNetTraffic(client, state)
+			loadNetTraffic(client, state, false)
 		}
 	}
 }
