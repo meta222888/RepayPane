@@ -35,3 +35,18 @@ func TestJoinPathRemote(t *testing.T) {
 		t.Fatalf("joinPath(html) = %q, want /var/www/html", got)
 	}
 }
+
+func TestValidRenameName(t *testing.T) {
+	valid := []string{"file.txt", "My Folder", "a"}
+	for _, name := range valid {
+		if !validRenameName(name) {
+			t.Fatalf("validRenameName(%q) = false, want true", name)
+		}
+	}
+	invalid := []string{"", " ", "..", "bad/name", `a\b`, "a:b"}
+	for _, name := range invalid {
+		if validRenameName(name) {
+			t.Fatalf("validRenameName(%q) = true, want false", name)
+		}
+	}
+}

@@ -18,6 +18,7 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/driver/desktop"
 )
 
 type App struct {
@@ -100,7 +101,16 @@ func NewApp(a fyne.App, w fyne.Window) *App {
 	appUI.tabBar.Refresh()
 	appUI.statusBar.Refresh()
 	appUI.registerShellShortcut()
+	appUI.registerRenameShortcut()
 	return appUI
+}
+
+func (a *App) registerRenameShortcut() {
+	esc := &desktop.CustomShortcut{KeyName: fyne.KeyEscape}
+	a.window.Canvas().AddShortcut(esc, func(fyne.Shortcut) {
+		a.localPane.cancelRename()
+		a.remotePane.cancelRename()
+	})
 }
 
 func defaultRemoteRoot(s *config.Server) string {

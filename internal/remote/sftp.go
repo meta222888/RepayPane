@@ -244,6 +244,15 @@ func (c *Client) Mkdir(p string) error {
 	return c.sftp.Mkdir(normalizeRemote(p))
 }
 
+func (c *Client) Rename(oldPath, newPath string) error {
+	oldPath = normalizeRemote(oldPath)
+	newPath = normalizeRemote(newPath)
+	if err := c.sftp.Rename(oldPath, newPath); err != nil {
+		return fmt.Errorf("rename: %w", err)
+	}
+	return nil
+}
+
 func (c *Client) Remove(p string) error {
 	p = normalizeRemote(p)
 	st, err := c.sftp.Stat(p)

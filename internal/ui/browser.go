@@ -60,6 +60,7 @@ type FilePane struct {
 	selectedRow int
 	lastTapRow  int
 	lastTapTime time.Time
+	renamingRow int
 	listPointerDown int
 	pendingListRefresh bool
 	lastDragAbs fyne.Position
@@ -220,8 +221,16 @@ func (p *FilePane) updateListRow(i widget.ListItemID, obj fyne.CanvasObject) {
 	row := obj.(*paneFileListRow)
 	selected := idx == p.selectedRow
 
-	row.onPrimary = func() { p.tapRow(idx) }
+	row.onPrimary = func() {
+		if p.renamingRow == idx {
+			return
+		}
+		p.tapRow(idx)
+	}
 	row.onSecondary = func(ev *fyne.PointEvent) {
+		if p.renamingRow >= 0 {
+			p.cancelRename()
+		}
 		p.selectRow(idx)
 		p.showContextMenu(ev.AbsolutePosition, idx)
 	}
@@ -251,25 +260,45 @@ func (p *FilePane) updateListRow(i widget.ListItemID, obj fyne.CanvasObject) {
 		} else {
 			row.updateRemote(idx, "..", "—", "—", true, true, selected)
 		}
+		row.endRename()
 		return
 	}
 
 	dataIdx := p.dataRowIndex(idx)
 	if p.kind == PaneLocal {
 		if dataIdx < 0 || dataIdx >= len(p.local) {
-			row.onPrimary = func() { p.tapRow(idx) }
 			return
 		}
 		e := p.local[dataIdx]
 		row.updateLocal(idx, e.name, formatSize(e.size, e.isDir), formatTime(e.mod), e.isDir, false, selected)
+		p.applyRowRenameState(row, idx)
 		return
 	}
 	if dataIdx < 0 || dataIdx >= len(p.remote) {
-		row.onPrimary = func() { p.tapRow(idx) }
 		return
 	}
 	e := p.remote[dataIdx]
 	row.updateRemote(idx, e.Name, formatSize(e.Size, e.IsDir), formatTime(e.ModTime), e.IsDir, false, selected)
+	p.applyRowRenameState(row, idx)
+}
+
+func (p *FilePane) applyRowRenameState(row *paneFileListRow, idx int) {
+	if idx != p.renamingRow {
+		row.endRename()
+		return
+	}
+	if row.renaming {
+		return
+	}
+	name := p.nameForRow(idx)
+	if name == "" {
+		return
+	}
+	row.startRename(name, func(newName string) {
+		p.commitRename(idx, newName)
+	}, func() {
+		p.cancelRename()
+	})
 }
 func (p *FilePane) Container() fyne.CanvasObject   { return p.root }
 
@@ -314,6 +343,7 @@ func (p *FilePane) refreshPathDisplay() {
 }
 
 func (p *FilePane) Navigate(path string) {
+	p.cancelRename()
 	if p.kind == PaneLocal {
 		path = filepath.Clean(path)
 		st, err := os.Stat(path)
@@ -442,10 +472,20 @@ func (p *FilePane) tapRow(row int) {
 	if row < 0 || row >= p.rowCount() {
 		return
 	}
+	if p.renamingRow >= 0 && row != p.renamingRow {
+		p.cancelRename()
+	}
 	now := time.Now()
-	if row == p.lastTapRow && now.Sub(p.lastTapTime) <= paneDoubleClickInterval {
+	elapsed := now.Sub(p.lastTapTime)
+	if row == p.lastTapRow && elapsed <= paneDoubleClickInterval {
 		p.lastTapRow = -1
+		p.cancelRename()
 		p.activateRow(row)
+		return
+	}
+	if row == p.selectedRow && row == p.lastTapRow && elapsed > paneDoubleClickInterval && !p.isParentRow(row) {
+		p.lastTapRow = -1
+		p.startRename(row)
 		return
 	}
 	p.lastTapRow = row
@@ -453,11 +493,88 @@ func (p *FilePane) tapRow(row int) {
 	p.selectRow(row)
 }
 
+func validRenameName(name string) bool {
+	name = strings.TrimSpace(name)
+	if name == "" || name == "." || name == ".." {
+		return false
+	}
+	return !strings.ContainsAny(name, `/\:*?"<>|`)
+}
+
+func (p *FilePane) startRename(row int) {
+	if p.isParentRow(row) {
+		return
+	}
+	if p.kind == PaneRemote && (!p.connected || p.app.activeClient() == nil) {
+		return
+	}
+	if p.renamingRow >= 0 {
+		p.cancelRename()
+	}
+	p.renamingRow = row
+	p.selectRow(row)
+	p.list.RefreshItem(widget.ListItemID(row))
+}
+
+func (p *FilePane) cancelRename() {
+	if p.renamingRow < 0 {
+		return
+	}
+	row := p.renamingRow
+	p.renamingRow = -1
+	p.list.RefreshItem(widget.ListItemID(row))
+}
+
+func (p *FilePane) commitRename(row int, newName string) {
+	newName = strings.TrimSpace(newName)
+	oldName := p.nameForRow(row)
+	if !validRenameName(newName) {
+		dialog.ShowError(fmt.Errorf(i18n.T(i18n.KeyRenameInvalidName)), p.app.window)
+		return
+	}
+	if newName == oldName {
+		p.cancelRename()
+		return
+	}
+	newPath := p.joinPath(newName)
+	if p.pathExistsAt(newPath) {
+		dialog.ShowError(fmt.Errorf(i18n.Tf(i18n.KeyFileExists, newName)), p.app.window)
+		return
+	}
+	oldPath := p.fullPathForRow(row)
+	if oldPath == "" {
+		p.cancelRename()
+		return
+	}
+
+	if p.kind == PaneLocal {
+		if err := os.Rename(oldPath, newPath); err != nil {
+			dialog.ShowError(err, p.app.window)
+			return
+		}
+		p.cancelRename()
+		p.RefreshListing()
+		return
+	}
+	client := p.app.activeClient()
+	if client == nil {
+		p.cancelRename()
+		return
+	}
+	if err := client.Rename(oldPath, newPath); err != nil {
+		dialog.ShowError(err, p.app.window)
+		return
+	}
+	p.cancelRename()
+	p.RefreshListing()
+}
+
 func (p *FilePane) clearSelection() {
 	p.clearSelectionQuiet()
 }
 
 func (p *FilePane) clearSelectionQuiet() {
+	p.cancelRename()
 	prev := p.selectedRow
 	if prev < 0 {
 		return

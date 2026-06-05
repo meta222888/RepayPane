@@ -196,6 +196,7 @@ const (
 	KeyOverwrite          = "dialog.overwrite"
 	KeyRename             = "dialog.rename"
 	KeyRenamePrompt       = "dialog.rename_prompt"
+	KeyRenameInvalidName  = "dialog.rename_invalid_name"
 	KeyCtrlSSaveLocal     = "editor.ctrl_s_local"
 
 	KeyFeatLoading        = "feat.loading"
@@ -432,6 +433,7 @@ var enStrings = map[string]string{
 	KeyOverwrite:         "Overwrite",
 	KeyRename:            "Rename",
 	KeyRenamePrompt:      "Enter a new name:",
+	KeyRenameInvalidName: "Invalid file or folder name.",
 	KeyCtrlSSaveLocal:    "Ctrl+S to save",
 
 	KeyFeatLoading:        "Loading…",
@@ -668,6 +670,7 @@ var zhStrings = map[string]string{
 	KeyOverwrite:         "覆盖",
 	KeyRename:            "重命名",
 	KeyRenamePrompt:      "请输入新名称：",
+	KeyRenameInvalidName: "文件名或文件夹名无效。",
 	KeyCtrlSSaveLocal:    "Ctrl+S 保存",
 
 	KeyFeatLoading:        "加载中…",

@@ -23,19 +23,23 @@ type paneFileListRow struct {
 	rowIndex int
 	selected bool
 	hovered  bool
+	renaming bool
 
-	bg     *canvas.Rectangle
-	nameT  *canvas.Text
-	sizeT  *canvas.Text
-	metaT  *canvas.Text
-	rightT *canvas.Text
+	bg        *canvas.Rectangle
+	nameT     *canvas.Text
+	nameEntry *widget.Entry
+	sizeT     *canvas.Text
+	metaT     *canvas.Text
+	rightT    *canvas.Text
 
-	onSecondary func(*fyne.PointEvent)
-	onPrimary   func()
-	onDragged   func(*fyne.DragEvent)
-	onDragEnd   func()
-	onMouseDown func()
-	onMouseUp   func()
+	onSecondary    func(*fyne.PointEvent)
+	onPrimary      func()
+	onDragged      func(*fyne.DragEvent)
+	onDragEnd      func()
+	onMouseDown    func()
+	onMouseUp      func()
+	onRenameCommit func(string)
+	onRenameCancel func()
 
 	dragActive bool
 }
@@ -46,10 +50,46 @@ func newPaneFileListRow(remote bool) *paneFileListRow {
 	return r
 }
 
+func (r *paneFileListRow) startRename(name string, onCommit func(string), onCancel func()) {
+	r.onRenameCommit = onCommit
+	r.onRenameCancel = onCancel
+	r.renaming = true
+	if r.nameEntry == nil {
+		return
+	}
+	r.nameEntry.SetText(name)
+	r.nameT.Hide()
+	r.nameEntry.Show()
+	canvas.Refresh(r.nameT)
+	canvas.Refresh(r.nameEntry)
+	r.Refresh()
+	fyne.Do(func() {
+		c := fyne.CurrentApp().Driver().CanvasForObject(r.nameEntry)
+		if c == nil {
+			return
+		}
+		c.Focus(r.nameEntry)
+	})
+}
+
+func (r *paneFileListRow) endRename() {
+	r.renaming = false
+	if r.nameEntry == nil {
+		return
+	}
+	r.nameEntry.Hide()
+	r.nameT.Show()
+	canvas.Refresh(r.nameT)
+	canvas.Refresh(r.nameEntry)
+}
+
 func (r *paneFileListRow) updateLocal(rowIndex int, name, size, modified string, isDir, isParent, selected bool) {
 	r.rowIndex = rowIndex
 	r.selected = selected
 	if r.nameT == nil {
+		return
+	}
+	if r.renaming {
 		return
 	}
 	if isParent {
@@ -70,6 +110,9 @@ func (r *paneFileListRow) updateRemote(rowIndex int, name, size, modified string
 	r.rowIndex = rowIndex
 	r.selected = selected
 	if r.nameT == nil {
+		return
+	}
+	if r.renaming {
 		return
 	}
 	if isParent {
@@ -186,6 +229,14 @@ func (r *paneFileListRow) CreateRenderer() fyne.WidgetRenderer {
 	r.bg.SetMinSize(fyne.NewSize(0, paneRowMinHeight))
 	r.nameT = canvas.NewText("", colorForeground)
 	r.nameT.TextSize = paneRowNameSize
+	r.nameEntry = widget.NewEntry()
+	r.nameEntry.Hide()
+	r.nameEntry.OnSubmitted = func(text string) {
+		if r.renaming && r.onRenameCommit != nil {
+			r.onRenameCommit(text)
+		}
+	}
+	nameCol := container.NewStack(r.nameT, r.nameEntry)
 
 	var row fyne.CanvasObject
 	if r.remote {
@@ -194,11 +245,11 @@ func (r *paneFileListRow) CreateRenderer() fyne.WidgetRenderer {
 		r.metaT = canvas.NewText("", colorMuted)
 		r.metaT.TextSize = paneRowMetaSize
 		right := container.NewHBox(fixedWidth(r.metaT, 128), fixedWidth(r.sizeT, 72))
-		row = container.NewBorder(nil, nil, r.nameT, right, nil)
+		row = container.NewBorder(nil, nil, nameCol, right, nil)
 	} else {
 		r.rightT = canvas.NewText("", colorMuted)
 		r.rightT.TextSize = paneRowMetaSize
-		row = container.NewBorder(nil, nil, nil, r.rightT, r.nameT)
+		row = container.NewBorder(nil, nil, nil, r.rightT, nameCol)
 	}
 
 	content := container.NewStack(r.bg, container.NewPadded(row))
