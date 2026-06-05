@@ -11,7 +11,6 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -26,11 +25,11 @@ func (a *App) setLanguage(lang i18n.Lang) {
 }
 
 func (a *App) showFeaturesSoon() {
-	dialog.ShowInformation(i18n.T(i18n.KeyMenuFeatures), i18n.T(i18n.KeyMenuFeaturesSoon), a.window)
+	dialogShow(a, i18n.T(i18n.KeyMenuFeatures), i18n.T(i18n.KeyMenuFeaturesSoon))
 }
 
 func (a *App) showCheckUpdate() {
-	dialog.ShowInformation(i18n.T(i18n.KeyCheckUpdateTitle), i18n.T(i18n.KeyCheckUpdateMsg), a.window)
+	dialogShow(a, i18n.T(i18n.KeyCheckUpdateTitle), i18n.T(i18n.KeyCheckUpdateMsg))
 }
 
 func (a *App) showAboutUs() {
@@ -46,7 +45,7 @@ func (a *App) showAboutUs() {
 	content := container.NewVBox(intro, versionLabel, website)
 	closeBtn := newAccentButton(i18n.T(i18n.KeyOK), func() { dlg.Close() })
 	body := container.NewBorder(nil, container.NewHBox(closeBtn), nil, nil, content)
-	dlg = newModalDialog(a.window, title, fyne.NewSize(420, 220), body)
+	dlg = newModalDialog(a, title, fyne.NewSize(420, 220), body)
 }
 
 func (a *App) showMyServers() {
@@ -87,7 +86,7 @@ func (a *App) showMyServers() {
 	)
 
 	body := serverPickerBody(i18n.T(i18n.KeyMyServersHint), list, buttons)
-	dlg = newModalDialog(a.window, i18n.T(i18n.KeyMyServersTitle), serverPickerDialogSize, body)
+	dlg = newModalDialog(a, i18n.T(i18n.KeyMyServersTitle), serverPickerDialogSize, body)
 }
 
 func initLanguage(settings *config.Settings) {

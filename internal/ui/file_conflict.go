@@ -36,7 +36,7 @@ func (a *App) resolveFileConflict(fileName string, exists func(name string) bool
 	overwriteBtn.Importance = widget.HighImportance
 	buttons := container.NewHBox(cancelBtn, layout.NewSpacer(), renameBtn, overwriteBtn)
 	body := container.NewBorder(nil, buttons, nil, nil, msg)
-	dlg = newModalDialog(a.window, i18n.T(i18n.KeyFileExistsTitle), fyne.NewSize(420, 180), body)
+	dlg = newModalDialog(a, i18n.T(i18n.KeyFileExistsTitle), fyne.NewSize(420, 180), body)
 }
 
 func (a *App) promptConflictRename(original string, exists func(name string) bool, onProceed func(name string)) {
@@ -67,7 +67,7 @@ func (a *App) promptConflictRename(original string, exists func(name string) boo
 	buttons := container.NewHBox(cancelBtn, layout.NewSpacer(), okBtn)
 	form := container.NewVBox(widget.NewLabel(i18n.T(i18n.KeyRenamePrompt)), entry)
 	body := container.NewBorder(nil, buttons, nil, nil, form)
-	dlg = newModalDialog(a.window, i18n.T(i18n.KeyRename), fyne.NewSize(400, 150), body)
+	dlg = newModalDialog(a, i18n.T(i18n.KeyRename), fyne.NewSize(400, 150), body)
 }
 
 func suggestCopyName(original string, exists func(name string) bool) string {

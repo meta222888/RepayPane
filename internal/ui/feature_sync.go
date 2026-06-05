@@ -49,7 +49,7 @@ func (a *App) confirmSync(upload bool) {
 	})
 	cancelBtn := newAccentButton(i18n.T(i18n.KeyCancel), func() { dlg.Close() })
 	body := container.NewBorder(nil, container.NewHBox(cancelBtn, okBtn), nil, nil, lbl)
-	dlg = newModalDialog(a.window, title, fyne.NewSize(520, 240), body)
+	dlg = newModalDialog(a, title, fyne.NewSize(520, 240), body)
 }
 
 func (a *App) runSyncUpload(client *remote.Client, localDir, remoteDir string) {

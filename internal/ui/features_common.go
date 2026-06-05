@@ -172,7 +172,7 @@ func diskUsageCard(mount, total, used, avail, pctStr string) fyne.CanvasObject {
 }
 
 func showThemedFeature(a *App, title string, size fyne.Size, body fyne.CanvasObject) *modalDialog {
-	return newModalDialog(a.window, title, size, body)
+	return newModalDialog(a, title, size, body)
 }
 
 func confirmThemed(a *App, title, msg string, onOK func()) {
@@ -186,5 +186,5 @@ func confirmThemed(a *App, title, msg string, onOK func()) {
 	lbl := widget.NewLabel(msg)
 	lbl.Wrapping = fyne.TextWrapWord
 	body := container.NewBorder(nil, btns, nil, nil, lbl)
-	dlg = newModalDialog(a.window, title, fyne.NewSize(480, 220), body)
+	dlg = newModalDialog(a, title, fyne.NewSize(480, 220), body)
 }

@@ -1,13 +1,36 @@
 package ui
 
 import (
-	"fyne.io/fyne/v2/dialog"
+	"github.com/relaypane/relaypane/internal/i18n"
+
+	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/widget"
 )
 
 func dialogShow(a *App, title, msg string) {
-	dialog.ShowInformation(title, msg, a.window)
+	w := a.fyneApp.NewWindow(title)
+	w.Resize(fyne.NewSize(420, 180))
+	lbl := widget.NewLabel(msg)
+	lbl.Wrapping = fyne.TextWrapWord
+	ok := widget.NewButton(i18n.T(i18n.KeyOK), func() { w.Close() })
+	body := container.NewBorder(nil, ok, nil, nil, lbl)
+	w.SetContent(container.NewPadded(withBackground(body, colorBG)))
+	w.CenterOnScreen()
+	w.Show()
 }
 
 func dialogShowError(a *App, err error) {
-	dialog.ShowError(err, a.window)
+	if err == nil {
+		return
+	}
+	w := a.fyneApp.NewWindow(i18n.T(i18n.KeyConnectionFailed))
+	w.Resize(fyne.NewSize(480, 200))
+	lbl := widget.NewLabel(err.Error())
+	lbl.Wrapping = fyne.TextWrapWord
+	ok := widget.NewButton(i18n.T(i18n.KeyOK), func() { w.Close() })
+	body := container.NewBorder(nil, ok, nil, nil, lbl)
+	w.SetContent(container.NewPadded(withBackground(body, colorBG)))
+	w.CenterOnScreen()
+	w.Show()
 }

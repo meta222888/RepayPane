@@ -167,5 +167,5 @@ func showServerForm(a *App, initial config.Server, editMode bool, onDone func(co
 	}
 
 	body := container.NewBorder(nil, buttons, nil, nil, form)
-	dlg = newModalDialog(a.window, title, fyne.NewSize(540, 520), body)
+	dlg = newModalDialog(a, title, fyne.NewSize(540, 520), body)
 }

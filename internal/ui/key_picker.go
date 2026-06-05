@@ -66,5 +66,5 @@ func showSSHKeyPicker(a *App, current string, onPick func(path string)) {
 		nil, nil,
 		list,
 	)
-	dlg = newModalDialog(a.window, title, fyne.NewSize(620, 420), body)
+	dlg = newModalDialog(a, title, fyne.NewSize(620, 420), body)
 }

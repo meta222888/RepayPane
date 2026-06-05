@@ -96,7 +96,7 @@ func (a *App) showRemoteShell() {
 	)
 	copyHint := widget.NewLabel(i18n.T(i18n.KeyFeatShellCopyHint))
 
-	showThemedFeature(a, title, fyne.NewSize(760, 560), container.NewBorder(
+	dlg := showThemedFeature(a, title, fyne.NewSize(760, 560), container.NewBorder(
 		container.NewVBox(inputRow, histRow),
 		copyHint,
 		nil, nil,
@@ -119,8 +119,10 @@ func (a *App) showRemoteShell() {
 
 	upKey := &desktop.CustomShortcut{KeyName: fyne.KeyUp, Modifier: 0}
 	downKey := &desktop.CustomShortcut{KeyName: fyne.KeyDown, Modifier: 0}
-	a.window.Canvas().AddShortcut(upKey, func(fyne.Shortcut) { navHistory(-1) })
-	a.window.Canvas().AddShortcut(downKey, func(fyne.Shortcut) { navHistory(1) })
+	if c := dlg.Canvas(); c != nil {
+		c.AddShortcut(upKey, func(fyne.Shortcut) { navHistory(-1) })
+		c.AddShortcut(downKey, func(fyne.Shortcut) { navHistory(1) })
+	}
 }
 
 func formatShellOutput(cmd, out, errLine string) string {

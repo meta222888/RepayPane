@@ -30,7 +30,7 @@ func (a *App) promptPassphrase(onOK func(string), onCancel func()) {
 
 	buttons := container.NewHBox(cancelBtn, okBtn)
 	body := container.NewBorder(hint, buttons, nil, nil, entry)
-	dlg = newModalDialog(a.window, title, fyne.NewSize(420, 180), body)
+	dlg = newModalDialog(a, title, fyne.NewSize(420, 180), body)
 }
 
 func (a *App) askPassphraseBlocking() []byte {

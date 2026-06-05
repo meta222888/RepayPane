@@ -65,7 +65,13 @@ func (a *App) showNetworkInfo() {
 
 	split := container.NewVSplit(trafficBox, portsBox)
 	split.SetOffset(0.5)
-	showThemedFeature(a, title, fyne.NewSize(720, 560), split)
+	dlg := showThemedFeature(a, title, fyne.NewSize(720, 560), split)
+	dlg.SetOnClose(func() {
+		if stopCh != nil {
+			close(stopCh)
+			stopCh = nil
+		}
+	})
 
 	loadNetTraffic(client, trafficLbl)
 	loadNetPorts(client, setPorts)

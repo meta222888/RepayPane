@@ -2,62 +2,61 @@ package ui
 
 import (
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/theme"
-	"fyne.io/fyne/v2/widget"
 )
 
-// modalDialog is a themed modal overlay on the main window canvas (stable on Windows).
+// modalDialog is a separate native window (movable and resizable on Windows).
 type modalDialog struct {
-	popup *widget.PopUp
+	window  fyne.Window
+	onClose func()
 }
 
 func (d *modalDialog) Close() {
-	if d != nil && d.popup != nil {
-		d.popup.Hide()
+	if d == nil || d.window == nil {
+		return
 	}
+	d.window.Close()
+}
+
+func (d *modalDialog) Window() fyne.Window {
+	if d == nil {
+		return nil
+	}
+	return d.window
 }
 
 func (d *modalDialog) Canvas() fyne.Canvas {
-	if d == nil || d.popup == nil {
+	if d == nil || d.window == nil {
 		return nil
 	}
-	return d.popup.Canvas
+	return d.window.Canvas()
 }
 
-func newModalDialog(parent fyne.Window, title string, size fyne.Size, body fyne.CanvasObject) *modalDialog {
-	md := &modalDialog{}
-	onClose := func() { md.Close() }
-	card := buildDialogCard(title, body, onClose)
-	md.popup = widget.NewModalPopUp(withPopupFrame(card), parent.Canvas())
-	md.popup.Resize(size)
-	md.popup.Show()
+func (d *modalDialog) SetOnClose(fn func()) {
+	if d != nil {
+		d.onClose = fn
+	}
+}
+
+func newModalDialog(a *App, title string, size fyne.Size, body fyne.CanvasObject) *modalDialog {
+	w := a.fyneApp.NewWindow(title)
+	w.Resize(size)
+	w.SetPadded(true)
+	w.SetContent(container.NewPadded(withBackground(body, colorBG)))
+	w.CenterOnScreen()
+
+	md := &modalDialog{window: w}
+	w.SetCloseIntercept(func() {
+		if md.onClose != nil {
+			md.onClose()
+		}
+		w.SetCloseIntercept(nil)
+		w.Close()
+	})
+	w.Show()
 	return md
 }
 
-func buildDialogCard(title string, body fyne.CanvasObject, onClose func()) fyne.CanvasObject {
-	titleLbl := widget.NewLabelWithStyle(title, fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
-	closeBtn := widget.NewButtonWithIcon("", theme.CancelIcon(), onClose)
-	closeBtn.Importance = widget.LowImportance
-	titleBar := withPanelHeader(container.NewBorder(nil, nil, titleLbl, closeBtn, nil))
-	inner := container.NewBorder(titleBar, nil, nil, nil, container.NewPadded(body))
-	return withBackground(inner, colorBG)
-}
-
-func withPopupFrame(content fyne.CanvasObject) fyne.CanvasObject {
-	top := canvas.NewRectangle(colorBorder)
-	top.SetMinSize(fyne.NewSize(0, 1))
-	bottom := canvas.NewRectangle(colorBorder)
-	bottom.SetMinSize(fyne.NewSize(0, 1))
-	left := canvas.NewRectangle(colorBorder)
-	left.SetMinSize(fyne.NewSize(1, 0))
-	right := canvas.NewRectangle(colorBorder)
-	right.SetMinSize(fyne.NewSize(1, 0))
-	return container.NewBorder(top, bottom, left, right, content)
-}
-
-// showThemedWindow opens a modal dialog on the main window.
-func showThemedWindow(parent fyne.Window, title string, size fyne.Size, body fyne.CanvasObject) *modalDialog {
-	return newModalDialog(parent, title, size, body)
+func showThemedWindow(a *App, title string, size fyne.Size, body fyne.CanvasObject) *modalDialog {
+	return newModalDialog(a, title, size, body)
 }

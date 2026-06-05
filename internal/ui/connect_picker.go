@@ -76,7 +76,7 @@ func (a *App) showConnectPicker() {
 
 	buttons := container.NewHBox(cancelBtn, newBtn, connectBtn)
 	body := serverPickerBody(i18n.T(i18n.KeyConnectPickerHint), list, buttons)
-	dlg = newModalDialog(a.window, i18n.T(i18n.KeyConnectPickerTitle), serverPickerDialogSize, body)
+	dlg = newModalDialog(a, i18n.T(i18n.KeyConnectPickerTitle), serverPickerDialogSize, body)
 }
 
 func selectPickerRow(list *widget.List, selected *int, row int) {
