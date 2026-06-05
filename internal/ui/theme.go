@@ -512,9 +512,9 @@ func (t *panePathEntryTheme) Size(name fyne.ThemeSizeName) float32 {
 	case theme.SizeNameText:
 		return t.textSize
 	case theme.SizeNamePadding:
-		return 3
+		return 8
 	case theme.SizeNameInnerPadding:
-		return 1
+		return 3
 	}
 	return t.base.Size(name)
 }
