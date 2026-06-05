@@ -30,6 +30,8 @@ var (
 	colorHover          = color.NRGBA{R: 0x28, G: 0x2c, B: 0x36, A: 255}
 	colorRowSelected    = color.NRGBA{R: 0x00, G: 0x6e, B: 0x63, A: 0xcc}
 	colorRowAlt         = color.NRGBA{R: 0x22, G: 0x26, B: 0x2f, A: 255}
+	colorRowHover       = color.NRGBA{R: 0x2a, G: 0x30, B: 0x3d, A: 255}
+	colorTextHighlight  = color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 255}
 	colorStatusBar      = color.NRGBA{R: 0x13, G: 0x16, B: 0x1b, A: 255}
 	colorWarning        = color.NRGBA{R: 0xff, G: 0x8c, B: 0x42, A: 255}
 )
@@ -75,6 +77,29 @@ func dotWidget(dot *canvas.Circle, size float32) fyne.CanvasObject {
 	spacer := canvas.NewRectangle(color.Transparent)
 	spacer.SetMinSize(fyne.NewSize(size, size))
 	return container.NewStack(spacer, container.NewCenter(dot))
+}
+
+func labelCText(text string, c color.Color, size float32) *canvas.Text {
+	t := canvas.NewText(text, c)
+	t.TextSize = size
+	return t
+}
+
+func panelBand(content fyne.CanvasObject, height float32) fyne.CanvasObject {
+	bg := canvas.NewRectangle(colorPanelHeader)
+	bg.SetMinSize(fyne.NewSize(0, height))
+	line := canvas.NewRectangle(colorBorder)
+	line.SetMinSize(fyne.NewSize(0, 1))
+	return container.NewVBox(
+		container.NewStack(bg, container.NewPadded(content)),
+		line,
+	)
+}
+
+func emptyPaneSlot() fyne.CanvasObject {
+	s := canvas.NewRectangle(color.Transparent)
+	s.SetMinSize(fyne.NewSize(0, 1))
+	return s
 }
 
 type relayPaneTheme struct {
