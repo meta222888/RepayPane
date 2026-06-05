@@ -1,6 +1,9 @@
 package ui
 
-import "testing"
+import (
+	"path"
+	"testing"
+)
 
 func TestParseDuLinesTyped(t *testing.T) {
 	out := "D\t1.2G\t/usr/share/doc\nF\t4.0K\t/usr/share/file\n"
@@ -21,5 +24,17 @@ func TestParseDuLinesLegacy(t *testing.T) {
 	entries := parseDuLines(out, "/usr/share")
 	if len(entries) != 1 || entries[0].name != "doc" {
 		t.Fatalf("unexpected entries: %+v", entries)
+	}
+}
+
+func TestNormalizeDuPath(t *testing.T) {
+	if got := normalizeDuPath("//usr"); got != "/usr" {
+		t.Fatalf("//usr = %q", got)
+	}
+	if got := normalizeDuPath("/"); got != "/" {
+		t.Fatalf("/ = %q", got)
+	}
+	if got := normalizeDuPath(path.Join("/", "usr")); got != "/usr" {
+		t.Fatalf("join / + usr = %q", got)
 	}
 }

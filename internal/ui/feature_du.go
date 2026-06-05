@@ -71,11 +71,13 @@ func (a *App) showDiskUsageTree() {
 
 	var loadDu func(string)
 	loadDu = func(dir string) {
+		dir = normalizeDuPath(dir)
 		loadGen++
 		gen := loadGen
 		curPath = dir
 		pathLbl.SetText(dir)
 		entries = nil
+		list.UnselectAll()
 		list.Refresh()
 		loadingPanel.Show()
 		list.Hide()
@@ -201,4 +203,19 @@ func duSizeRank(s string) float64 {
 
 func shellQuote(s string) string {
 	return strings.ReplaceAll(s, `"`, `\"`)
+}
+
+func normalizeDuPath(p string) string {
+	p = strings.ReplaceAll(p, "\\", "/")
+	if p == "" {
+		return "/"
+	}
+	if !strings.HasPrefix(p, "/") {
+		p = "/" + p
+	}
+	cleaned := path.Clean(p)
+	if cleaned == "." {
+		return "/"
+	}
+	return cleaned
 }
