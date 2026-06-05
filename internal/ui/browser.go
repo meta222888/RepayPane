@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -24,6 +25,8 @@ type PaneKind int
 const (
 	PaneLocal PaneKind = iota
 	PaneRemote
+
+	paneDoubleClickInterval = 450 * time.Millisecond
 )
 
 type PaneClipboard struct {
@@ -54,6 +57,10 @@ type FilePane struct {
 	root           fyne.CanvasObject
 
 	selectedRow int
+	lastTapRow  int
+	lastTapTime time.Time
+	lastOpenRow int
+	lastOpenAt  time.Time
 	lastDragAbs fyne.Position
 	dragReady   bool
 	listGen     int
@@ -213,12 +220,11 @@ func (p *FilePane) updateListRow(i widget.ListItemID, obj fyne.CanvasObject) {
 	selected := idx == p.selectedRow
 
 	row.onPrimary = func() {
-		p.dismissContextMenu()
-		p.selectRow(idx)
+		p.handleRowPrimary(idx)
 	}
 	row.onDouble = func() {
-		p.selectRow(idx)
-		p.activateRow(idx)
+		p.lastTapRow = -1
+		p.openRow(idx)
 	}
 	row.onSecondary = func(ev *fyne.PointEvent) {
 		p.showContextMenu(ev.AbsolutePosition, idx)
@@ -321,13 +327,11 @@ func (p *FilePane) Navigate(path string) {
 		if !p.connected || p.app.activeClient() == nil {
 			return
 		}
-		path = strings.ReplaceAll(path, "\\", "/")
-		if path == "" {
-			path = "/"
-		}
+		path = cleanRemotePath(path)
 	}
 	p.path = path
 	p.selectedRow = -1
+	p.lastTapRow = -1
 	if p.kind == PaneLocal && p.localNav != nil {
 		p.localNav.syncFromPath(path)
 	}
@@ -363,7 +367,7 @@ func (p *FilePane) goUp() {
 	if p.path == "/" {
 		return
 	}
-	parent := filepath.Dir(strings.ReplaceAll(p.path, "\\", "/"))
+	parent := remoteParentPath(p.path)
 	p.Navigate(parent)
 }
 
@@ -431,11 +435,38 @@ func (p *FilePane) selectRow(row int) {
 		return
 	}
 	p.selectedRow = row
-	p.list.Select(widget.ListItemID(row))
+	if prev >= 0 {
+		p.list.RefreshItem(widget.ListItemID(prev))
+	}
+	p.list.RefreshItem(widget.ListItemID(row))
 }
 
 func (p *FilePane) handleListSelect(id widget.ListItemID) {
 	p.selectRow(int(id))
+}
+
+func (p *FilePane) handleRowPrimary(row int) {
+	p.dismissContextMenu()
+	now := time.Now()
+	if row == p.lastTapRow && now.Sub(p.lastTapTime) <= paneDoubleClickInterval {
+		p.lastTapRow = -1
+		p.openRow(row)
+		return
+	}
+	p.lastTapRow = row
+	p.lastTapTime = now
+	p.selectRow(row)
+}
+
+func (p *FilePane) openRow(row int) {
+	now := time.Now()
+	if row == p.lastOpenRow && now.Sub(p.lastOpenAt) <= paneDoubleClickInterval {
+		return
+	}
+	p.lastOpenRow = row
+	p.lastOpenAt = now
+	p.selectRow(row)
+	p.activateRow(row)
 }
 
 func (p *FilePane) activateRow(row int) {
@@ -843,7 +874,27 @@ func (p *FilePane) joinPath(name string) string {
 	if p.kind == PaneLocal {
 		return filepath.Join(p.path, name)
 	}
-	return filepath.ToSlash(filepath.Join(p.path, name))
+	return path.Join(cleanRemotePath(p.path), name)
+}
+
+func cleanRemotePath(p string) string {
+	p = strings.ReplaceAll(p, "\\", "/")
+	if p == "" {
+		return "/"
+	}
+	return path.Clean(p)
+}
+
+func remoteParentPath(p string) string {
+	p = cleanRemotePath(p)
+	if p == "/" {
+		return "/"
+	}
+	parent := path.Dir(p)
+	if parent == "." || parent == "" {
+		return "/"
+	}
+	return parent
 }
 
 func (p *FilePane) pathExistsAt(fullPath string) bool {
