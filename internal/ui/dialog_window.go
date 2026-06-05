@@ -1,18 +1,12 @@
 package ui
 
 import (
-	"image/color"
-
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
-
-const popupShadowSize = float32(8)
-
-var colorPopupShadow = color.NRGBA{R: 0, G: 0, B: 0, A: 120}
 
 // modalDialog is a themed modal overlay on the main window canvas (stable on Windows).
 type modalDialog struct {
@@ -60,14 +54,7 @@ func withPopupFrame(content fyne.CanvasObject) fyne.CanvasObject {
 	left.SetMinSize(fyne.NewSize(1, 0))
 	right := canvas.NewRectangle(colorBorder)
 	right.SetMinSize(fyne.NewSize(1, 0))
-	bordered := container.NewBorder(top, bottom, left, right, content)
-
-	bottomShadow := canvas.NewRectangle(colorPopupShadow)
-	bottomShadow.SetMinSize(fyne.NewSize(0, popupShadowSize))
-	rightShadow := canvas.NewRectangle(colorPopupShadow)
-	rightShadow.SetMinSize(fyne.NewSize(popupShadowSize, 0))
-
-	return container.NewBorder(nil, bottomShadow, nil, rightShadow, bordered)
+	return container.NewBorder(top, bottom, left, right, content)
 }
 
 // showThemedWindow opens a modal dialog on the main window.

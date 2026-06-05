@@ -32,17 +32,10 @@ func minimizeWindow(w fyne.Window) {
 	}
 }
 
-func toggleMaximizeWindow(w fyne.Window, maximized *bool) {
-	if runtime.GOOS != "windows" {
-		return
+func toggleMaximizeWindow(w fyne.Window) {
+	if runtime.GOOS == "windows" {
+		winToggleMaximize(w)
 	}
-	if *maximized {
-		winRestoreWindows(w)
-		*maximized = false
-		return
-	}
-	winMaximizeWindows(w)
-	*maximized = true
 }
 
 func closeWindow(w fyne.Window) {

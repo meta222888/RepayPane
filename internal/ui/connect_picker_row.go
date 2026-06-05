@@ -10,25 +10,25 @@ import (
 type connectPickerRow struct {
 	widget.BaseWidget
 
-	bg      *canvas.Rectangle
-	nameLbl *widget.Label
-	subLbl  *widget.Label
+	bg     *canvas.Rectangle
+	lineLbl *widget.Label
 }
 
 func newConnectPickerRow() *connectPickerRow {
 	r := &connectPickerRow{
 		bg:      canvas.NewRectangle(colorBG),
-		nameLbl: widget.NewLabel(""),
-		subLbl:  widget.NewLabel(""),
+		lineLbl: widget.NewLabel(""),
 	}
-	r.subLbl.Importance = widget.MediumImportance
 	r.ExtendBaseWidget(r)
 	return r
 }
 
 func (r *connectPickerRow) update(name, subtitle string, selected bool) {
-	r.nameLbl.SetText(name)
-	r.subLbl.SetText(subtitle)
+	if subtitle != "" {
+		r.lineLbl.SetText(name + "  ·  " + subtitle)
+	} else {
+		r.lineLbl.SetText(name)
+	}
 	if selected {
 		r.bg.FillColor = colorRowSelected
 	} else {
@@ -38,8 +38,7 @@ func (r *connectPickerRow) update(name, subtitle string, selected bool) {
 }
 
 func (r *connectPickerRow) CreateRenderer() fyne.WidgetRenderer {
-	text := container.NewVBox(r.nameLbl, r.subLbl)
-	content := container.NewPadded(text)
+	content := container.NewPadded(r.lineLbl)
 	return &connectPickerRowRenderer{
 		row:     r,
 		objects: []fyne.CanvasObject{r.bg, content},
@@ -59,7 +58,8 @@ func (rr *connectPickerRowRenderer) Layout(size fyne.Size) {
 }
 
 func (rr *connectPickerRowRenderer) MinSize() fyne.Size {
-	return fyne.NewSize(0, rr.objects[1].MinSize().Height)
+	h := rr.objects[1].MinSize().Height
+	return fyne.NewSize(0, h)
 }
 
 func (rr *connectPickerRowRenderer) Refresh() {

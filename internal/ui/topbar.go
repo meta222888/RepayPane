@@ -11,12 +11,11 @@ import (
 )
 
 type TopBar struct {
-	app        *App
-	root       fyne.CanvasObject
-	btnSet     *widget.Button
-	btnFeat    *widget.Button
-	btnAbout   *widget.Button
-	maximized  bool
+	app     *App
+	root    fyne.CanvasObject
+	btnSet  *widget.Button
+	btnFeat *widget.Button
+	btnAbout *widget.Button
 }
 
 func NewTopBar(app *App) *TopBar {
@@ -39,7 +38,7 @@ func NewTopBar(app *App) *TopBar {
 		minimizeWindow(t.app.window)
 	})
 	maxBtn := widget.NewButtonWithIcon("", theme.WindowMaximizeIcon(), func() {
-		toggleMaximizeWindow(t.app.window, &t.maximized)
+		toggleMaximizeWindow(t.app.window)
 	})
 	closeBtn := widget.NewButtonWithIcon("", theme.WindowCloseIcon(), func() {
 		closeWindow(t.app.window)

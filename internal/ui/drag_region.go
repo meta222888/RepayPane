@@ -42,4 +42,9 @@ func (d *dragRegion) MouseUp(*desktop.MouseEvent) {
 func (d *dragRegion) MouseIn(*desktop.MouseEvent) {}
 func (d *dragRegion) MouseOut()                     {}
 
+func (d *dragRegion) DoubleTapped(*fyne.PointEvent) {
+	toggleMaximizeWindow(d.win)
+}
+
 var _ desktop.Mouseable = (*dragRegion)(nil)
+var _ fyne.DoubleTappable = (*dragRegion)(nil)
