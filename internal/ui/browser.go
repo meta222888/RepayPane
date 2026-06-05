@@ -49,8 +49,9 @@ type FilePane struct {
 	panelPrefixLbl *widget.Label
 	localDriveLbl  *canvas.Text
 	list           *widget.List
-	listHeader fyne.CanvasObject
-	root       fyne.CanvasObject
+	listHeader     fyne.CanvasObject
+	root           fyne.CanvasObject
+	ctxMenu        *paneFloatingMenu
 
 	selectedRow int
 	lastDragAbs fyne.Position
@@ -202,7 +203,10 @@ func (p *FilePane) updateListRow(i widget.ListItemID, obj fyne.CanvasObject) {
 	row := obj.(*paneFileListRow)
 	selected := idx == p.selectedRow
 
-	row.onPrimary = func() { p.selectRow(idx) }
+	row.onPrimary = func() {
+		p.dismissContextMenu()
+		p.selectRow(idx)
+	}
 	row.onDouble = func() {
 		p.selectRow(idx)
 		p.activateRow(idx)
@@ -463,78 +467,49 @@ func (p *FilePane) beginContextMenuSelection(row int) []int {
 	return []int{row}
 }
 
-func (p *FilePane) showContextMenu(at fyne.Position, row int) {
-	deferRefresh := p.beginContextMenuSelection(row)
-
-	copyItem := fyne.NewMenuItem(i18n.T(i18n.KeyCtxCopy), p.ctxCopy)
-	pasteItem := fyne.NewMenuItem(i18n.T(i18n.KeyCtxPaste), p.ctxPaste)
-	newFolderItem := fyne.NewMenuItem(i18n.T(i18n.KeyCtxNewFolder), p.promptNewFolder)
-	newFileItem := fyne.NewMenuItem(i18n.T(i18n.KeyCtxNewFile), p.promptNewFile)
-	deleteItem := fyne.NewMenuItem(i18n.T(i18n.KeyCtxDelete), p.ctxDelete)
-
-	if p.selectedRow < 0 || p.selectedRow >= p.rowCount() || p.isParentRow(p.selectedRow) {
-		copyItem.Disabled = true
-		deleteItem.Disabled = true
-	}
-	clip := p.app.clipboard
-	if clip == nil {
-		pasteItem.Disabled = true
-	} else if clip.Kind == PaneLocal && p.kind == PaneRemote {
-		if !p.connected || p.app.activeClient() == nil {
-			pasteItem.Disabled = true
-		}
-	} else if clip.Kind == PaneRemote && p.kind == PaneLocal {
-		if !p.connected || p.app.activeClient() == nil {
-			pasteItem.Disabled = true
-		}
-	}
-	if p.kind == PaneRemote && (!p.connected || p.app.activeClient() == nil) {
-		newFolderItem.Disabled = true
-		newFileItem.Disabled = true
-		deleteItem.Disabled = true
-	}
-
-	menu := fyne.NewMenu("",
-		copyItem,
-		pasteItem,
-		fyne.NewMenuItemSeparator(),
-		newFolderItem,
-		newFileItem,
-		fyne.NewMenuItemSeparator(),
-		deleteItem,
-	)
-	w := p.app.window
-	fyne.Do(func() {
-		popup := widget.NewPopUpMenu(menu, w.Canvas())
-		popup.ShowAtPosition(at)
-	})
-	if len(deferRefresh) > 0 {
-		watchContextMenuDismiss(w, func() {
-			for _, idx := range deferRefresh {
-				if idx >= 0 && idx < p.rowCount() {
-					p.list.RefreshItem(widget.ListItemID(idx))
-				}
-			}
-		})
+func (p *FilePane) dismissContextMenu() {
+	if p.ctxMenu != nil {
+		p.ctxMenu.Dismiss()
 	}
 }
 
-func watchContextMenuDismiss(w fyne.Window, after func()) {
-	go func() {
-		for i := 0; i < 120; i++ {
-			time.Sleep(50 * time.Millisecond)
-			done := false
-			fyne.Do(func() {
-				if len(w.Canvas().Overlays().List()) == 0 {
-					after()
-					done = true
-				}
-			})
-			if done {
-				return
+func (p *FilePane) showContextMenu(at fyne.Position, row int) {
+	deferRefresh := p.beginContextMenuSelection(row)
+
+	copyDisabled := p.selectedRow < 0 || p.selectedRow >= p.rowCount() || p.isParentRow(p.selectedRow)
+
+	pasteDisabled := true
+	if clip := p.app.clipboard; clip != nil {
+		pasteDisabled = false
+		if clip.Kind == PaneLocal && p.kind == PaneRemote {
+			pasteDisabled = !p.connected || p.app.activeClient() == nil
+		} else if clip.Kind == PaneRemote && p.kind == PaneLocal {
+			pasteDisabled = !p.connected || p.app.activeClient() == nil
+		}
+	}
+
+	remoteRO := p.kind == PaneRemote && (!p.connected || p.app.activeClient() == nil)
+
+	entries := []paneMenuEntry{
+		{label: i18n.T(i18n.KeyCtxCopy), action: p.ctxCopy, disabled: copyDisabled},
+		{label: i18n.T(i18n.KeyCtxPaste), action: p.ctxPaste, disabled: pasteDisabled},
+		{separator: true},
+		{label: i18n.T(i18n.KeyCtxNewFolder), action: p.promptNewFolder, disabled: remoteRO},
+		{label: i18n.T(i18n.KeyCtxNewFile), action: p.promptNewFile, disabled: remoteRO},
+		{separator: true},
+		{label: i18n.T(i18n.KeyCtxDelete), action: p.ctxDelete, disabled: copyDisabled || remoteRO},
+	}
+
+	if p.ctxMenu == nil {
+		return
+	}
+	p.ctxMenu.ShowAtCanvas(at, entries, func() {
+		for _, idx := range deferRefresh {
+			if idx >= 0 && idx < p.rowCount() {
+				p.list.RefreshItem(widget.ListItemID(idx))
 			}
 		}
-	}()
+	})
 }
 
 func (p *FilePane) selectedName() string {

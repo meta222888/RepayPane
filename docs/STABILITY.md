@@ -49,11 +49,10 @@ Right-click, context menus, list refresh, overlays, and programmatic `w.Resize()
 
 ### Root cause: why right-click touches window size
 
-1. `widget.NewPopUpMenu` adds a canvas overlay → Fyne runs `EnsureMinSize` on next layout pass.
-2. `selectRowQuiet` + `list.RefreshItem` before the menu can change reported `MinSize` for a frame.
-3. Fyne may shrink the GLFW canvas by a few pixels (~13 px observed) to satisfy the new minimum.
+1. `widget.NewPopUpMenu` steals focus → `widget.List.FocusLost()` → `RefreshItem()` → **full list renderer refresh** → layout/`MinSize` churn → window shrinks (sometimes to GLFW minimum).
+2. `w.Resize()` guards (`restoreWindowSizeIfShrunk`) masked this as ~13 px jitter and broke edge resize while the menu was open.
 
-This is a **layout side effect**, not intentional resize. Fighting it with `w.Resize(saved)` makes the shrink **visible** (jitter) and **blocks** user edge resize while the guard loop runs.
+**Fix (in-tree menu):** file-browser context menu is `paneFloatingMenu` inside `pane_list_area` stack — **not** `PopUpMenu` / canvas overlay. No focus steal, no `w.Resize()` guards.
 
 ### Root cause: menu open + edge resize
 
@@ -83,11 +82,10 @@ This is a **layout side effect**, not intentional resize. Fighting it with `w.Re
 - **Borderless frame**: `window_frame_windows.go` — per-window HWND, `WM_NCHITTEST`, `WS_THICKFRAME`, `ReleaseCapture` + `PostMessage` for edges; title drag in `drag_region.go`.
 - **Quiet selection before menu**: `selectRowQuiet` avoids full `list.Refresh()` but still calls `RefreshItem` — candidate to defer until menu closes.
 
-### Correct fix direction (next work)
+### Correct fix (implemented)
 
-1. **Delete** `restoreWindowSizeIfShrunk` and `guardWindowSizeWhileMenuOpen` — do not replace with Win32 pinning.
-2. **Defer** `RefreshItem` / list refresh until the popup overlay is gone (watch `Overlays().List()`).
-3. Show `PopUpMenu` without any `w.Resize()` before or after.
-4. If ~13 px shrink remains after (1–3), treat it as a Fyne overlay/layout issue; fix at layout level (e.g. stable `MinSize` on pane chrome), not resize fights.
+1. **No** `PopUpMenu` on the main window for file-browser context menu.
+2. **No** `w.Resize()` guards or Win32 size pinning.
+3. In-tree `paneFloatingMenu`; defer row `RefreshItem` until menu dismiss.
 
 Do **not** regress: edge resize, title double-click maximize, drag cursor, conflict dialog, blank underlay right-click.
