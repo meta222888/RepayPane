@@ -62,9 +62,9 @@ type FilePane struct {
 	list           *widget.List
 	listPaneArea   fyne.CanvasObject
 	listArea       fyne.CanvasObject
-	listHeader     fyne.CanvasObject
-	listLoading    *paneListLoadingOverlay
-	root           fyne.CanvasObject
+	listHeader       fyne.CanvasObject
+	listLoadingHint  fyne.CanvasObject
+	root             fyne.CanvasObject
 
 	selectedRows      map[int]struct{}
 	selectionAnchor   int
@@ -113,9 +113,9 @@ func (p *FilePane) build() {
 			container.NewBorder(p.listHeader, nil, nil, nil, p.listArea))
 	} else {
 		p.listHeader = p.buildRemoteListHeader()
-		p.listLoading = newPaneListLoadingOverlay()
+		p.listLoadingHint = newPaneLoadingHint()
 		p.listPaneArea = newPaneListArea(p, p.list)
-		p.listArea = container.NewStack(p.listPaneArea, p.listLoading)
+		p.listArea = p.listPaneArea
 		p.root = container.NewBorder(p.buildRemoteChrome(), nil, nil, nil,
 			container.NewBorder(p.listHeader, nil, nil, nil, p.listArea))
 	}
@@ -177,7 +177,12 @@ func (p *FilePane) buildRemoteChrome() fyne.CanvasObject {
 	for _, b := range []*widget.Button{up, newFolder, refresh} {
 		b.Importance = widget.LowImportance
 	}
-	actions := wrapPaneChromeToolbar(container.NewHBox(up, newFolder, refresh))
+	hint := p.listLoadingHint
+	if hint == nil {
+		hint = newPaneLoadingHint()
+		p.listLoadingHint = hint
+	}
+	actions := wrapPaneChromeToolbar(container.NewHBox(up, newFolder, refresh, hint))
 
 	p.pathEntry = widget.NewEntry()
 	p.pathEntry.OnSubmitted = func(text string) {
@@ -262,22 +267,27 @@ func (p *FilePane) listContentHeight() float32 {
 }
 
 func (p *FilePane) setListLoading(v bool) {
-	if p.kind != PaneRemote || p.listLoading == nil {
+	if p.kind != PaneRemote {
 		return
 	}
-	p.listLoading.setActive(v)
-	if !v {
-		p.relayoutListPane()
-	}
+	setPaneLoadingHint(p.listLoadingHint, i18n.T(i18n.KeyPaneListingLoading), v)
 }
 
 func (p *FilePane) relayoutListPane() {
-	relayoutPaneListArea(p.listPaneArea)
-	if p.listArea != nil && p.listArea != p.listPaneArea {
-		relayoutPaneListArea(p.listArea)
+	if p.listPaneArea != nil {
+		relayoutPaneListArea(p.listPaneArea)
+		if p.list != nil {
+			sz := p.listPaneArea.Size()
+			if sz.Width > 0 && sz.Height > 0 {
+				p.list.Resize(sz)
+			}
+		}
 	}
 	if p.list != nil {
 		p.list.Refresh()
+	}
+	if p.root != nil {
+		canvas.Refresh(p.root)
 	}
 }
 
@@ -385,8 +395,8 @@ func (p *FilePane) ApplyLanguage() {
 	if p.localNav != nil {
 		p.localNav.ApplyLanguage()
 	}
-	if p.listLoading != nil {
-		p.listLoading.setText(i18n.T(i18n.KeyPaneListingLoading))
+	if p.listLoadingHint != nil {
+		setPaneLoadingHint(p.listLoadingHint, i18n.T(i18n.KeyPaneListingLoading), false)
 	}
 	p.refreshPathDisplay()
 	p.list.Refresh()
@@ -514,8 +524,9 @@ func (p *FilePane) RefreshListing() {
 				return
 			}
 			p.remote = entries
-			p.refreshListIfAllowed()
 			p.setListLoading(false)
+			p.refreshListIfAllowed()
+			p.relayoutListPane()
 		})
 	}()
 }

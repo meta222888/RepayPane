@@ -61,23 +61,9 @@ func (l paneListStackLayout) Layout(objects []fyne.CanvasObject, size fyne.Size)
 		return
 	}
 	underlay, list := objects[0], objects[1]
-	contentH := l.pane.listContentHeight()
-	listH := contentH
-	if listH > size.Height {
-		listH = size.Height
-	}
-	// Shrink the list to visible rows so blank area below receives underlay taps (context menu).
-	list.Resize(fyne.NewSize(size.Width, listH))
+	list.Resize(size)
 	list.Move(fyne.NewPos(0, 0))
-
-	gap := size.Height - listH
-	if gap < 1 {
-		underlay.Hide()
-		return
-	}
-	underlay.Show()
-	underlay.Resize(fyne.NewSize(size.Width, gap))
-	underlay.Move(fyne.NewPos(0, listH))
+	underlay.Hide()
 }
 
 func newPaneListArea(p *FilePane, list *widget.List) fyne.CanvasObject {
@@ -92,6 +78,7 @@ func relayoutPaneListArea(area fyne.CanvasObject) {
 	}
 	size := area.Size()
 	if size.Width > 0 && size.Height > 0 {
+		area.Resize(fyne.NewSize(size.Width, size.Height+1))
 		area.Resize(size)
 	}
 	canvas.Refresh(area)
