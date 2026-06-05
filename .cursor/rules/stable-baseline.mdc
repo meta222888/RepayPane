@@ -1,0 +1,39 @@
+---
+description: RelayPane stable UI baseline; revert window/file-browser work here when regressions appear
+alwaysApply: true
+---
+
+# Stable baseline: `5268dc3`
+
+**Tag:** `stable-baseline` → commit `5268dc3`  
+**Message:** Remove fixed blank strip below file list panes.
+
+This is the **current most stable** build. Only known issue: a **small one-time jitter** when the file-browser context menu opens.
+
+## When to revert
+
+If borderless window, file browser, or context menu changes cause regressions (window shrinks, jumps, falls behind, resize/drag breaks), **restore this baseline first**:
+
+```bash
+git checkout stable-baseline -- .
+go build -o dev/RelayPane-dev.exe ./cmd/relaypane
+```
+
+## Window size invariant
+
+Window size may change **only** from:
+
+1. Dragging window **edges**
+2. **Double-click** the title bar (maximize / restore)
+
+Right-click menus, list refresh, overlays, and `w.Resize()` guards must **not** resize the window.
+
+## Why right-click affected size (for future fixes)
+
+- Fyne `PopUpMenu` overlay triggers `EnsureMinSize` on the next paint frame.
+- List `RefreshItem` before menu can change reported `MinSize`.
+- `restoreWindowSizeIfShrunk` / `guardWindowSizeWhileMenuOpen` in `browser.go` call `w.Resize()` → visible jitter.
+
+Do **not** fix with `w.Resize()` fights, Win32 `SetWindowPos` pinning, or wndproc `WM_SIZE` hooks (caused jump / fall-behind).
+
+Safer: show menu without extra list refresh; never `window.Resize` from menu paths.
