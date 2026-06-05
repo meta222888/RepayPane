@@ -7,13 +7,17 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/driver/desktop"
+	"fyne.io/fyne/v2/layout"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
 
 const (
 	paneRowNameSize  float32 = 12
 	paneRowMetaSize  float32 = 11
-	paneRowMinHeight float32 = 26
+	paneRowMinHeight float32 = 28
+	paneRowPadH      float32 = 4
+	paneRowPadV      float32 = 2
 )
 
 type paneFileListRow struct {
@@ -238,7 +242,8 @@ func (r *paneFileListRow) CreateRenderer() fyne.WidgetRenderer {
 			r.onRenameCommit(text)
 		}
 	}
-	nameCol := container.NewStack(r.nameT, container.NewMax(r.nameEntry))
+	entryThemed := container.NewThemeOverride(r.nameEntry, newPaneRenameEntryTheme())
+	nameCol := container.NewStack(r.nameT, container.NewMax(entryThemed))
 
 	var row fyne.CanvasObject
 	if r.remote {
@@ -254,7 +259,8 @@ func (r *paneFileListRow) CreateRenderer() fyne.WidgetRenderer {
 		row = container.NewBorder(nil, nil, nil, r.rightT, nameCol)
 	}
 
-	content := container.NewStack(r.bg, container.NewPadded(row))
+	padded := container.New(layout.NewCustomPaddedLayout(paneRowPadH, paneRowPadV, paneRowPadH, paneRowPadV), row)
+	content := container.NewStack(r.bg, padded)
 	return widget.NewSimpleRenderer(content)
 }
 
@@ -268,3 +274,36 @@ var _ fyne.Draggable = (*paneFileListRow)(nil)
 var _ desktop.Hoverable = (*paneFileListRow)(nil)
 var _ desktop.Mouseable = (*paneFileListRow)(nil)
 var _ desktop.Cursorable = (*paneFileListRow)(nil)
+
+// paneRenameEntryTheme shrinks Entry padding/text so rename fits compact list rows.
+type paneRenameEntryTheme struct {
+	base fyne.Theme
+}
+
+func newPaneRenameEntryTheme() fyne.Theme {
+	return &paneRenameEntryTheme{base: fyne.CurrentApp().Settings().Theme()}
+}
+
+func (t *paneRenameEntryTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) color.Color {
+	return t.base.Color(name, variant)
+}
+
+func (t *paneRenameEntryTheme) Font(style fyne.TextStyle) fyne.Resource {
+	return t.base.Font(style)
+}
+
+func (t *paneRenameEntryTheme) Icon(name fyne.ThemeIconName) fyne.Resource {
+	return t.base.Icon(name)
+}
+
+func (t *paneRenameEntryTheme) Size(name fyne.ThemeSizeName) float32 {
+	switch name {
+	case theme.SizeNameText:
+		return paneRowNameSize
+	case theme.SizeNamePadding:
+		return 2
+	case theme.SizeNameInnerPadding:
+		return 2
+	}
+	return t.base.Size(name)
+}
