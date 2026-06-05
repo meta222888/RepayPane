@@ -197,7 +197,13 @@ func (p *FilePane) rowCount() int {
 }
 
 func (p *FilePane) listContentHeight() float32 {
-	return float32(p.rowCount()) * paneRowMinHeight
+	n := p.rowCount()
+	if n == 0 {
+		return 0
+	}
+	// Match widget.List row spacing (item height + theme padding between rows).
+	pad := fyne.CurrentApp().Settings().Theme().Size(theme.SizeNamePadding)
+	return float32(n)*paneRowMinHeight + float32(n-1)*pad
 }
 
 func (p *FilePane) updateListRow(i widget.ListItemID, obj fyne.CanvasObject) {
