@@ -31,7 +31,10 @@ var (
 	colorDisconnected   = color.NRGBA{R: 0x6b, G: 0x72, B: 0x80, A: 255}
 	colorTabActive      = color.NRGBA{R: 0x1a, G: 0x1d, B: 0x23, A: 255}
 	colorTabInactive    = color.NRGBA{R: 0x22, G: 0x26, B: 0x2f, A: 255}
-	colorHover          = color.NRGBA{R: 0x28, G: 0x2c, B: 0x36, A: 255}
+	// Semi-transparent overlays for button hover/focus — must not be opaque or accent turns gray.
+	colorHover          = color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0x22}
+	colorFocus          = color.NRGBA{R: 0x00, G: 0xc8, B: 0xb4, A: 0x40}
+	colorPressed        = color.NRGBA{R: 0x00, G: 0x00, B: 0x00, A: 0x28}
 	colorRowSelected    = color.NRGBA{R: 0x00, G: 0x6e, B: 0x63, A: 0xcc}
 	colorRowAlt         = color.NRGBA{R: 0x22, G: 0x26, B: 0x2f, A: 255}
 	colorRowHover       = color.NRGBA{R: 0x2a, G: 0x30, B: 0x3d, A: 255}
@@ -233,6 +236,10 @@ func (relayPaneTheme) Color(name fyne.ThemeColorName, _ fyne.ThemeVariant) color
 		return colorAccentText
 	case theme.ColorNameHover:
 		return colorHover
+	case theme.ColorNameFocus:
+		return colorFocus
+	case theme.ColorNamePressed:
+		return colorPressed
 	case theme.ColorNameInputBackground:
 		return colorInput
 	case theme.ColorNameInputBorder:
