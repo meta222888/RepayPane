@@ -6,38 +6,31 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 )
 
 const (
-	paneFileSizeColWidth      float32 = 76
-	paneFileModifiedColWidth  float32 = 132
-	paneFileEdgeRightGap      float32 = 6
+	paneFileSizeColWidth     float32 = 76
+	paneFileModifiedColWidth float32 = 138
+	paneFileEdgeRightGap     float32 = 6
+	paneFileListScrollGutter float32 = 12
 )
+
+func paneFileListRightPad() float32 {
+	return paneFileEdgeRightGap + paneFileListScrollGutter
+}
 
 // paneRightText right-aligns a single-line canvas.Text within its width.
 type paneRightText struct {
 	widget.BaseWidget
-	text       *canvas.Text
-	rightInset float32
+	text *canvas.Text
 }
 
 func newPaneRightText(text string, c color.Color, size float32) *paneRightText {
-	return newPaneRightTextInset(text, c, size, 0)
-}
-
-func newPaneModifiedText(text string, c color.Color, size float32) *paneRightText {
-	inset := paneFileEdgeRightGap - paneRowPadH
-	if inset < 0 {
-		inset = 0
-	}
-	return newPaneRightTextInset(text, c, size, inset)
-}
-
-func newPaneRightTextInset(text string, c color.Color, size float32, rightInset float32) *paneRightText {
 	t := canvas.NewText(text, c)
 	t.TextSize = size
-	p := &paneRightText{text: t, rightInset: rightInset}
+	p := &paneRightText{text: t}
 	p.ExtendBaseWidget(p)
 	return p
 }
@@ -70,7 +63,11 @@ func (r *paneRightTextRenderer) Layout(size fyne.Size) {
 	if sz.Height < r.text.TextSize {
 		sz.Height = r.text.TextSize
 	}
-	r.text.Move(fyne.NewPos(size.Width-sz.Width-r.box.rightInset, (size.Height-sz.Height)/2))
+	x := size.Width - sz.Width
+	if x < 0 {
+		x = 0
+	}
+	r.text.Move(fyne.NewPos(x, (size.Height-sz.Height)/2))
 }
 
 func (r *paneRightTextRenderer) MinSize() fyne.Size {
@@ -100,6 +97,15 @@ func paneFileMetaColumns(sizeCol, modifiedCol fyne.CanvasObject) fyne.CanvasObje
 
 func paneFileMetaHeader(sizeLabel, modifiedLabel string) fyne.CanvasObject {
 	sizeCol := newPaneRightText(sizeLabel, colorMuted, paneRowMetaSize)
-	modifiedCol := newPaneModifiedText(modifiedLabel, colorMuted, paneRowMetaSize)
+	modifiedCol := newPaneRightText(modifiedLabel, colorMuted, paneRowMetaSize)
 	return paneFileMetaColumns(sizeCol, modifiedCol)
+}
+
+func paneFileListHeaderRow(nameCol, metaCols fyne.CanvasObject) fyne.CanvasObject {
+	row := container.NewBorder(nil, nil, nil, metaCols, nameCol)
+	extra := paneFileListRightPad() - paneRowPadH
+	if extra > 0 {
+		row = container.New(layout.NewCustomPaddedLayout(0, 0, extra, 0), row)
+	}
+	return row
 }

@@ -235,11 +235,11 @@ func (r *paneFileListRow) CreateRenderer() fyne.WidgetRenderer {
 	nameCol := container.NewStack(r.nameT, container.NewMax(entryThemed))
 
 	r.sizeT = newPaneRightText("", colorMuted, paneRowMetaSize)
-	r.metaT = newPaneModifiedText("", colorMuted, paneRowMetaSize)
+	r.metaT = newPaneRightText("", colorMuted, paneRowMetaSize)
 	right := paneFileMetaColumns(r.sizeT, r.metaT)
 	row := container.NewBorder(nil, nil, nil, right, nameCol)
 
-	padded := container.New(layout.NewCustomPaddedLayout(paneRowPadH, paneRowPadV, paneRowPadH, paneRowPadV), row)
+	padded := container.New(layout.NewCustomPaddedLayout(paneRowPadH, paneRowPadV, paneFileListRightPad(), paneRowPadV), row)
 	content := container.NewStack(r.bg, padded)
 	return widget.NewSimpleRenderer(content)
 }

@@ -125,7 +125,7 @@ func (p *FilePane) build() {
 
 func (p *FilePane) buildLocalListHeader() fyne.CanvasObject {
 	nameCol := labelCBandText(i18n.T(i18n.KeyColName), colorMuted, paneRowMetaSize)
-	row := container.NewBorder(nil, nil, nil, paneFileMetaHeader(i18n.T(i18n.KeyColSize), i18n.T(i18n.KeyColModified)), nameCol)
+	row := paneFileListHeaderRow(nameCol, paneFileMetaHeader(i18n.T(i18n.KeyColSize), i18n.T(i18n.KeyColModified)))
 	return paneBand(row)
 }
 
@@ -156,7 +156,7 @@ func (p *FilePane) buildLocalChrome() fyne.CanvasObject {
 
 func (p *FilePane) buildRemoteListHeader() fyne.CanvasObject {
 	nameCol := labelCBandText(i18n.T(i18n.KeyColName), colorMuted, paneRowMetaSize)
-	row := container.NewBorder(nil, nil, nil, paneFileMetaHeader(i18n.T(i18n.KeyColSize), i18n.T(i18n.KeyColModified)), nameCol)
+	row := paneFileListHeaderRow(nameCol, paneFileMetaHeader(i18n.T(i18n.KeyColSize), i18n.T(i18n.KeyColModified)))
 	return paneBand(row)
 }
 
