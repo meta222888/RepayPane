@@ -87,7 +87,7 @@ func (a *App) showNetworkInfo() {
 		autoRefresh,
 	)
 	trafficBox := container.NewBorder(trafficHeader, refreshTraffic, nil, nil,
-		container.NewVBox(trafficState.summary, trafficScroll))
+		container.NewBorder(trafficState.summary, nil, nil, nil, trafficScroll))
 
 	portsHeader := widget.NewLabelWithStyle(i18n.T(i18n.KeyFeatNetPorts), fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
 	portsBox := container.NewBorder(portsHeader, refreshPorts, nil, nil, portsScroll)
