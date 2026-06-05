@@ -260,15 +260,14 @@ func (p *FilePane) setListLoading(v bool) {
 }
 
 func (p *FilePane) relayoutListPane() {
-	if p.listPaneArea != nil {
-		relayoutPaneListArea(p.listPaneArea)
-		if p.list != nil {
-			sz := p.listPaneArea.Size()
-			if sz.Width > 0 && sz.Height > 0 {
-				p.list.Resize(sz)
-			}
-		}
+	if p.listPaneArea == nil {
+		return
 	}
+	sz := p.listPaneArea.Size()
+	if sz.Width <= 0 || sz.Height <= 0 {
+		return
+	}
+	relayoutPaneListArea(p.listPaneArea)
 	if p.root != nil {
 		canvas.Refresh(p.root)
 	}
@@ -280,14 +279,16 @@ func (p *FilePane) syncListView() {
 	}
 	p.pendingListRefresh = false
 	p.list.ScrollToTop()
-	p.relayoutListPane()
 	p.list.UnselectAll()
-	// Full refresh must run after relayout: list.Resize triggers updateList(newOnly)
-	// which reuses visible rows without rebinding when row IDs stay the same.
 	p.list.Refresh()
-	if p.listPaneArea != nil {
-		canvas.Refresh(p.listPaneArea)
-	}
+	p.relayoutListPane()
+	// Layout may run before the pane has a real size; retry once on the next frame.
+	fyne.Do(func() {
+		p.relayoutListPane()
+		if p.listPaneArea != nil {
+			canvas.Refresh(p.listPaneArea)
+		}
+	})
 }
 
 func (p *FilePane) updateListRow(i widget.ListItemID, obj fyne.CanvasObject) {

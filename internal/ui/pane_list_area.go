@@ -32,11 +32,17 @@ func (b *paneListUnderlay) MinSize() fyne.Size {
 
 func (b *paneListUnderlay) Tapped(*fyne.PointEvent) {
 	b.pane.noteActive()
+	if c := b.pane.app.window.Canvas(); c != nil {
+		c.Unfocus()
+	}
 	b.pane.clearSelectionQuiet()
 }
 
 func (b *paneListUnderlay) TappedSecondary(ev *fyne.PointEvent) {
 	b.pane.noteActive()
+	if c := b.pane.app.window.Canvas(); c != nil {
+		c.Unfocus()
+	}
 	if b.pane.renamingRow >= 0 {
 		b.pane.finishRenameBlurFromUI()
 	}
@@ -111,6 +117,9 @@ func relayoutPaneListArea(area fyne.CanvasObject) {
 	if size.Width > 0 && size.Height > 0 {
 		area.Resize(fyne.NewSize(size.Width, size.Height+1))
 		area.Resize(size)
+	}
+	if w, ok := area.(fyne.Widget); ok {
+		w.Refresh()
 	}
 	canvas.Refresh(area)
 }
