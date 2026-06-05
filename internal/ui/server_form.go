@@ -113,6 +113,7 @@ func showServerForm(a *App, initial config.Server, editMode bool, onDone func(co
 			AutoSSHKey:   autoSSH,
 			PrivateKey:   keyPath,
 			RemoteRoot:   strings.TrimSpace(root.Text),
+			LocalRoot:    initial.LocalRoot,
 			HeartbeatSec: hb,
 		}
 		if s.Host == "" || s.Username == "" {

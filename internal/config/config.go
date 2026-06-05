@@ -25,6 +25,7 @@ type Server struct {
 	AutoSSHKey    bool   `json:"auto_ssh_key,omitempty"`
 	PrivateKey    string `json:"private_key_path,omitempty"`
 	RemoteRoot    string `json:"remote_root,omitempty"`
+	LocalRoot     string `json:"local_root,omitempty"`
 	HeartbeatSec  int    `json:"heartbeat_sec,omitempty"`
 }
 

@@ -96,6 +96,11 @@ func NewApp(a fyne.App, w fyne.Window) *App {
 	w.SetPadded(false)
 	w.SetContent(container.NewStack(bg, body))
 	w.SetOnDropped(appUI.onWindowDropped)
+	w.SetCloseIntercept(func() {
+		appUI.saveActiveServerLocalPath()
+		w.SetCloseIntercept(nil)
+		w.Close()
+	})
 	appUI.applyLanguage()
 	appUI.tabBar.Refresh()
 	appUI.statusBar.Refresh()
@@ -152,8 +157,12 @@ func (a *App) activateTab(index int) {
 	if index < 0 || index >= len(a.tabs) {
 		return
 	}
+	if a.activeTab >= 0 && a.activeTab < len(a.tabs) && a.activeTab != index {
+		a.saveLocalPathForTab(a.activeTab)
+	}
 	a.activeTab = index
 	tab := a.tabs[index]
+	a.restoreLocalPathForServer(&tab.server)
 	a.tabBar.Refresh()
 	a.statusBar.Refresh()
 
@@ -226,6 +235,9 @@ func (a *App) connectTab(tab *TabSession) {
 func (a *App) closeTab(index int) {
 	if index < 0 || index >= len(a.tabs) {
 		return
+	}
+	if index == a.activeTab {
+		a.saveLocalPathForTab(index)
 	}
 	tab := a.tabs[index]
 	if tab.client != nil {
