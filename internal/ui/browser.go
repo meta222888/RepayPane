@@ -91,12 +91,7 @@ func (p *FilePane) build() {
 func (p *FilePane) buildListHeader() fyne.CanvasObject {
 	name := widget.NewLabel(strings.ToUpper(i18n.T(i18n.KeyColName)))
 	size := widget.NewLabel(strings.ToUpper(i18n.T(i18n.KeyColSize)))
-	meta := widget.NewLabel("")
-	if p.kind == PaneRemote {
-		meta.SetText(strings.ToUpper(i18n.T(i18n.KeyColModified)))
-	} else {
-		meta.SetText(strings.ToUpper(i18n.T(i18n.KeyColModified)))
-	}
+	meta := widget.NewLabel(strings.ToUpper(i18n.T(i18n.KeyColModified)))
 	name.Importance = widget.MediumImportance
 	size.Importance = widget.MediumImportance
 	meta.Importance = widget.MediumImportance
@@ -121,14 +116,18 @@ func (p *FilePane) buildToolbar() fyne.CanvasObject {
 		return withPanelHeader(left)
 	}
 
-	serverIcon := widget.NewLabel("⬡")
-	left := container.NewHBox(serverIcon, btns)
+	left := container.NewHBox(widget.NewLabel("🖥"), btns)
 	return withPanelHeader(left)
 }
 
 func (p *FilePane) buildPanelHeader() fyne.CanvasObject {
+	icon := "💻"
+	if p.kind == PaneRemote {
+		icon = "🖥"
+	}
+	iconLbl := widget.NewLabel(icon)
 	p.panelPrefixLbl = widget.NewLabel("")
-	p.panelPrefixLbl.TextStyle = fyne.TextStyle{Bold: true}
+	p.panelPrefixLbl.Importance = widget.MediumImportance
 	p.pathEntry = widget.NewEntry()
 	p.pathEntry.OnSubmitted = func(text string) {
 		text = strings.TrimSpace(text)
@@ -136,7 +135,8 @@ func (p *FilePane) buildPanelHeader() fyne.CanvasObject {
 			p.Navigate(text)
 		}
 	}
-	row := container.NewBorder(nil, nil, p.panelPrefixLbl, nil, p.pathEntry)
+	titleRow := container.NewHBox(iconLbl, p.panelPrefixLbl)
+	row := container.NewBorder(nil, nil, titleRow, nil, p.pathEntry)
 	return withPanelLabel(row)
 }
 
@@ -184,10 +184,10 @@ func (p *FilePane) updateListRow(i widget.ListItemID, obj fyne.CanvasObject) {
 		p.selectRow(idx)
 		p.showContextMenu(ev.AbsolutePosition)
 	}
-	row.setSelected(idx == p.selectedRow)
+	row.setRowStyle(idx, idx == p.selectedRow)
 
 	if p.isParentRow(idx) {
-		row.nameLbl.SetText("📁  ..")
+		row.nameLbl.SetText("↩  ..")
 		row.sizeLbl.SetText("—")
 		row.metaLbl.SetText("—")
 		return
@@ -238,9 +238,9 @@ func (p *FilePane) ApplyLanguage() {
 func (p *FilePane) refreshPathDisplay() {
 	if p.panelPrefixLbl != nil {
 		if p.kind == PaneLocal {
-			p.panelPrefixLbl.SetText("💾  " + i18n.T(i18n.KeyPanelLocal))
+			p.panelPrefixLbl.SetText(i18n.T(i18n.KeyPanelLocal))
 		} else {
-			p.panelPrefixLbl.SetText("⬡  " + i18n.T(i18n.KeyPanelRemote))
+			p.panelPrefixLbl.SetText(i18n.T(i18n.KeyPanelRemote))
 		}
 	}
 	if p.pathEntry != nil {

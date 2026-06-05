@@ -25,7 +25,7 @@ func newFileListRow() *fileListRow {
 		nameLbl: widget.NewLabel(""),
 		sizeLbl: widget.NewLabel(""),
 		metaLbl: widget.NewLabel(""),
-		bg:      canvas.NewRectangle(colorBG),
+		bg:      canvas.NewRectangle(colorPanel),
 	}
 	r.sizeLbl.Alignment = fyne.TextAlignTrailing
 	r.metaLbl.Alignment = fyne.TextAlignTrailing
@@ -51,11 +51,22 @@ func (r *fileListRow) TappedSecondary(ev *fyne.PointEvent) {
 	}
 }
 
+func (r *fileListRow) setRowStyle(rowIndex int, selected bool) {
+	if selected {
+		r.bg.FillColor = colorRowSelected
+	} else if rowIndex%2 == 0 {
+		r.bg.FillColor = colorPanel
+	} else {
+		r.bg.FillColor = colorRowAlt
+	}
+	canvas.Refresh(r.bg)
+}
+
 func (r *fileListRow) setSelected(selected bool) {
 	if selected {
 		r.bg.FillColor = colorRowSelected
 	} else {
-		r.bg.FillColor = colorBG
+		r.bg.FillColor = colorPanel
 	}
 	canvas.Refresh(r.bg)
 }
@@ -81,7 +92,11 @@ func (rr *fileListRowRenderer) Layout(size fyne.Size) {
 }
 
 func (rr *fileListRowRenderer) MinSize() fyne.Size {
-	return fyne.NewSize(0, rr.objects[1].MinSize().Height)
+	h := float32(26)
+	if mh := rr.objects[1].MinSize().Height; mh > h {
+		h = mh
+	}
+	return fyne.NewSize(0, h)
 }
 
 func (rr *fileListRowRenderer) Refresh() {

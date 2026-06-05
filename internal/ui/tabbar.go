@@ -22,9 +22,11 @@ func NewTabBar(app *App) *TabBar {
 
 func (t *TabBar) Container() fyne.CanvasObject {
 	scroll := container.NewHScroll(t.inner)
-	scroll.SetMinSize(fyne.NewSize(0, 36))
+	scroll.SetMinSize(fyne.NewSize(0, 38))
 	dragLayer := newDragRegion(t.app.window, layout.NewSpacer())
-	return container.NewStack(dragLayer, withBorderBottom(scroll))
+	tabBg := canvas.NewRectangle(colorTabInactive)
+	stack := container.NewStack(tabBg, container.NewStack(dragLayer, container.NewPadded(scroll)))
+	return container.NewVBox(stack, separatorLine())
 }
 
 func (t *TabBar) Refresh() {
@@ -34,7 +36,7 @@ func (t *TabBar) Refresh() {
 		active := i == t.app.activeTab
 		t.inner.Add(t.buildTab(idx, tab, active))
 	}
-	addBtn := widget.NewButton(i18n.T(i18n.KeyNewTabConnect), t.app.onNewTab)
+	addBtn := widget.NewButton("+ "+i18n.T(i18n.KeyNewTabConnect), t.app.onNewTab)
 	addBtn.Importance = widget.LowImportance
 	t.inner.Add(addBtn)
 	t.inner.Refresh()
@@ -42,28 +44,38 @@ func (t *TabBar) Refresh() {
 
 func (t *TabBar) buildTab(idx int, tab *TabSession, active bool) fyne.CanvasObject {
 	dotColor := colorDisconnected
-	if tab.state == tabConnected {
+	switch tab.state {
+	case tabConnected:
 		dotColor = colorConnected
+	case tabConnecting:
+		dotColor = colorWarning
 	}
-	dot := canvas.NewText("●", dotColor)
-	dot.TextSize = 10
+	dot := canvas.NewCircle(dotColor)
 
 	name := tab.server.Name
 	if name == "" {
 		name = tab.server.Host
 	}
-	if len(name) > 20 {
-		name = name[:18] + "…"
+	if len(name) > 16 {
+		name = name[:14] + "…"
 	}
 
-	nameLbl := widget.NewLabel(name)
+	nameColor := colorForeground
+	if !active {
+		nameColor = colorMuted
+	}
+	nameT := canvas.NewText(name, nameColor)
+	nameT.TextSize = 12
 
-	selectArea := container.NewHBox(dot, widget.NewLabel("⬡"), nameLbl)
+	hostT := canvas.NewText(tab.addr(), colorDisconnected)
+	hostT.TextSize = 10
+
+	serverIcon := canvas.NewText("🖥", colorAccent)
+	serverIcon.TextSize = 11
+
+	selectArea := container.NewHBox(dotWidget(dot, 8), serverIcon, nameT, hostT)
 	selectBtn := widget.NewButton("", func() { t.app.activateTab(idx) })
 	selectBtn.Importance = widget.LowImportance
-	if active {
-		selectBtn.Importance = widget.MediumImportance
-	}
 
 	closeBtn := widget.NewButtonWithIcon("", theme.CancelIcon(), func() {
 		t.app.closeTab(idx)
@@ -77,11 +89,18 @@ func (t *TabBar) buildTab(idx int, tab *TabSession, active bool) fyne.CanvasObje
 		bgColor = colorTabActive
 	}
 	bg := canvas.NewRectangle(bgColor)
-	stack := container.NewStack(bg, tabRow)
+	bg.SetMinSize(fyne.NewSize(180, 34))
+	stack := container.NewStack(bg, container.NewPadded(tabRow))
 	if active {
-		accent := canvas.NewRectangle(colorAccent)
-		accent.SetMinSize(fyne.NewSize(0, 2))
-		return container.NewBorder(accent, nil, nil, nil, stack)
+		topLine := canvas.NewRectangle(colorAccent)
+		topLine.SetMinSize(fyne.NewSize(0, 2))
+		return container.NewBorder(topLine, nil, nil, nil, stack)
 	}
 	return stack
+}
+
+func separatorLine() fyne.CanvasObject {
+	line := canvas.NewRectangle(colorBorder)
+	line.SetMinSize(fyne.NewSize(0, 1))
+	return line
 }

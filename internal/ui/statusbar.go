@@ -71,9 +71,9 @@ func (p *slimProgressBar) CreateRenderer() fyne.WidgetRenderer {
 }
 
 type StatusBar struct {
-	app        *App
-	connIcon   *canvas.Text
-	conn       *widget.Label
+	app      *App
+	connDot  *canvas.Circle
+	conn     *widget.Label
 	syncLabel  *widget.Label
 	speed      *widget.Label
 	progress   *slimProgressBar
@@ -85,8 +85,7 @@ type StatusBar struct {
 
 func NewStatusBar(app *App) *StatusBar {
 	s := &StatusBar{app: app}
-	s.connIcon = canvas.NewText("○", colorDisconnected)
-	s.connIcon.TextSize = 11
+	s.connDot = canvas.NewCircle(colorDisconnected)
 	s.conn = widget.NewLabel(i18n.T(i18n.KeyDisconnected))
 	s.syncLabel = widget.NewLabel("")
 	s.syncLabel.Hide()
@@ -97,7 +96,7 @@ func NewStatusBar(app *App) *StatusBar {
 	s.sep.SetMinSize(fyne.NewSize(1, 12))
 	s.queue = widget.NewLabel(i18n.Tf(i18n.KeyStatusQueue, 0))
 
-	left := container.NewHBox(s.connIcon, s.conn, s.syncLabel)
+	left := container.NewHBox(dotWidget(s.connDot, 8), s.conn, s.syncLabel)
 	right := container.NewHBox(s.speed, s.progress, s.percent, s.sep, s.queue)
 	inner := container.NewBorder(nil, nil, left, right, nil)
 	s.root = withStatusBar(inner)
@@ -109,15 +108,13 @@ func (s *StatusBar) Container() fyne.CanvasObject { return s.root }
 func (s *StatusBar) Refresh() {
 	sess := s.app.activeSession()
 	if sess == nil || sess.state != tabConnected {
-		s.connIcon.Text = "○"
-		s.connIcon.Color = colorDisconnected
+		s.connDot.FillColor = colorDisconnected
 		s.conn.SetText(i18n.T(i18n.KeyDisconnected))
 	} else {
-		s.connIcon.Text = "●"
-		s.connIcon.Color = colorConnected
-		s.conn.SetText(i18n.T(i18n.KeyStatusConnected) + " " + sess.server.Name)
+		s.connDot.FillColor = colorConnected
+		s.conn.SetText(i18n.T(i18n.KeyStatusConnected) + " " + sess.addr())
 	}
-	canvas.Refresh(s.connIcon)
+	canvas.Refresh(s.connDot)
 	s.RefreshTransfer()
 }
 
