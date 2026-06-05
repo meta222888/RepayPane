@@ -1,6 +1,9 @@
 package ui
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestParseNetIfaces(t *testing.T) {
 	out := "eth0\t1234567890\t987654321\n" +
@@ -45,5 +48,19 @@ func TestFormatBytesPerSec(t *testing.T) {
 	}
 	if got := formatBytesPerSec(1536); got != "1.5 KB/s" {
 		t.Fatalf("1536 = %q", got)
+	}
+}
+
+func TestCompactPortOutput(t *testing.T) {
+	in := "=== Listening Ports ===\n\n\nNetid State Recv-Q Send-Q Local Address:Port\n\ntcp   LISTEN 0      128    0.0.0.0:22\n"
+	out := compactPortOutput(in)
+	if strings.Contains(out, "===") {
+		t.Fatalf("header line should be removed: %q", out)
+	}
+	if strings.Contains(out, "\n\n") {
+		t.Fatalf("blank lines should be removed: %q", out)
+	}
+	if !strings.Contains(out, "tcp   LISTEN") {
+		t.Fatalf("missing port line: %q", out)
 	}
 }

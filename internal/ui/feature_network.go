@@ -52,7 +52,7 @@ func (a *App) showNetworkInfo() {
 	}
 	trafficState.summary.Importance = widget.MediumImportance
 	trafficScroll := container.NewVScroll(trafficState.box)
-	setPorts, portsScroll := scrollLineList()
+	setPorts, portsScroll := scrollSelectableText()
 
 	autoRefresh := widget.NewCheck(i18n.T(i18n.KeyFeatNetAutoRefresh), nil)
 	autoRefresh.SetChecked(true)
@@ -310,6 +310,28 @@ func formatBytesPerSec(bps float64) string {
 	return strconv.FormatFloat(bps/(1024*1024*1024), 'f', 2, 64) + " GB/s"
 }
 
+func compactPortOutput(out string) string {
+	lines := strings.Split(out, "\n")
+	var buf strings.Builder
+	first := true
+	for _, line := range lines {
+		line = strings.TrimRight(line, "\r")
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			continue
+		}
+		if strings.HasPrefix(trimmed, "===") {
+			continue
+		}
+		if !first {
+			buf.WriteByte('\n')
+		}
+		buf.WriteString(trimmed)
+		first = false
+	}
+	return buf.String()
+}
+
 func loadNetPorts(client *remote.Client, setText func(string)) {
 	setText(i18n.T(i18n.KeyFeatLoading))
 	go func() {
@@ -319,7 +341,7 @@ func loadNetPorts(client *remote.Client, setText func(string)) {
 				setText(err.Error())
 				return
 			}
-			setText(strings.TrimSpace(out))
+			setText(compactPortOutput(out))
 		})
 	}()
 }
