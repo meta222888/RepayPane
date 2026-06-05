@@ -8,12 +8,6 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-const (
-	paneLocalMetaColWidth  float32 = 200
-	paneRemoteMetaColWidth float32 = 128
-	paneRemoteSizeColWidth float32 = 72
-)
-
 // paneEllipsisText draws a single-line label truncated with "…" to fit its width.
 type paneEllipsisText struct {
 	widget.BaseWidget

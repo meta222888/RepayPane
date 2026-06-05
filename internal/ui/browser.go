@@ -125,8 +125,7 @@ func (p *FilePane) build() {
 
 func (p *FilePane) buildLocalListHeader() fyne.CanvasObject {
 	nameCol := labelCBandText(i18n.T(i18n.KeyColName), colorMuted, paneRowMetaSize)
-	rightCol := labelCBandText(i18n.T(i18n.KeyColSize)+"       "+i18n.T(i18n.KeyColModified), colorMuted, paneRowMetaSize)
-	row := container.NewBorder(nil, nil, nil, fixedWidth(rightCol, paneLocalMetaColWidth), nameCol)
+	row := container.NewBorder(nil, nil, nil, paneFileMetaHeader(i18n.T(i18n.KeyColSize), i18n.T(i18n.KeyColModified)), nameCol)
 	return paneBand(row)
 }
 
@@ -157,10 +156,7 @@ func (p *FilePane) buildLocalChrome() fyne.CanvasObject {
 
 func (p *FilePane) buildRemoteListHeader() fyne.CanvasObject {
 	nameCol := labelCBandText(i18n.T(i18n.KeyColName), colorMuted, paneRowMetaSize)
-	sizeCol := labelCBandText(i18n.T(i18n.KeyColSize), colorMuted, paneRowMetaSize)
-	metaCol := labelCBandText(i18n.T(i18n.KeyColModified), colorMuted, paneRowMetaSize)
-	right := container.NewHBox(fixedWidth(metaCol, paneRemoteMetaColWidth), fixedWidth(sizeCol, paneRemoteSizeColWidth))
-	row := container.NewBorder(nil, nil, nil, right, nameCol)
+	row := container.NewBorder(nil, nil, nil, paneFileMetaHeader(i18n.T(i18n.KeyColSize), i18n.T(i18n.KeyColModified)), nameCol)
 	return paneBand(row)
 }
 

@@ -29,9 +29,8 @@ type paneFileListRow struct {
 	bg        *canvas.Rectangle
 	nameT     *paneEllipsisText
 	nameEntry *widget.Entry
-	sizeT     *canvas.Text
-	metaT     *canvas.Text
-	rightT    *canvas.Text
+	sizeT     *paneRightText
+	metaT     *paneRightText
 
 	onSecondary    func(*fyne.PointEvent)
 	onPrimary      func(ctrl bool)
@@ -96,14 +95,12 @@ func (r *paneFileListRow) updateLocal(rowIndex int, name, size, modified string,
 	}
 	if isParent {
 		r.nameT.SetText("↩  ..")
-		r.rightT.Text = "—   —"
+		r.sizeT.SetText("—")
+		r.metaT.SetText("—")
 	} else {
 		r.nameT.SetText(fileIcon(isDir) + "  " + name)
-		if size != "—" {
-			r.rightT.Text = size + "   " + modified
-		} else {
-			r.rightT.Text = "—   " + modified
-		}
+		r.sizeT.SetText(size)
+		r.metaT.SetText(modified)
 	}
 	r.refreshStyle()
 }
@@ -119,12 +116,12 @@ func (r *paneFileListRow) updateRemote(rowIndex int, name, size, modified string
 	}
 	if isParent {
 		r.nameT.SetText("↩  ..")
-		r.sizeT.Text = "—"
-		r.metaT.Text = "—"
+		r.sizeT.SetText("—")
+		r.metaT.SetText("—")
 	} else {
 		r.nameT.SetText(fileIcon(isDir) + "  " + name)
-		r.sizeT.Text = size
-		r.metaT.Text = modified
+		r.sizeT.SetText(size)
+		r.metaT.SetText(modified)
 	}
 	r.refreshStyle()
 }
@@ -154,12 +151,8 @@ func (r *paneFileListRow) refreshStyle() {
 	}
 	canvas.Refresh(r.bg)
 	r.nameT.Refresh()
-	if r.remote {
-		canvas.Refresh(r.sizeT)
-		canvas.Refresh(r.metaT)
-	} else {
-		canvas.Refresh(r.rightT)
-	}
+	r.sizeT.Refresh()
+	r.metaT.Refresh()
 }
 
 func (r *paneFileListRow) Tapped(*fyne.PointEvent) {
@@ -241,20 +234,10 @@ func (r *paneFileListRow) CreateRenderer() fyne.WidgetRenderer {
 	entryThemed := container.NewThemeOverride(r.nameEntry, newCompactEntryTheme(paneRowNameSize))
 	nameCol := container.NewStack(r.nameT, container.NewMax(entryThemed))
 
-	var row fyne.CanvasObject
-	if r.remote {
-		r.sizeT = canvas.NewText("", colorMuted)
-		r.sizeT.TextSize = paneRowMetaSize
-		r.metaT = canvas.NewText("", colorMuted)
-		r.metaT.TextSize = paneRowMetaSize
-		right := container.NewHBox(fixedWidth(r.metaT, paneRemoteMetaColWidth), fixedWidth(r.sizeT, paneRemoteSizeColWidth))
-		row = container.NewBorder(nil, nil, nil, right, nameCol)
-	} else {
-		r.rightT = canvas.NewText("", colorMuted)
-		r.rightT.TextSize = paneRowMetaSize
-		right := fixedWidth(r.rightT, paneLocalMetaColWidth)
-		row = container.NewBorder(nil, nil, nil, right, nameCol)
-	}
+	r.sizeT = newPaneRightText("", colorMuted, paneRowMetaSize)
+	r.metaT = newPaneRightText("", colorMuted, paneRowMetaSize)
+	right := paneFileMetaColumns(r.sizeT, r.metaT)
+	row := container.NewBorder(nil, nil, nil, right, nameCol)
 
 	padded := container.New(layout.NewCustomPaddedLayout(paneRowPadH, paneRowPadV, paneRowPadH, paneRowPadV), row)
 	content := container.NewStack(r.bg, padded)
