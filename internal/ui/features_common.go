@@ -53,6 +53,33 @@ func scrollLabel() (*widget.Label, fyne.CanvasObject) {
 	return lbl, container.NewScroll(lbl)
 }
 
+// scrollLineList shows one label per line; scrolls vertically and horizontally for wide rows.
+func scrollLineList() (setText func(string), view fyne.CanvasObject) {
+	inner := container.NewVBox()
+	scroll := container.NewScroll(inner)
+	setText = func(text string) {
+		lines := strings.Split(text, "\n")
+		objs := make([]fyne.CanvasObject, 0, len(lines))
+		for _, line := range lines {
+			line = strings.TrimRight(line, "\r")
+			if line == "" {
+				continue
+			}
+			lbl := widget.NewLabel(line)
+			lbl.Wrapping = fyne.TextWrapOff
+			objs = append(objs, lbl)
+		}
+		if len(objs) == 0 {
+			empty := widget.NewLabel("")
+			empty.Wrapping = fyne.TextWrapOff
+			objs = append(objs, empty)
+		}
+		inner.Objects = objs
+		inner.Refresh()
+	}
+	return setText, scroll
+}
+
 type usageProgressBar struct {
 	widget.BaseWidget
 	value     float64

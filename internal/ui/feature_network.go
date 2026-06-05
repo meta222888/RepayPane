@@ -30,7 +30,7 @@ func (a *App) showNetworkInfo() {
 	}
 	title := i18n.T(i18n.KeyFeatNetwork)
 	trafficLbl, trafficScroll := scrollLabel()
-	portsLbl, portsScroll := scrollLabel()
+	setPorts, portsScroll := scrollLineList()
 
 	autoRefresh := widget.NewCheck(i18n.T(i18n.KeyFeatNetAutoRefresh), nil)
 	autoRefresh.SetChecked(false)
@@ -51,7 +51,7 @@ func (a *App) showNetworkInfo() {
 		loadNetTraffic(client, trafficLbl)
 	})
 	refreshPorts := newAccentButton(i18n.T(i18n.KeyFeatRefreshPorts), func() {
-		loadNetPorts(client, portsLbl)
+		loadNetPorts(client, setPorts)
 	})
 
 	trafficHeader := container.NewHBox(
@@ -68,7 +68,7 @@ func (a *App) showNetworkInfo() {
 	showThemedFeature(a, title, fyne.NewSize(720, 560), split)
 
 	loadNetTraffic(client, trafficLbl)
-	loadNetPorts(client, portsLbl)
+	loadNetPorts(client, setPorts)
 }
 
 func loadNetTraffic(client *remote.Client, lbl *widget.Label) {
@@ -85,16 +85,16 @@ func loadNetTraffic(client *remote.Client, lbl *widget.Label) {
 	}()
 }
 
-func loadNetPorts(client *remote.Client, lbl *widget.Label) {
-	lbl.SetText(i18n.T(i18n.KeyFeatLoading))
+func loadNetPorts(client *remote.Client, setText func(string)) {
+	setText(i18n.T(i18n.KeyFeatLoading))
 	go func() {
 		out, err := client.RunCombined(netPortsCmd)
 		fyne.Do(func() {
 			if err != nil && strings.TrimSpace(out) == "" {
-				lbl.SetText(err.Error())
+				setText(err.Error())
 				return
 			}
-			lbl.SetText(strings.TrimSpace(out))
+			setText(strings.TrimSpace(out))
 		})
 	}()
 }

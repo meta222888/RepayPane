@@ -10,16 +10,20 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
+const (
+	localRowNameSize  float32 = 14
+	localRowMetaSize  float32 = 13
+	localRowMinHeight float32 = 30
+)
+
 type localFileListRow struct {
 	widget.BaseWidget
 
 	rowIndex int
 	selected bool
 	hovered  bool
-	isDir    bool
 
 	bg     *canvas.Rectangle
-	iconT  *canvas.Text
 	nameT  *canvas.Text
 	rightT *canvas.Text
 
@@ -37,25 +41,15 @@ func newLocalFileListRow() *localFileListRow {
 func (r *localFileListRow) update(rowIndex int, name, size, modified string, isDir, isParent, selected bool) {
 	r.rowIndex = rowIndex
 	r.selected = selected
-	r.isDir = isDir || isParent
 
-	if r.iconT == nil {
+	if r.nameT == nil {
 		return
 	}
 	if isParent {
-		r.iconT.Text = "↩"
-		r.iconT.Color = colorAccent
-		r.nameT.Text = ".."
+		r.nameT.Text = "↩  .."
 		r.rightT.Text = "—   —"
 	} else {
-		if isDir {
-			r.iconT.Text = "[D]"
-			r.iconT.Color = colorAccent
-		} else {
-			r.iconT.Text = "[F]"
-			r.iconT.Color = colorMuted
-		}
-		r.nameT.Text = name
+		r.nameT.Text = fileIcon(isDir) + "  " + name
 		if size != "—" {
 			r.rightT.Text = size + "   " + modified
 		} else {
@@ -89,7 +83,6 @@ func (r *localFileListRow) refreshStyle() {
 		r.nameT.Color = colorForeground
 	}
 	canvas.Refresh(r.bg)
-	canvas.Refresh(r.iconT)
 	canvas.Refresh(r.nameT)
 	canvas.Refresh(r.rightT)
 }
@@ -126,17 +119,19 @@ func (r *localFileListRow) MouseOut() {
 
 func (r *localFileListRow) CreateRenderer() fyne.WidgetRenderer {
 	r.bg = canvas.NewRectangle(r.rowBgColor())
-	r.iconT = canvas.NewText("[F]", colorMuted)
-	r.iconT.TextSize = 11
+	r.bg.SetMinSize(fyne.NewSize(0, localRowMinHeight))
 	r.nameT = canvas.NewText("", colorForeground)
-	r.nameT.TextSize = 12
+	r.nameT.TextSize = localRowNameSize
 	r.rightT = canvas.NewText("", colorMuted)
-	r.rightT.TextSize = 11
+	r.rightT.TextSize = localRowMetaSize
 
-	nameBox := container.NewHBox(r.iconT, r.nameT)
-	row := container.NewBorder(nil, nil, nil, r.rightT, nameBox)
+	row := container.NewBorder(nil, nil, nil, r.rightT, r.nameT)
 	content := container.NewStack(r.bg, container.NewPadded(row))
 	return widget.NewSimpleRenderer(content)
+}
+
+func (r *localFileListRow) MinSize() fyne.Size {
+	return fyne.NewSize(0, localRowMinHeight)
 }
 
 var _ fyne.Tappable = (*localFileListRow)(nil)
