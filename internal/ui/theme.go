@@ -300,20 +300,3 @@ func (relayPaneTheme) Size(name fyne.ThemeSizeName) float32 {
 func ApplyTheme(a fyne.App) {
 	a.Settings().SetTheme(newRelayPaneTheme())
 }
-
-const menuItemInnerPadding float32 = 14
-
-type menuWideTheme struct {
-	fyne.Theme
-}
-
-func newMenuWideTheme() fyne.Theme {
-	return menuWideTheme{Theme: fyne.CurrentApp().Settings().Theme()}
-}
-
-func (t menuWideTheme) Size(name fyne.ThemeSizeName) float32 {
-	if name == theme.SizeNameInnerPadding {
-		return menuItemInnerPadding
-	}
-	return t.Theme.Size(name)
-}
