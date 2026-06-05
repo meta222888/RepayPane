@@ -50,13 +50,18 @@ func (l paneListVBoxLayout) MinSize(objects []fyne.CanvasObject) fyne.Size {
 		return fyne.NewSize(0, paneBlankMinHeight)
 	}
 	w := float32(0)
+	h := paneBlankMinHeight
 	for _, o := range objects {
 		m := o.MinSize()
 		if m.Width > w {
 			w = m.Width
 		}
+		if m.Height > h {
+			h = m.Height
+		}
 	}
-	return fyne.NewSize(w, l.pane.listContentHeight()+paneBlankMinHeight)
+	// List scrolls internally; never report full row count as minimum height.
+	return fyne.NewSize(w, h)
 }
 
 func (l paneListVBoxLayout) Layout(objects []fyne.CanvasObject, size fyne.Size) {
