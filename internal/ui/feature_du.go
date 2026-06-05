@@ -14,10 +14,11 @@ import (
 )
 
 type duEntry struct {
-	size  string
-	name  string
-	path  string
-	isDir bool
+	size   string
+	sizeKB int64
+	name   string
+	path   string
+	isDir  bool
 }
 
 func (a *App) showDiskUsageTree() {
@@ -133,9 +134,8 @@ func (a *App) showDiskUsageTree() {
 func duListCmd(dir string) string {
 	quoted := `"` + shellQuote(dir) + `"`
 	tab := "\t"
-	return `du -sh ` + quoted + `/* 2>/dev/null | while IFS= read -r line; do
-  sz="${line%%` + tab + `*}"
-  p="${line#*` + tab + `}"
+	// Numeric KB from du -sk, sorted largest first on the server for every directory level.
+	return `du -sk ` + quoted + `/* 2>/dev/null | sort -rn | while read sz p; do
   [ -z "$p" ] && continue
   if [ -d "$p" ]; then t=D; else t=F; fi
   printf "%s` + tab + `%s` + tab + `%s\n" "$t" "$sz" "$p"
@@ -152,11 +152,18 @@ func parseDuLines(out, parent string) []duEntry {
 		}
 		parts := strings.Split(line, "\t")
 		var isDir bool
+		var sizeKB int64
 		var size, p string
 		switch {
 		case len(parts) >= 3 && (parts[0] == "D" || parts[0] == "F"):
 			isDir = parts[0] == "D"
-			size = strings.TrimSpace(parts[1])
+			if kb, err := strconv.ParseInt(strings.TrimSpace(parts[1]), 10, 64); err == nil {
+				sizeKB = kb
+				size = formatKBHuman(sizeKB)
+			} else {
+				size = strings.TrimSpace(parts[1])
+				sizeKB = duSizeRank(size)
+			}
 			p = strings.TrimSpace(parts[2])
 		default:
 			tab := strings.IndexByte(line, '\t')
@@ -165,40 +172,55 @@ func parseDuLines(out, parent string) []duEntry {
 			}
 			size = strings.TrimSpace(line[:tab])
 			p = strings.TrimSpace(line[tab+1:])
+			sizeKB = duSizeRank(size)
 			isDir = strings.HasSuffix(p, "/")
 		}
 		name := path.Base(p)
 		if name == "" {
 			name = p
 		}
-		outEntries = append(outEntries, duEntry{size: size, name: name, path: p, isDir: isDir})
+		outEntries = append(outEntries, duEntry{size: size, sizeKB: sizeKB, name: name, path: p, isDir: isDir})
 	}
 	sort.Slice(outEntries, func(i, j int) bool {
-		return duSizeRank(outEntries[i].size) > duSizeRank(outEntries[j].size)
+		if outEntries[i].sizeKB != outEntries[j].sizeKB {
+			return outEntries[i].sizeKB > outEntries[j].sizeKB
+		}
+		return outEntries[i].name < outEntries[j].name
 	})
 	_ = parent
 	return outEntries
 }
 
-func duSizeRank(s string) float64 {
+func formatKBHuman(kb int64) string {
+	return formatBytes(kb * 1024)
+}
+
+// duSizeRank parses legacy human-readable du -sh sizes for sorting fallback.
+func duSizeRank(s string) int64 {
 	s = strings.TrimSpace(s)
-	mult := 1.0
-	switch {
-	case strings.HasSuffix(s, "T"):
-		mult = 1024 * 1024
-		s = strings.TrimSuffix(s, "T")
-	case strings.HasSuffix(s, "G"):
-		mult = 1024
-		s = strings.TrimSuffix(s, "G")
-	case strings.HasSuffix(s, "M"):
-		mult = 1
-		s = strings.TrimSuffix(s, "M")
-	case strings.HasSuffix(s, "K"):
-		mult = 1 / 1024
-		s = strings.TrimSuffix(s, "K")
+	if s == "" || s == "—" {
+		return 0
 	}
-	v, _ := strconv.ParseFloat(s, 64)
-	return v * mult
+	mult := int64(1)
+	switch {
+	case strings.HasSuffix(s, "T") || strings.HasSuffix(s, "t"):
+		mult = 1024 * 1024 * 1024
+		s = strings.TrimRight(strings.TrimRight(s, "T"), "t")
+	case strings.HasSuffix(s, "G") || strings.HasSuffix(s, "g"):
+		mult = 1024 * 1024
+		s = strings.TrimRight(strings.TrimRight(s, "G"), "g")
+	case strings.HasSuffix(s, "M") || strings.HasSuffix(s, "m"):
+		mult = 1024
+		s = strings.TrimRight(strings.TrimRight(s, "M"), "m")
+	case strings.HasSuffix(s, "K") || strings.HasSuffix(s, "k"):
+		mult = 1
+		s = strings.TrimRight(strings.TrimRight(s, "K"), "k")
+	}
+	v, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return 0
+	}
+	return int64(v * float64(mult))
 }
 
 func shellQuote(s string) string {

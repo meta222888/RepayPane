@@ -34,6 +34,7 @@ type netIfaceStat struct {
 
 type netTrafficState struct {
 	box      *fyne.Container
+	summary  *widget.Label
 	prev     map[string]netIfaceStat
 	prevAt   time.Time
 	showRate bool
@@ -45,12 +46,16 @@ func (a *App) showNetworkInfo() {
 		return
 	}
 	title := i18n.T(i18n.KeyFeatNetwork)
-	trafficState := &netTrafficState{box: container.NewVBox()}
+	trafficState := &netTrafficState{
+		box:     container.NewVBox(),
+		summary: widget.NewLabel(i18n.T(i18n.KeyFeatNetRatePending)),
+	}
+	trafficState.summary.Importance = widget.MediumImportance
 	trafficScroll := container.NewVScroll(trafficState.box)
 	setPorts, portsScroll := scrollLineList()
 
 	autoRefresh := widget.NewCheck(i18n.T(i18n.KeyFeatNetAutoRefresh), nil)
-	autoRefresh.SetChecked(false)
+	autoRefresh.SetChecked(true)
 
 	var stopCh chan struct{}
 	autoRefresh.OnChanged = func(checked bool) {
@@ -62,8 +67,11 @@ func (a *App) showNetworkInfo() {
 		trafficState.prev = nil
 		trafficState.prevAt = time.Time{}
 		if checked {
+			trafficState.summary.SetText(i18n.T(i18n.KeyFeatNetRatePending))
 			stopCh = make(chan struct{})
 			go netTrafficLoop(client, trafficState, stopCh)
+		} else {
+			trafficState.summary.SetText(i18n.T(i18n.KeyFeatNetRateOff))
 		}
 	}
 
@@ -78,7 +86,8 @@ func (a *App) showNetworkInfo() {
 		widget.NewLabelWithStyle(i18n.T(i18n.KeyFeatNetTraffic), fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 		autoRefresh,
 	)
-	trafficBox := container.NewBorder(trafficHeader, refreshTraffic, nil, nil, trafficScroll)
+	trafficBox := container.NewBorder(trafficHeader, refreshTraffic, nil, nil,
+		container.NewVBox(trafficState.summary, trafficScroll))
 
 	portsHeader := widget.NewLabelWithStyle(i18n.T(i18n.KeyFeatNetPorts), fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
 	portsBox := container.NewBorder(portsHeader, refreshPorts, nil, nil, portsScroll)
@@ -93,7 +102,9 @@ func (a *App) showNetworkInfo() {
 		}
 	})
 
-	loadNetTraffic(client, trafficState)
+	trafficState.showRate = true
+	stopCh = make(chan struct{})
+	go netTrafficLoop(client, trafficState, stopCh)
 	loadNetPorts(client, setPorts)
 }
 
@@ -128,13 +139,16 @@ func renderNetTraffic(state *netTrafficState, ifaceOut, routeOut string, ifaceEr
 			elapsed = 0
 		}
 
+		var totalRxRate, totalTxRate float64
+		showRates := state.showRate && state.prev != nil && elapsed > 0
+
 		hint := widget.NewLabel(i18n.T(i18n.KeyFeatNetSinceBoot))
 		hint.Importance = widget.LowImportance
 		state.box.Add(hint)
 
 		for _, stat := range stats {
 			var rxRate, txRate float64
-			if state.showRate && state.prev != nil && elapsed > 0 {
+			if showRates {
 				if prev, ok := state.prev[stat.name]; ok {
 					rxRate = float64(stat.rx-prev.rx) / elapsed
 					txRate = float64(stat.tx-prev.tx) / elapsed
@@ -145,11 +159,19 @@ func renderNetTraffic(state *netTrafficState, ifaceOut, routeOut string, ifaceEr
 						txRate = 0
 					}
 				}
+				totalRxRate += rxRate
+				totalTxRate += txRate
 			}
-			state.box.Add(netIfaceCard(stat, rxRate, txRate, state.showRate && elapsed > 0))
+			state.box.Add(netIfaceCard(stat, rxRate, txRate, showRates))
 		}
 
 		if state.showRate {
+			if showRates {
+				state.summary.SetText(i18n.Tf(i18n.KeyFeatNetBandwidthTotal,
+					formatBytesPerSec(totalRxRate), formatBytesPerSec(totalTxRate)))
+			} else {
+				state.summary.SetText(i18n.T(i18n.KeyFeatNetRatePending))
+			}
 			next := make(map[string]netIfaceStat, len(stats))
 			for _, stat := range stats {
 				next[stat.name] = stat
@@ -304,6 +326,15 @@ func loadNetPorts(client *remote.Client, setText func(string)) {
 
 func netTrafficLoop(client *remote.Client, state *netTrafficState, stop <-chan struct{}) {
 	loadNetTraffic(client, state)
+	// Second sample soon so current bandwidth appears without waiting a full interval.
+	quick := time.NewTimer(1 * time.Second)
+	defer quick.Stop()
+	select {
+	case <-stop:
+		return
+	case <-quick.C:
+		loadNetTraffic(client, state)
+	}
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 	for {

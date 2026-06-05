@@ -232,6 +232,9 @@ const (
 	KeyFeatNetRate        = "feat.net_rate"
 	KeyFeatNetRouting     = "feat.net_routing"
 	KeyFeatNetSinceBoot   = "feat.net_since_boot"
+	KeyFeatNetBandwidthTotal = "feat.net_bandwidth_total"
+	KeyFeatNetRatePending = "feat.net_rate_pending"
+	KeyFeatNetRateOff     = "feat.net_rate_off"
 	KeyFeatDiskDetail     = "feat.disk_detail"
 	KeyFeatResCPU         = "feat.res_cpu"
 	KeyFeatResMemory      = "feat.res_memory"
@@ -469,6 +472,9 @@ var enStrings = map[string]string{
 	KeyFeatNetRate:        "Current speed: ↓ %s  ·  ↑ %s",
 	KeyFeatNetRouting:     "Routing",
 	KeyFeatNetSinceBoot:   "Cumulative since boot",
+	KeyFeatNetBandwidthTotal: "Current bandwidth: ↓ %s  ·  ↑ %s",
+	KeyFeatNetRatePending: "Measuring current bandwidth…",
+	KeyFeatNetRateOff:     "Enable auto refresh to show current bandwidth",
 	KeyFeatDiskDetail:     "Used %s / %s  ·  Free %s  ·  %s",
 	KeyFeatResCPU:         "Processor",
 	KeyFeatResMemory:      "Memory",
@@ -706,6 +712,9 @@ var zhStrings = map[string]string{
 	KeyFeatNetRate:        "当前速率：↓ %s  ·  ↑ %s",
 	KeyFeatNetRouting:     "路由",
 	KeyFeatNetSinceBoot:   "自启动以来累计",
+	KeyFeatNetBandwidthTotal: "当前带宽：↓ %s  ·  ↑ %s",
+	KeyFeatNetRatePending: "正在测量当前带宽…",
+	KeyFeatNetRateOff:     "勾选自动刷新以显示当前带宽",
 	KeyFeatDiskDetail:     "已用 %s / %s  ·  可用 %s  ·  %s",
 	KeyFeatResCPU:         "处理器",
 	KeyFeatResMemory:      "内存",
