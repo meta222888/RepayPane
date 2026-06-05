@@ -147,7 +147,7 @@ func (p *FilePane) buildLocalChrome() fyne.CanvasObject {
 	for _, b := range []*widget.Button{up, newFolder, refresh} {
 		b.Importance = widget.LowImportance
 	}
-	actions := wrapCompactToolbar(container.NewHBox(up, newFolder, refresh))
+	actions := wrapPaneChromeToolbar(container.NewHBox(up, newFolder, refresh))
 
 	p.pathEntry = widget.NewEntry()
 	p.pathEntry.OnSubmitted = func(text string) {
@@ -156,8 +156,8 @@ func (p *FilePane) buildLocalChrome() fyne.CanvasObject {
 			p.Navigate(text)
 		}
 	}
-	left := container.NewHBox(p.localDriveLbl, wrapCompactToolbar(p.localNav.Button()))
-	pathRow := container.NewBorder(nil, nil, left, actions, wrapCompactEntry(p.pathEntry, 11))
+	left := container.NewHBox(p.localDriveLbl, wrapPaneChromeToolbar(p.localNav.Button()))
+	pathRow := container.NewBorder(nil, nil, left, actions, wrapPaneChromeEntry(p.pathEntry, 11))
 	return panelBand(pathRow, panePathBandHeight)
 }
 
@@ -181,7 +181,7 @@ func (p *FilePane) buildRemoteChrome() fyne.CanvasObject {
 	for _, b := range []*widget.Button{up, newFolder, refresh} {
 		b.Importance = widget.LowImportance
 	}
-	actions := wrapCompactToolbar(container.NewHBox(up, newFolder, refresh))
+	actions := wrapPaneChromeToolbar(container.NewHBox(up, newFolder, refresh))
 
 	p.pathEntry = widget.NewEntry()
 	p.pathEntry.OnSubmitted = func(text string) {
@@ -192,8 +192,16 @@ func (p *FilePane) buildRemoteChrome() fyne.CanvasObject {
 	}
 	remoteIcon := labelCBandText("🖥", colorAccent, 11)
 	left := container.NewHBox(remoteIcon, p.panelPrefixLbl)
-	pathRow := container.NewBorder(nil, nil, left, actions, wrapCompactEntry(p.pathEntry, 11))
+	pathRow := container.NewBorder(nil, nil, left, actions, wrapPaneChromeEntry(p.pathEntry, 11))
 	return panelBand(pathRow, panePathBandHeight)
+}
+
+func wrapPaneChromeToolbar(obj fyne.CanvasObject) fyne.CanvasObject {
+	return container.NewThemeOverride(obj, newPaneChromeToolbarTheme())
+}
+
+func wrapPaneChromeEntry(entry *widget.Entry, textSize float32) fyne.CanvasObject {
+	return container.NewThemeOverride(entry, newPaneChromeEntryTheme(textSize))
 }
 
 func wrapCompactToolbar(obj fyne.CanvasObject) fyne.CanvasObject {

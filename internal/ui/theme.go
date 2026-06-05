@@ -45,8 +45,8 @@ var (
 
 const (
 	textDescenderPad     float32 = 4
-	panePathBandHeight   float32 = 28
-	paneHeaderBandHeight float32 = 18
+	panePathBandHeight   float32 = 24
+	paneHeaderBandHeight float32 = 14
 	topBarHeight         float32 = 28
 	statusBarHeight      float32 = 22
 )
@@ -144,7 +144,7 @@ func wrapCanvasText(t *canvas.Text) fyne.CanvasObject {
 }
 
 func bandPadding(content fyne.CanvasObject) fyne.CanvasObject {
-	return container.New(layout.NewCustomPaddedLayout(4, 1, 4, 2), content)
+	return container.New(layout.NewCustomPaddedLayout(4, 0, 4, 0), content)
 }
 
 func panelBand(content fyne.CanvasObject, height float32) fyne.CanvasObject {
@@ -398,6 +398,79 @@ func wrapTopMenuButton(btn *widget.Button) fyne.CanvasObject {
 	minW.SetMinSize(fyne.NewSize(topMenuButtonMinWidth, 0))
 	themed := container.NewThemeOverride(btn, newCompactToolbarTheme())
 	return container.NewStack(minW, themed)
+}
+
+type paneChromeToolbarTheme struct {
+	base fyne.Theme
+}
+
+func newPaneChromeToolbarTheme() fyne.Theme {
+	return &paneChromeToolbarTheme{base: fyne.CurrentApp().Settings().Theme()}
+}
+
+func (t *paneChromeToolbarTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) color.Color {
+	return t.base.Color(name, variant)
+}
+
+func (t *paneChromeToolbarTheme) Font(style fyne.TextStyle) fyne.Resource {
+	return t.base.Font(style)
+}
+
+func (t *paneChromeToolbarTheme) Icon(name fyne.ThemeIconName) fyne.Resource {
+	return t.base.Icon(name)
+}
+
+func (t *paneChromeToolbarTheme) Size(name fyne.ThemeSizeName) float32 {
+	switch name {
+	case theme.SizeNameText:
+		return 11
+	case theme.SizeNamePadding:
+		return 1
+	case theme.SizeNameInnerPadding:
+		return 1
+	case theme.SizeNameInlineIcon:
+		return 14
+	}
+	return t.base.Size(name)
+}
+
+type paneChromeEntryTheme struct {
+	base     fyne.Theme
+	textSize float32
+}
+
+func newPaneChromeEntryTheme(textSize float32) fyne.Theme {
+	if textSize < 1 {
+		textSize = 11
+	}
+	return &paneChromeEntryTheme{
+		base:     fyne.CurrentApp().Settings().Theme(),
+		textSize: textSize,
+	}
+}
+
+func (t *paneChromeEntryTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) color.Color {
+	return t.base.Color(name, variant)
+}
+
+func (t *paneChromeEntryTheme) Font(style fyne.TextStyle) fyne.Resource {
+	return t.base.Font(style)
+}
+
+func (t *paneChromeEntryTheme) Icon(name fyne.ThemeIconName) fyne.Resource {
+	return t.base.Icon(name)
+}
+
+func (t *paneChromeEntryTheme) Size(name fyne.ThemeSizeName) float32 {
+	switch name {
+	case theme.SizeNameText:
+		return t.textSize
+	case theme.SizeNamePadding:
+		return 1
+	case theme.SizeNameInnerPadding:
+		return 1
+	}
+	return t.base.Size(name)
 }
 
 type compactEntryTheme struct {
