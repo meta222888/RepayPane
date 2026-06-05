@@ -14,9 +14,7 @@ import (
 const (
 	paneRowNameSize  float32 = 12
 	paneRowMetaSize  float32 = 11
-	paneRowMinHeight float32 = 28
-	paneRowPadH      float32 = 4
-	paneRowPadV      float32 = 2
+	paneRowMinHeight         = PaneRowHeight
 )
 
 type paneFileListRow struct {

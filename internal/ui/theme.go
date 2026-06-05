@@ -45,8 +45,9 @@ var (
 
 const (
 	textDescenderPad     float32 = 4
-	panePathBandHeight   float32 = 24
-	paneHeaderBandHeight float32 = 14
+	PaneRowHeight        float32 = 28
+	paneRowPadH          float32 = 4
+	paneRowPadV          float32 = 2
 	topBarHeight         float32 = 28
 	statusBarHeight      float32 = 22
 )
@@ -144,7 +145,7 @@ func wrapCanvasText(t *canvas.Text) fyne.CanvasObject {
 }
 
 func bandPadding(content fyne.CanvasObject) fyne.CanvasObject {
-	return container.New(layout.NewCustomPaddedLayout(4, 0, 4, 0), content)
+	return container.New(layout.NewCustomPaddedLayout(paneRowPadH, paneRowPadV, paneRowPadH, paneRowPadV), content)
 }
 
 func panelBand(content fyne.CanvasObject, height float32) fyne.CanvasObject {

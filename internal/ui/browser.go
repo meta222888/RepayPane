@@ -127,7 +127,7 @@ func (p *FilePane) buildLocalListHeader() fyne.CanvasObject {
 	nameCol := labelCBandText(strings.ToUpper(i18n.T(i18n.KeyColName)), colorMuted, 10)
 	rightCol := labelCBandText(strings.ToUpper(i18n.T(i18n.KeyColSize))+"       "+strings.ToUpper(i18n.T(i18n.KeyColModified)), colorMuted, 10)
 	row := container.NewBorder(nil, nil, nil, rightCol, nameCol)
-	return panelBand(row, paneHeaderBandHeight)
+	return paneBand(row)
 }
 
 func (p *FilePane) buildLocalChrome() fyne.CanvasObject {
@@ -154,7 +154,7 @@ func (p *FilePane) buildLocalChrome() fyne.CanvasObject {
 	}
 	left := container.NewHBox(p.localDriveLbl, wrapPaneChromeToolbar(p.localNav.Button()))
 	pathRow := container.NewBorder(nil, nil, left, actions, wrapPaneChromeEntry(p.pathEntry, 11))
-	return panelBand(pathRow, panePathBandHeight)
+	return paneBand(pathRow)
 }
 
 func (p *FilePane) buildRemoteListHeader() fyne.CanvasObject {
@@ -163,7 +163,7 @@ func (p *FilePane) buildRemoteListHeader() fyne.CanvasObject {
 	metaCol := labelCBandText(strings.ToUpper(i18n.T(i18n.KeyColModified)), colorMuted, 10)
 	right := container.NewHBox(fixedWidth(metaCol, 128), fixedWidth(sizeCol, 72))
 	row := container.NewBorder(nil, nil, nil, right, nameCol)
-	return panelBand(row, paneHeaderBandHeight)
+	return paneBand(row)
 }
 
 func (p *FilePane) buildRemoteChrome() fyne.CanvasObject {
@@ -189,7 +189,7 @@ func (p *FilePane) buildRemoteChrome() fyne.CanvasObject {
 	remoteIcon := labelCBandText("🖥", colorAccent, 11)
 	left := container.NewHBox(remoteIcon, p.panelPrefixLbl)
 	pathRow := container.NewBorder(nil, nil, left, actions, wrapPaneChromeEntry(p.pathEntry, 11))
-	return panelBand(pathRow, panePathBandHeight)
+	return paneBand(pathRow)
 }
 
 func wrapPaneChromeToolbar(obj fyne.CanvasObject) fyne.CanvasObject {
