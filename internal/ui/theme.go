@@ -40,6 +40,7 @@ var (
 	colorRowHover       = color.NRGBA{R: 0x2a, G: 0x30, B: 0x3d, A: 255}
 	colorTextHighlight  = color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 255}
 	colorStatusBar      = color.NRGBA{R: 0x13, G: 0x16, B: 0x1b, A: 255}
+	colorProgressTrack  = color.NRGBA{R: 0x2a, G: 0x2e, B: 0x36, A: 255}
 	colorWarning        = color.NRGBA{R: 0xff, G: 0x8c, B: 0x42, A: 255}
 )
 

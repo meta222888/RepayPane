@@ -2,13 +2,20 @@ package ui
 
 import (
 	"fmt"
+	"image/color"
 
 	"github.com/relaypane/relaypane/internal/i18n"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
+)
+
+const (
+	slimProgressWidth  float32 = 72
+	slimProgressHeight float32 = 5
 )
 
 type slimProgressBar struct {
@@ -40,18 +47,37 @@ type slimProgressRenderer struct {
 }
 
 func (r *slimProgressRenderer) Layout(size fyne.Size) {
-	r.bg.Resize(size)
+	barH := slimProgressHeight
+	if size.Height < barH {
+		barH = size.Height
+	}
+	y := (size.Height - barH) / 2
+	radius := barH / 2
+	r.bg.CornerRadius = radius
+	r.fill.CornerRadius = radius
+
+	r.bg.Resize(fyne.NewSize(size.Width, barH))
+	r.bg.Move(fyne.NewPos(0, y))
+
 	fillW := size.Width * float32(r.bar.value)
-	r.fill.Resize(fyne.NewSize(fillW, size.Height))
-	r.fill.Move(fyne.NewPos(0, 0))
+	if r.bar.value > 0 && fillW < barH {
+		fillW = barH
+	}
+	r.fill.Resize(fyne.NewSize(fillW, barH))
+	r.fill.Move(fyne.NewPos(0, y))
+	if fillW <= 0 {
+		r.fill.Hide()
+	} else {
+		r.fill.Show()
+	}
 }
 
 func (r *slimProgressRenderer) MinSize() fyne.Size {
-	return fyne.NewSize(120, 3)
+	return fyne.NewSize(slimProgressWidth, slimProgressHeight)
 }
 
 func (r *slimProgressRenderer) Refresh() {
-	r.bg.FillColor = colorInput
+	r.bg.FillColor = colorProgressTrack
 	r.fill.FillColor = colorAccent
 	canvas.Refresh(r.bg)
 	canvas.Refresh(r.fill)
@@ -94,6 +120,12 @@ func newStatusText(text string, muted bool) *canvas.Text {
 	return t
 }
 
+func bandSlimProgress(p *slimProgressBar) fyne.CanvasObject {
+	spacer := canvas.NewRectangle(color.Transparent)
+	spacer.SetMinSize(fyne.NewSize(0, AppTextSize))
+	return container.NewStack(spacer, container.NewCenter(p))
+}
+
 func NewStatusBar(app *App) *StatusBar {
 	s := &StatusBar{app: app}
 	s.connDot = canvas.NewCircle(colorDisconnected)
@@ -120,7 +152,7 @@ func NewStatusBar(app *App) *StatusBar {
 	)
 	right := container.NewHBox(
 		bandCanvasText(s.speedText),
-		s.progress,
+		container.New(layout.NewCustomPaddedLayout(0, 0, 6, 6), bandSlimProgress(s.progress)),
 		bandCanvasText(s.percentText),
 		s.sep,
 		bandCanvasText(s.queueText),
