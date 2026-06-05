@@ -1,10 +1,13 @@
 package ui
 
 import (
+	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/relaypane/relaypane/internal/config"
 	"github.com/relaypane/relaypane/internal/i18n"
+	"github.com/relaypane/relaypane/internal/remote"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -26,7 +29,7 @@ func (a *App) showRemoteShell() {
 	entry := widget.NewEntry()
 	entry.SetPlaceHolder(i18n.T(i18n.KeyFeatShellHint))
 
-	outputLbl, outputScroll := scrollLabel()
+	setOutput, outputScroll := scrollSelectableText()
 
 	histSelect := widget.NewSelect(history, func(s string) {
 		if s != "" {
@@ -42,21 +45,21 @@ func (a *App) showRemoteShell() {
 		if cmd == "" {
 			return
 		}
+		if remote.IsInteractiveCommand(cmd) {
+			setOutput(formatShellOutput(cmd, "", i18n.T(i18n.KeyFeatShellInteractive)))
+			return
+		}
 		a.pushShellHistory(cmd)
 		history = append([]string(nil), a.settings.ShellHistory...)
 		histSelect.Options = history
 		histSelect.Refresh()
 		histIndex = len(history)
 
-		outputLbl.SetText(i18n.T(i18n.KeyFeatRunning) + "\n$ " + cmd + "\n")
+		setOutput(i18n.T(i18n.KeyFeatRunning) + "\n$ " + cmd + "\n")
 		go func() {
 			out, err := client.RunCombined(cmd)
 			fyne.Do(func() {
-				text := "$ " + cmd + "\n\n" + strings.TrimSpace(out)
-				if err != nil {
-					text += "\n\n[" + err.Error() + "]"
-				}
-				outputLbl.SetText(text)
+				setOutput(formatShellOutput(cmd, out, formatShellError(err)))
 			})
 		}()
 	}
@@ -91,10 +94,12 @@ func (a *App) showRemoteShell() {
 		delOne,
 		delAll,
 	)
+	copyHint := widget.NewLabel(i18n.T(i18n.KeyFeatShellCopyHint))
 
 	showThemedFeature(a, title, fyne.NewSize(760, 560), container.NewBorder(
 		container.NewVBox(inputRow, histRow),
-		nil, nil, nil,
+		copyHint,
+		nil, nil,
 		outputScroll,
 	))
 
@@ -116,6 +121,37 @@ func (a *App) showRemoteShell() {
 	downKey := &desktop.CustomShortcut{KeyName: fyne.KeyDown, Modifier: 0}
 	a.window.Canvas().AddShortcut(upKey, func(fyne.Shortcut) { navHistory(-1) })
 	a.window.Canvas().AddShortcut(downKey, func(fyne.Shortcut) { navHistory(1) })
+}
+
+func formatShellOutput(cmd, out, errLine string) string {
+	var b strings.Builder
+	b.WriteString("$ ")
+	b.WriteString(cmd)
+	b.WriteString("\n\n")
+	trimmed := strings.TrimSpace(out)
+	if trimmed != "" {
+		b.WriteString(trimmed)
+	}
+	if errLine != "" {
+		if trimmed != "" {
+			b.WriteString("\n\n")
+		}
+		b.WriteString(errLine)
+	}
+	return b.String()
+}
+
+func formatShellError(err error) string {
+	if err == nil {
+		return ""
+	}
+	if errors.Is(err, remote.ErrCommandTimeout) {
+		return "[" + i18n.T(i18n.KeyFeatShellTimeout) + "]"
+	}
+	if code, ok := remote.ExitStatus(err); ok {
+		return fmt.Sprintf("[%s: %d]", i18n.T(i18n.KeyFeatShellExitCode), code)
+	}
+	return "[" + err.Error() + "]"
 }
 
 func (a *App) pushShellHistory(cmd string) {

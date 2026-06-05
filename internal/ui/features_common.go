@@ -53,6 +53,20 @@ func scrollLabel() (*widget.Label, fyne.CanvasObject) {
 	return lbl, container.NewScroll(lbl)
 }
 
+// scrollSelectableText shows read-only output that can be selected and copied.
+func scrollSelectableText() (setText func(string), view fyne.CanvasObject) {
+	entry := widget.NewMultiLineEntry()
+	entry.Wrapping = fyne.TextWrapOff
+	entry.Disable()
+	scroll := container.NewScroll(entry)
+	setText = func(text string) {
+		entry.Enable()
+		entry.SetText(text)
+		entry.Disable()
+	}
+	return setText, scroll
+}
+
 // scrollLineList shows one label per line; scrolls vertically and horizontally for wide rows.
 func scrollLineList() (setText func(string), view fyne.CanvasObject) {
 	inner := container.NewVBox()

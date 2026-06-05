@@ -195,7 +195,11 @@ const (
 	KeyFeatShellNoHistory = "feat.shell_no_history"
 	KeyFeatShellRun       = "feat.shell_run"
 	KeyFeatShellDelOne    = "feat.shell_del_one"
-	KeyFeatShellDelAll    = "feat.shell_del_all"
+	KeyFeatShellDelAll      = "feat.shell_del_all"
+	KeyFeatShellInteractive = "feat.shell_interactive"
+	KeyFeatShellExitCode    = "feat.shell_exit_code"
+	KeyFeatShellTimeout     = "feat.shell_timeout"
+	KeyFeatShellCopyHint    = "feat.shell_copy_hint"
 	KeyFeatRunning        = "feat.running"
 	KeyFeatNetTraffic     = "feat.net_traffic"
 	KeyFeatNetPorts       = "feat.net_ports"
@@ -364,7 +368,11 @@ var enStrings = map[string]string{
 	KeyFeatShellNoHistory: "No history",
 	KeyFeatShellRun:       "Run",
 	KeyFeatShellDelOne:    "Delete selected",
-	KeyFeatShellDelAll:    "Clear all",
+	KeyFeatShellDelAll:      "Clear all",
+	KeyFeatShellInteractive: "Interactive commands (vim, top, less, etc.) are not supported in this window. Try: cat, head, tail, sed -n, grep.",
+	KeyFeatShellExitCode:    "exit code",
+	KeyFeatShellTimeout:     "command timed out (90s); interactive programs may hang",
+	KeyFeatShellCopyHint:    "Select output text to copy (Ctrl+C).",
 	KeyFeatRunning:        "Running…",
 	KeyFeatNetTraffic:     "Traffic",
 	KeyFeatNetPorts:       "Open Ports",
@@ -533,7 +541,11 @@ var zhStrings = map[string]string{
 	KeyFeatShellNoHistory: "无历史记录",
 	KeyFeatShellRun:       "执行",
 	KeyFeatShellDelOne:    "删除选中",
-	KeyFeatShellDelAll:    "全部删除",
+	KeyFeatShellDelAll:      "全部删除",
+	KeyFeatShellInteractive: "不支持交互式命令（vim、top、less 等）。可改用：cat、head、tail、sed -n、grep。",
+	KeyFeatShellExitCode:    "退出码",
+	KeyFeatShellTimeout:     "命令超时（90 秒）；交互程序可能会卡住",
+	KeyFeatShellCopyHint:    "可选中输出文本后 Ctrl+C 复制。",
 	KeyFeatRunning:        "执行中…",
 	KeyFeatNetTraffic:     "网络流量",
 	KeyFeatNetPorts:       "端口开放",
