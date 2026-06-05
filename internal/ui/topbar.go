@@ -42,7 +42,11 @@ func NewTopBar(app *App) *TopBar {
 	t.btnFeat.Importance = widget.LowImportance
 	t.btnAbout.Importance = widget.LowImportance
 
-	right := wrapCompactToolbar(container.NewHBox(t.btnSet, t.btnFeat, t.btnAbout))
+	right := container.NewHBox(
+		wrapTopMenuButton(t.btnSet),
+		wrapTopMenuButton(t.btnFeat),
+		wrapTopMenuButton(t.btnAbout),
+	)
 	barContent := container.NewBorder(nil, nil, logo, right, layout.NewSpacer())
 	wrapped := withPanelHeader(barContent)
 	t.root = wrapped

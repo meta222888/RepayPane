@@ -391,6 +391,49 @@ func (t *compactToolbarTheme) Size(name fyne.ThemeSizeName) float32 {
 	return t.base.Size(name)
 }
 
+type topMenuButtonTheme struct {
+	base fyne.Theme
+}
+
+func newTopMenuButtonTheme() fyne.Theme {
+	return &topMenuButtonTheme{base: fyne.CurrentApp().Settings().Theme()}
+}
+
+func (t *topMenuButtonTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) color.Color {
+	return t.base.Color(name, variant)
+}
+
+func (t *topMenuButtonTheme) Font(style fyne.TextStyle) fyne.Resource {
+	return t.base.Font(style)
+}
+
+func (t *topMenuButtonTheme) Icon(name fyne.ThemeIconName) fyne.Resource {
+	return t.base.Icon(name)
+}
+
+func (t *topMenuButtonTheme) Size(name fyne.ThemeSizeName) float32 {
+	switch name {
+	case theme.SizeNameText:
+		return 11
+	case theme.SizeNamePadding:
+		return 2
+	case theme.SizeNameInnerPadding:
+		return 10
+	case theme.SizeNameInlineIcon:
+		return 14
+	}
+	return t.base.Size(name)
+}
+
+const topMenuButtonMinWidth float32 = 80
+
+func wrapTopMenuButton(btn *widget.Button) fyne.CanvasObject {
+	minW := canvas.NewRectangle(color.Transparent)
+	minW.SetMinSize(fyne.NewSize(topMenuButtonMinWidth, 0))
+	themed := container.NewThemeOverride(btn, newTopMenuButtonTheme())
+	return container.NewStack(minW, themed)
+}
+
 type compactEntryTheme struct {
 	base     fyne.Theme
 	textSize float32
