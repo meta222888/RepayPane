@@ -87,7 +87,7 @@ func NewApp(a fyne.App, w fyne.Window) *App {
 	body := container.NewBorder(header, appUI.statusBar.Container(), nil, nil, panes)
 	bg := canvas.NewRectangle(colorBG)
 	w.SetPadded(false)
-	w.SetContent(container.NewStack(bg, body))
+	w.SetContent(container.NewStack(bg, wrapWindowResize(w, body)))
 	w.SetOnDropped(appUI.onWindowDropped)
 	w.SetCloseIntercept(func() {
 		appUI.saveActiveServerLocalPath()

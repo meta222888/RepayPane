@@ -17,3 +17,24 @@ func TestParseDfOutput(t *testing.T) {
 		t.Fatalf("unexpected second row: %+v", rows[1])
 	}
 }
+
+func TestSortDiskRowsByUsed(t *testing.T) {
+	rows := []diskRow{
+		{mount: "/dev/shm", used: "0", size: "1.9G"},
+		{mount: "/", used: "20G", size: "50G"},
+		{mount: "/data", used: "100G", size: "200G"},
+	}
+	sortDiskRowsByUsed(rows)
+	if rows[0].mount != "/data" || rows[1].mount != "/" || rows[2].mount != "/dev/shm" {
+		t.Fatalf("unexpected order: %+v", rows)
+	}
+}
+
+func TestParseHumanBytes(t *testing.T) {
+	if got := parseHumanBytes("20G"); got != 20*1024*1024*1024 {
+		t.Fatalf("20G = %d", got)
+	}
+	if got := parseHumanBytes("512M"); got != 512*1024*1024 {
+		t.Fatalf("512M = %d", got)
+	}
+}

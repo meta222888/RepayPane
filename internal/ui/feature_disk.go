@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/relaypane/relaypane/internal/i18n"
@@ -59,6 +61,7 @@ func loadDiskSpace(client *remote.Client, listBox *fyne.Container) {
 				listBox.Refresh()
 				return
 			}
+			sortDiskRowsByUsed(rows)
 			for _, row := range rows {
 				listBox.Add(diskUsageCard(row.mount, row.size, row.used, row.avail, row.pcent))
 			}
@@ -92,6 +95,49 @@ func parseDfOutput(out string) []diskRow {
 		})
 	}
 	return rows
+}
+
+func sortDiskRowsByUsed(rows []diskRow) {
+	sort.Slice(rows, func(i, j int) bool {
+		ui := parseHumanBytes(rows[i].used)
+		uj := parseHumanBytes(rows[j].used)
+		if ui != uj {
+			return ui > uj
+		}
+		return rows[i].mount < rows[j].mount
+	})
+}
+
+func parseHumanBytes(s string) int64 {
+	s = strings.TrimSpace(s)
+	if s == "" || s == "-" {
+		return 0
+	}
+	mult := int64(1)
+	if len(s) > 1 {
+		switch s[len(s)-1] {
+		case 'k', 'K':
+			mult = 1024
+			s = strings.TrimSpace(s[:len(s)-1])
+		case 'm', 'M':
+			mult = 1024 * 1024
+			s = strings.TrimSpace(s[:len(s)-1])
+		case 'g', 'G':
+			mult = 1024 * 1024 * 1024
+			s = strings.TrimSpace(s[:len(s)-1])
+		case 't', 'T':
+			mult = 1024 * 1024 * 1024 * 1024
+			s = strings.TrimSpace(s[:len(s)-1])
+		}
+	}
+	if len(s) > 1 && (s[len(s)-1] == 'i' || s[len(s)-1] == 'B') {
+		s = strings.TrimSpace(s[:len(s)-1])
+	}
+	f, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return 0
+	}
+	return int64(f * float64(mult))
 }
 
 func featureLoadingLabel() fyne.CanvasObject {

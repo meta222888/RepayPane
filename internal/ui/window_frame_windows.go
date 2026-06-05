@@ -3,12 +3,17 @@
 package ui
 
 import (
+	"image/color"
 	"syscall"
 	"time"
 	"unsafe"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
+	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/driver"
+	"fyne.io/fyne/v2/driver/desktop"
+	"fyne.io/fyne/v2/widget"
 )
 
 var (
@@ -31,7 +36,7 @@ const (
 	swRestore    = 9
 	swpNoSize    = 0x0001
 	swpNoZOrder  = 0x0004
-	gwlpWndProc  = ^uintptr(3) // -4
+	gwlpWndProc  = uintptr(0xfffffffffffffffc) // GWLP_WNDPROC = -4
 	wmNcHitTest  = 0x0084
 	htLeft       = 10
 	htRight      = 11
@@ -41,7 +46,10 @@ const (
 	htBottom     = 15
 	htBottomLeft = 16
 	htBottomRight = 17
-	resizeBorder = 6
+	resizeBorder   = 8
+	minWindowWidth = 640
+	minWindowHeight = 400
+	gripThickness  float32 = 8
 )
 
 type winPoint struct {
@@ -58,8 +66,15 @@ type dragSession struct {
 	offsetY int32
 }
 
+type resizeSession struct {
+	hwnd     uintptr
+	edge     uintptr
+	start    winRect
+}
+
 var (
 	activeDrag          dragSession
+	activeResize        resizeSession
 	originalWndProc     uintptr
 	resizeHookInstalled bool
 	mainWndProc         = syscall.NewCallback(mainWindowProc)
@@ -110,20 +125,186 @@ func hitTestResize(hwnd uintptr, x, y int32) uintptr {
 }
 
 func winInstallResizeHook(w fyne.Window) bool {
+	if resizeHookInstalled {
+		return true
+	}
 	nw, ok := w.(driver.NativeWindow)
-	if !ok || resizeHookInstalled {
-		return resizeHookInstalled
+	if !ok {
+		return false
 	}
 	nw.RunNative(func(ctx any) {
 		c, ok := ctx.(driver.WindowsWindowContext)
 		if !ok || c.HWND == 0 || resizeHookInstalled {
 			return
 		}
-		originalWndProc, _, _ = procGetWindowLongPtr.Call(c.HWND, gwlpWndProc)
-		procSetWindowLongPtr.Call(c.HWND, gwlpWndProc, mainWndProc)
+		prev, _, _ := procGetWindowLongPtr.Call(c.HWND, gwlpWndProc)
+		if prev == 0 {
+			return
+		}
+		if prev == mainWndProc {
+			resizeHookInstalled = true
+			return
+		}
+		ret, _, _ := procSetWindowLongPtr.Call(c.HWND, gwlpWndProc, mainWndProc)
+		if ret == 0 {
+			return
+		}
+		originalWndProc = prev
 		resizeHookInstalled = true
 	})
 	return resizeHookInstalled
+}
+
+func wrapWindowResizePlatform(w fyne.Window, content fyne.CanvasObject) fyne.CanvasObject {
+	return winWrapResizeGrips(w, content)
+}
+
+func winWrapResizeGrips(w fyne.Window, content fyne.CanvasObject) fyne.CanvasObject {
+	if winIsMaximized(w) {
+		return content
+	}
+	mk := func(edge uintptr) fyne.CanvasObject {
+		return newResizeGrip(w, edge)
+	}
+	top := container.NewGridWithColumns(3, mk(htTopLeft), mk(htTop), mk(htTopRight))
+	bottom := container.NewGridWithColumns(3, mk(htBottomLeft), mk(htBottom), mk(htBottomRight))
+	mid := container.NewBorder(nil, nil, mk(htLeft), mk(htRight), content)
+	return container.NewBorder(top, bottom, nil, nil, mid)
+}
+
+type resizeGrip struct {
+	widget.BaseWidget
+	win  fyne.Window
+	edge uintptr
+}
+
+func newResizeGrip(w fyne.Window, edge uintptr) *resizeGrip {
+	g := &resizeGrip{win: w, edge: edge}
+	g.ExtendBaseWidget(g)
+	return g
+}
+
+func (g *resizeGrip) CreateRenderer() fyne.WidgetRenderer {
+	bg := canvas.NewRectangle(color.Transparent)
+	return widget.NewSimpleRenderer(bg)
+}
+
+func (g *resizeGrip) MinSize() fyne.Size {
+	if g.edge == htTop || g.edge == htBottom {
+		return fyne.NewSize(0, gripThickness)
+	}
+	if g.edge == htLeft || g.edge == htRight {
+		return fyne.NewSize(gripThickness, 0)
+	}
+	return fyne.NewSize(gripThickness, gripThickness)
+}
+
+func (g *resizeGrip) MouseDown(e *desktop.MouseEvent) {
+	if e.Button != desktop.MouseButtonPrimary || winIsMaximized(g.win) {
+		return
+	}
+	winBeginResize(g.win, g.edge)
+}
+
+func (g *resizeGrip) MouseUp(*desktop.MouseEvent)   {}
+func (g *resizeGrip) MouseIn(*desktop.MouseEvent)   {}
+func (g *resizeGrip) MouseOut()                     {}
+
+var _ desktop.Mouseable = (*resizeGrip)(nil)
+
+func winBeginResize(w fyne.Window, edge uintptr) bool {
+	winInstallResizeHook(w)
+	nw, ok := w.(driver.NativeWindow)
+	if !ok {
+		return false
+	}
+	var started bool
+	nw.RunNative(func(ctx any) {
+		c, ok := ctx.(driver.WindowsWindowContext)
+		if !ok || c.HWND == 0 {
+			return
+		}
+		var rc winRect
+		procGetWindowRect.Call(c.HWND, uintptr(unsafe.Pointer(&rc)))
+		activeResize = resizeSession{hwnd: c.HWND, edge: edge, start: rc}
+		procSetCapture.Call(c.HWND)
+		started = true
+		go resizeTrackLoop()
+	})
+	return started
+}
+
+func resizeTrackLoop() {
+	ticker := time.NewTicker(time.Millisecond * 8)
+	defer ticker.Stop()
+	for winLeftButtonDown() {
+		fyne.Do(winContinueResize)
+		<-ticker.C
+	}
+	fyne.Do(winEndResize)
+}
+
+func winContinueResize() {
+	if activeResize.hwnd == 0 {
+		return
+	}
+	var pt winPoint
+	procGetCursorPos.Call(uintptr(unsafe.Pointer(&pt)))
+	rc := activeResize.start
+	x, y, w, h := rc.Left, rc.Top, rc.Right-rc.Left, rc.Bottom-rc.Top
+	switch activeResize.edge {
+	case htLeft:
+		x = pt.X
+		w = rc.Right - x
+	case htRight:
+		w = pt.X - rc.Left
+	case htTop:
+		y = pt.Y
+		h = rc.Bottom - y
+	case htBottom:
+		h = pt.Y - rc.Top
+	case htTopLeft:
+		x = pt.X
+		y = pt.Y
+		w = rc.Right - x
+		h = rc.Bottom - y
+	case htTopRight:
+		y = pt.Y
+		w = pt.X - rc.Left
+		h = rc.Bottom - y
+	case htBottomLeft:
+		x = pt.X
+		w = rc.Right - x
+		h = pt.Y - rc.Top
+	case htBottomRight:
+		w = pt.X - rc.Left
+		h = pt.Y - rc.Top
+	}
+	if w < minWindowWidth {
+		if activeResize.edge == htLeft || activeResize.edge == htTopLeft || activeResize.edge == htBottomLeft {
+			x = rc.Right - minWindowWidth
+		}
+		w = minWindowWidth
+	}
+	if h < minWindowHeight {
+		if activeResize.edge == htTop || activeResize.edge == htTopLeft || activeResize.edge == htTopRight {
+			y = rc.Bottom - minWindowHeight
+		}
+		h = minWindowHeight
+	}
+	procSetWindowPos.Call(
+		activeResize.hwnd, 0,
+		uintptr(x), uintptr(y),
+		uintptr(w), uintptr(h),
+		0,
+	)
+}
+
+func winEndResize() {
+	if activeResize.hwnd != 0 {
+		procReleaseCapture.Call()
+		activeResize = resizeSession{}
+	}
 }
 
 func winIsMaximized(w fyne.Window) bool {
@@ -152,6 +333,9 @@ func winToggleMaximize(w fyne.Window) {
 }
 
 func winBeginDrag(d *dragRegion) bool {
+	if winIsMaximized(d.win) {
+		winRestoreWindows(d.win)
+	}
 	winInstallResizeHook(d.win)
 	nw, ok := d.win.(driver.NativeWindow)
 	if !ok {

@@ -14,3 +14,7 @@ func winRestoreWindows(fyne.Window)  {}
 func winInstallResizeHook(fyne.Window) bool { return false }
 func winToggleMaximize(fyne.Window)  {}
 func winIsMaximized(fyne.Window) bool { return false }
+
+func wrapWindowResizePlatform(w fyne.Window, content fyne.CanvasObject) fyne.CanvasObject {
+	return content
+}

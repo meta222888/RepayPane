@@ -41,3 +41,7 @@ func toggleMaximizeWindow(w fyne.Window) {
 func closeWindow(w fyne.Window) {
 	w.Close()
 }
+
+func wrapWindowResize(w fyne.Window, content fyne.CanvasObject) fyne.CanvasObject {
+	return wrapWindowResizePlatform(w, content)
+}
