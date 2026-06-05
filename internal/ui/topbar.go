@@ -60,7 +60,7 @@ func (t *TopBar) ApplyLanguage() {
 func (t *TopBar) showMenu(m *fyne.Menu, rel fyne.CanvasObject) {
 	c := t.app.window.Canvas()
 	pos := fyne.CurrentApp().Driver().AbsolutePositionForObject(rel)
-	showPaddedPopUpMenu(c, m, pos.Add(fyne.NewPos(0, rel.MinSize().Height)))
+	showWidePopUpMenu(c, m, pos.Add(fyne.NewPos(0, rel.MinSize().Height)))
 }
 
 func (a *App) settingsMenu() *fyne.Menu {
