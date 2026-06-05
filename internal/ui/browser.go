@@ -49,8 +49,9 @@ type FilePane struct {
 	panelPrefixLbl *widget.Label
 	localDriveLbl  *canvas.Text
 	list           *widget.List
-	listHeader fyne.CanvasObject
-	root       fyne.CanvasObject
+	listArea       fyne.CanvasObject
+	listHeader     fyne.CanvasObject
+	root           fyne.CanvasObject
 
 	selectedRow int
 	lastDragAbs fyne.Position
@@ -86,12 +87,14 @@ func (p *FilePane) build() {
 
 	if p.kind == PaneLocal {
 		p.listHeader = p.buildLocalListHeader()
+		p.listArea = newPaneListArea(p, p.list)
 		p.root = container.NewBorder(p.buildLocalChrome(), nil, nil, nil,
-			container.NewBorder(p.listHeader, nil, nil, nil, newPaneListArea(p, p.list)))
+			container.NewBorder(p.listHeader, nil, nil, nil, p.listArea))
 	} else {
 		p.listHeader = p.buildRemoteListHeader()
+		p.listArea = newPaneListArea(p, p.list)
 		p.root = container.NewBorder(p.buildRemoteChrome(), nil, nil, nil,
-			container.NewBorder(p.listHeader, nil, nil, nil, newPaneListArea(p, p.list)))
+			container.NewBorder(p.listHeader, nil, nil, nil, p.listArea))
 	}
 	p.ApplyLanguage()
 	p.refreshPathDisplay()
@@ -516,7 +519,7 @@ func (p *FilePane) showContextMenu(at fyne.Position, row int) {
 				p.list.RefreshItem(widget.ListItemID(idx))
 			}
 		}
-	})
+	}, p.app.routeContextMenu)
 }
 
 func (p *FilePane) selectedName() string {
