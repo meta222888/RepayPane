@@ -38,6 +38,8 @@ type TransferQueue struct {
 	speedText   string
 	queueRemain int
 	bytesDone   int64
+	batchTotal  int64
+	batchDone   int64
 	lastTick    time.Time
 	lastBytes   int64
 }
@@ -80,6 +82,11 @@ func (q *TransferQueue) EnqueueDownload(client *remote.Client, remotePath, local
 
 func (q *TransferQueue) enqueue(job transferJob) {
 	q.mu.Lock()
+	if !q.active && len(q.jobs) == 0 {
+		q.batchTotal = 0
+		q.batchDone = 0
+	}
+	q.batchTotal += job.totalBytes
 	q.jobs = append(q.jobs, job)
 	q.queueRemain = len(q.jobs)
 	q.mu.Unlock()
@@ -102,7 +109,11 @@ func (q *TransferQueue) pump() {
 	q.jobs = q.jobs[1:]
 	q.queueRemain = len(q.jobs)
 	q.bytesDone = 0
-	q.progress = 0
+	if q.batchTotal > 0 {
+		q.progress = float64(q.batchDone) / float64(q.batchTotal) * 100
+	} else {
+		q.progress = 0
+	}
 	q.lastTick = time.Now()
 	q.lastBytes = 0
 	q.mu.Unlock()
@@ -113,7 +124,9 @@ func (q *TransferQueue) pump() {
 	progressFn := func(n int64) {
 		q.mu.Lock()
 		q.bytesDone = n
-		if job.totalBytes > 0 {
+		if q.batchTotal > 0 {
+			q.progress = float64(q.batchDone+n) / float64(q.batchTotal) * 100
+		} else if job.totalBytes > 0 {
 			q.progress = float64(n) / float64(job.totalBytes) * 100
 		}
 		now := time.Now()
@@ -142,10 +155,17 @@ func (q *TransferQueue) pump() {
 	}
 
 	q.mu.Lock()
+	if err == nil {
+		q.batchDone += job.totalBytes
+	} else {
+		q.batchDone += q.bytesDone
+	}
 	q.active = false
 	if len(q.jobs) == 0 {
 		q.progress = 0
 		q.speedText = i18n.T(i18n.KeyTransferIdle)
+		q.batchTotal = 0
+		q.batchDone = 0
 	}
 	q.mu.Unlock()
 	fyne.Do(func() { q.app.statusBar.RefreshTransfer() })
