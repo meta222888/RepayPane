@@ -27,7 +27,7 @@ func (a *App) paneAtPosition(pos fyne.Position) *FilePane {
 
 func (a *App) completePaneDrop(source *FilePane, absPos fyne.Position) {
 	clip := a.clipboard
-	if clip == nil {
+	if clip == nil || len(clip.Items) == 0 {
 		return
 	}
 	target := a.paneAtPosition(absPos)
@@ -42,7 +42,7 @@ func (a *App) completePaneDrop(source *FilePane, absPos fyne.Position) {
 }
 
 func (a *App) transferClipboardToPane(clip *PaneClipboard, dest *FilePane) {
-	if clip == nil || dest == nil {
+	if clip == nil || dest == nil || len(clip.Items) == 0 {
 		return
 	}
 	if clip.Kind == PaneLocal && dest.kind == PaneRemote {
@@ -64,34 +64,52 @@ func (a *App) uploadClipboardToRemote(clip *PaneClipboard, remoteDir string, onD
 		dialogShow(a, i18n.T(i18n.KeyNotConnectedTitle), i18n.T(i18n.KeyNotConnectedUpload))
 		return
 	}
+	a.uploadClipboardItems(clip.Items, remoteDir, 0, onDone)
+}
+
+func (a *App) uploadClipboardItems(items []PaneClipItem, remoteDir string, idx int, onDone func()) {
+	if idx >= len(items) {
+		if onDone != nil {
+			onDone()
+		}
+		return
+	}
+	item := items[idx]
+	client := a.activeClient()
+	if client == nil {
+		return
+	}
 	exists := func(name string) bool {
 		dst := filepath.ToSlash(filepath.Join(remoteDir, name))
 		return destExistsRemote(client, dst)
 	}
 	start := func(name string) {
 		if name == "" {
+			a.uploadClipboardItems(items, remoteDir, idx+1, onDone)
 			return
 		}
-		a.doUploadClipboardToRemote(clip, remoteDir, name, onDone)
+		a.doUploadClipboardItem(item, remoteDir, name, func() {
+			a.uploadClipboardItems(items, remoteDir, idx+1, onDone)
+		})
 	}
-	if exists(clip.Name) {
-		a.resolveFileConflict(clip.Name, exists, start)
+	if exists(item.Name) {
+		a.resolveFileConflict(item.Name, exists, start)
 		return
 	}
-	start(clip.Name)
+	start(item.Name)
 }
 
-func (a *App) doUploadClipboardToRemote(clip *PaneClipboard, remoteDir, destName string, onDone func()) {
+func (a *App) doUploadClipboardItem(item PaneClipItem, remoteDir, destName string, onDone func()) {
 	client := a.activeClient()
 	if client == nil {
 		return
 	}
 	dst := filepath.ToSlash(filepath.Join(remoteDir, destName))
-	if clip.IsDir {
-		a.enqueueUploadTree(client, clip.Path, dst, onDone)
+	if item.IsDir {
+		a.enqueueUploadTree(client, item.Path, dst, onDone)
 		return
 	}
-	a.transfers.EnqueueUpload(client, clip.Path, dst, func(err error) {
+	a.transfers.EnqueueUpload(client, item.Path, dst, func(err error) {
 		fyne.Do(func() {
 			if err != nil {
 				dialogShowError(a, err)
@@ -110,34 +128,48 @@ func (a *App) downloadClipboardToLocal(clip *PaneClipboard, localDir string, onD
 		dialogShow(a, i18n.T(i18n.KeyNotConnectedTitle), i18n.T(i18n.KeyNotConnectedFirst))
 		return
 	}
+	a.downloadClipboardItems(clip.Items, localDir, 0, onDone)
+}
+
+func (a *App) downloadClipboardItems(items []PaneClipItem, localDir string, idx int, onDone func()) {
+	if idx >= len(items) {
+		if onDone != nil {
+			onDone()
+		}
+		return
+	}
+	item := items[idx]
 	exists := func(name string) bool {
 		_, err := os.Stat(filepath.Join(localDir, name))
 		return err == nil
 	}
 	start := func(name string) {
 		if name == "" {
+			a.downloadClipboardItems(items, localDir, idx+1, onDone)
 			return
 		}
-		a.doDownloadClipboardToLocal(clip, localDir, name, onDone)
+		a.doDownloadClipboardItem(item, localDir, name, func() {
+			a.downloadClipboardItems(items, localDir, idx+1, onDone)
+		})
 	}
-	if exists(clip.Name) {
-		a.resolveFileConflict(clip.Name, exists, start)
+	if exists(item.Name) {
+		a.resolveFileConflict(item.Name, exists, start)
 		return
 	}
-	start(clip.Name)
+	start(item.Name)
 }
 
-func (a *App) doDownloadClipboardToLocal(clip *PaneClipboard, localDir, destName string, onDone func()) {
+func (a *App) doDownloadClipboardItem(item PaneClipItem, localDir, destName string, onDone func()) {
 	client := a.activeClient()
 	if client == nil {
 		return
 	}
 	dst := filepath.Join(localDir, destName)
-	if clip.IsDir {
-		a.enqueueDownloadTree(client, clip.Path, dst, onDone)
+	if item.IsDir {
+		a.enqueueDownloadTree(client, item.Path, dst, onDone)
 		return
 	}
-	a.transfers.EnqueueDownload(client, clip.Path, dst, func(err error) {
+	a.transfers.EnqueueDownload(client, item.Path, dst, func(err error) {
 		fyne.Do(func() {
 			if err != nil {
 				dialogShowError(a, err)

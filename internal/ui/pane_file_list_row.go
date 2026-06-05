@@ -35,7 +35,7 @@ type paneFileListRow struct {
 	rightT    *canvas.Text
 
 	onSecondary    func(*fyne.PointEvent)
-	onPrimary      func()
+	onPrimary      func(ctrl bool)
 	onDragged      func(*fyne.DragEvent)
 	onDragEnd      func()
 	onMouseDown    func()
@@ -44,6 +44,7 @@ type paneFileListRow struct {
 	onRenameCancel func()
 
 	dragActive bool
+	ctrlDown   bool
 }
 
 func newPaneFileListRow(remote bool) *paneFileListRow {
@@ -164,7 +165,7 @@ func (r *paneFileListRow) refreshStyle() {
 
 func (r *paneFileListRow) Tapped(*fyne.PointEvent) {
 	if r.onPrimary != nil {
-		r.onPrimary()
+		r.onPrimary(r.ctrlDown)
 	}
 }
 
@@ -189,7 +190,8 @@ func (r *paneFileListRow) DragEnd() {
 	r.dragActive = false
 }
 
-func (r *paneFileListRow) MouseDown(*desktop.MouseEvent) {
+func (r *paneFileListRow) MouseDown(ev *desktop.MouseEvent) {
+	r.ctrlDown = ev.Modifier&desktop.ControlModifier != 0
 	if r.onMouseDown != nil {
 		r.onMouseDown()
 	}

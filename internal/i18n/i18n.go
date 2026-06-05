@@ -192,6 +192,7 @@ const (
 	KeyCtxNewFolder       = "ctx.new_folder"
 	KeyCtxNewFile         = "ctx.new_file"
 	KeyDeleteFileConfirm  = "dialog.delete_file_confirm"
+	KeyDeleteMultiConfirm = "dialog.delete_multi_confirm"
 	KeyFileExists         = "dialog.file_exists"
 	KeyFileExistsTitle    = "dialog.file_exists_title"
 	KeyFileExistsConflict = "dialog.file_exists_conflict"
@@ -435,7 +436,8 @@ var enStrings = map[string]string{
 	KeyCtxDelete:         "Delete",
 	KeyCtxNewFolder:      "New Folder",
 	KeyCtxNewFile:        "New File",
-	KeyDeleteFileConfirm: "Delete %q?",
+	KeyDeleteFileConfirm:  "Delete %q?",
+	KeyDeleteMultiConfirm: "Delete %d selected items?",
 	KeyFileExists:        "%q already exists",
 	KeyFileExistsTitle:   "File Already Exists",
 	KeyFileExistsConflict: "%q already exists.\nChoose an action:",
@@ -679,7 +681,8 @@ var zhStrings = map[string]string{
 	KeyCtxDelete:         "删除",
 	KeyCtxNewFolder:      "新建目录",
 	KeyCtxNewFile:        "新建文件",
-	KeyDeleteFileConfirm: "确定删除 %q？",
+	KeyDeleteFileConfirm:  "确定删除 %q？",
+	KeyDeleteMultiConfirm: "确定删除选中的 %d 项？",
 	KeyFileExists:        "%q 已存在",
 	KeyFileExistsTitle:   "文件已存在",
 	KeyFileExistsConflict: "%q 已存在。\n请选择操作：",

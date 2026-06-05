@@ -43,6 +43,8 @@ type App struct {
 	transfers *TransferQueue
 
 	clipboard *PaneClipboard
+
+	activeFilePane *FilePane
 }
 
 func NewApp(a fyne.App, w fyne.Window) *App {
@@ -103,7 +105,25 @@ func NewApp(a fyne.App, w fyne.Window) *App {
 	appUI.statusBar.Refresh()
 	appUI.registerShellShortcut()
 	appUI.registerRenameShortcut()
+	appUI.registerFilePaneShortcuts()
 	return appUI
+}
+
+func (a *App) registerFilePaneShortcuts() {
+	if _, ok := a.window.Canvas().(desktop.Canvas); !ok {
+		return
+	}
+	ctrlA := &desktop.CustomShortcut{KeyName: fyne.KeyA, Modifier: desktop.ControlModifier}
+	a.window.Canvas().AddShortcut(ctrlA, func(fyne.Shortcut) {
+		pane := a.activeFilePane
+		if pane == nil {
+			pane = a.localPane
+		}
+		if pane == nil {
+			return
+		}
+		pane.selectAllFiles()
+	})
 }
 
 func (a *App) registerRenameShortcut() {

@@ -30,11 +30,12 @@ func (b *paneListUnderlay) MinSize() fyne.Size {
 }
 
 func (b *paneListUnderlay) Tapped(*fyne.PointEvent) {
-	// Primary taps on blank list area only clear selection; must not sit above rows (see list z-order).
+	b.pane.noteActive()
 	b.pane.clearSelectionQuiet()
 }
 
 func (b *paneListUnderlay) TappedSecondary(ev *fyne.PointEvent) {
+	b.pane.noteActive()
 	b.pane.showContextMenu(ev.AbsolutePosition, -1)
 }
 
