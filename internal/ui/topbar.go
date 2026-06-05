@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"github.com/relaypane/relaypane/internal/assets"
 	"github.com/relaypane/relaypane/internal/i18n"
 
 	"fyne.io/fyne/v2"
@@ -21,12 +22,13 @@ type TopBar struct {
 
 func NewTopBar(app *App) *TopBar {
 	t := &TopBar{app: app}
-	logoIcon := canvas.NewText("⇄", colorAccent)
-	logoIcon.TextSize = 16
+	logoImg := canvas.NewImageFromResource(assets.LogoResource())
+	logoImg.FillMode = canvas.ImageFillContain
+	logoImg.SetMinSize(fyne.NewSize(22, 22))
 	appName := canvas.NewText(i18n.T(i18n.KeyAppTitle), colorForeground)
 	appName.TextSize = 13
 	appName.TextStyle = fyne.TextStyle{Bold: true}
-	logo := container.NewHBox(logoIcon, appName)
+	logo := container.NewHBox(logoImg, appName)
 	t.btnSet = widget.NewButtonWithIcon(i18n.T(i18n.KeyMenuSettings), theme.SettingsIcon(), func() {
 		t.showMenu(app.settingsMenu(), t.btnSet)
 	})

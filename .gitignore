@@ -3,6 +3,8 @@
 *.exe~
 *.dll
 /dev/
+/release/
+*.syso
 
 # Go
 /vendor/
