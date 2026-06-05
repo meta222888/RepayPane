@@ -7,15 +7,13 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/driver/desktop"
-	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 )
 
 const (
-	paneRowNameSize  float32 = 13
-	paneRowMetaSize  float32 = 12
-	paneRowMinHeight float32 = 30
-	paneRowVPad      float32 = 2
+	paneRowNameSize  float32 = 12
+	paneRowMetaSize  float32 = 11
+	paneRowMinHeight float32 = 26
 )
 
 type paneFileListRow struct {
@@ -137,7 +135,10 @@ func (r *paneFileListRow) rowBgColor() color.Color {
 	if r.hovered {
 		return colorRowHover
 	}
-	return colorPanel
+	if r.rowIndex%2 == 0 {
+		return colorPanel
+	}
+	return colorRowAlt
 }
 
 func (r *paneFileListRow) refreshStyle() {
@@ -226,9 +227,8 @@ func (r *paneFileListRow) MouseOut() {
 }
 
 func (r *paneFileListRow) CreateRenderer() fyne.WidgetRenderer {
-	contentH := paneRowMinHeight - 1
 	r.bg = canvas.NewRectangle(r.rowBgColor())
-	r.bg.SetMinSize(fyne.NewSize(0, contentH))
+	r.bg.SetMinSize(fyne.NewSize(0, paneRowMinHeight))
 	r.nameT = canvas.NewText("", colorForeground)
 	r.nameT.TextSize = paneRowNameSize
 	r.nameEntry = widget.NewEntry()
@@ -238,7 +238,7 @@ func (r *paneFileListRow) CreateRenderer() fyne.WidgetRenderer {
 			r.onRenameCommit(text)
 		}
 	}
-	nameCol := container.NewStack(wrapCanvasText(r.nameT), container.NewMax(r.nameEntry))
+	nameCol := container.NewStack(r.nameT, container.NewMax(r.nameEntry))
 
 	var row fyne.CanvasObject
 	if r.remote {
@@ -246,20 +246,16 @@ func (r *paneFileListRow) CreateRenderer() fyne.WidgetRenderer {
 		r.sizeT.TextSize = paneRowMetaSize
 		r.metaT = canvas.NewText("", colorMuted)
 		r.metaT.TextSize = paneRowMetaSize
-		right := container.NewHBox(fixedWidth(wrapCanvasText(r.metaT), 128), fixedWidth(wrapCanvasText(r.sizeT), 72))
+		right := container.NewHBox(fixedWidth(r.metaT, 128), fixedWidth(r.sizeT, 72))
 		row = container.NewBorder(nil, nil, nil, right, nameCol)
 	} else {
 		r.rightT = canvas.NewText("", colorMuted)
 		r.rightT.TextSize = paneRowMetaSize
-		row = container.NewBorder(nil, nil, nil, wrapCanvasText(r.rightT), nameCol)
+		row = container.NewBorder(nil, nil, nil, r.rightT, nameCol)
 	}
 
-	sep := canvas.NewRectangle(colorBorder)
-	sep.SetMinSize(fyne.NewSize(0, 1))
-	inner := container.NewStack(r.bg, container.New(
-		layout.NewCustomPaddedLayout(6, paneRowVPad, 6, paneRowVPad), row))
-	cell := container.NewBorder(nil, sep, nil, nil, inner)
-	return widget.NewSimpleRenderer(cell)
+	content := container.NewStack(r.bg, container.NewPadded(row))
+	return widget.NewSimpleRenderer(content)
 }
 
 func (r *paneFileListRow) MinSize() fyne.Size {
