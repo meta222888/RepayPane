@@ -121,6 +121,7 @@ func (q *TransferQueue) pump() {
 	q.app.statusBar.RefreshTransfer()
 
 	var err error
+	var lastUIRefresh time.Time
 	progressFn := func(n int64) {
 		q.mu.Lock()
 		q.bytesDone = n
@@ -139,8 +140,14 @@ func (q *TransferQueue) pump() {
 			q.lastTick = now
 			q.lastBytes = n
 		}
+		refreshUI := now.Sub(lastUIRefresh) >= 100*time.Millisecond
+		if refreshUI {
+			lastUIRefresh = now
+		}
 		q.mu.Unlock()
-		fyne.Do(func() { q.app.statusBar.RefreshTransfer() })
+		if refreshUI {
+			fyne.Do(func() { q.app.statusBar.RefreshTransfer() })
+		}
 	}
 
 	switch job.kind {

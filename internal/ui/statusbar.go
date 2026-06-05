@@ -79,6 +79,11 @@ func (r *slimProgressRenderer) MinSize() fyne.Size {
 func (r *slimProgressRenderer) Refresh() {
 	r.bg.FillColor = colorProgressTrack
 	r.fill.FillColor = colorAccent
+	size := r.bar.Size()
+	if size.Width <= 0 || size.Height <= 0 {
+		size = r.MinSize()
+	}
+	r.Layout(size)
 	canvas.Refresh(r.bg)
 	canvas.Refresh(r.fill)
 }
