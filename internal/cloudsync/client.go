@@ -27,10 +27,10 @@ type apiResponse struct {
 }
 
 type apiStorageData struct {
-	Key       string `json:"key"`
-	Value     string `json:"value"`
-	ExpiredAt string `json:"expired_at"`
-	UpdatedAt string `json:"updated_at"`
+	Key       string     `json:"key"`
+	Value     string     `json:"value"`
+	ExpiredAt flexString `json:"expired_at"`
+	UpdatedAt flexString `json:"updated_at"`
 }
 
 type Client struct {
@@ -82,7 +82,7 @@ func (c *Client) QueryStatus() (CloudStatus, error) {
 	if out.Code != 200 || out.Data == nil {
 		return CloudStatus{}, fmt.Errorf("%s", out.Message)
 	}
-	return CloudStatus{Exists: true, UpdatedAt: out.Data.UpdatedAt}, nil
+	return CloudStatus{Exists: true, UpdatedAt: formatAPITime(out.Data.UpdatedAt.String())}, nil
 }
 
 func (c *Client) GetEncryptedValue() (string, CloudStatus, error) {
@@ -117,7 +117,7 @@ func (c *Client) GetEncryptedValue() (string, CloudStatus, error) {
 	if out.Code != 200 || out.Data == nil {
 		return "", CloudStatus{}, fmt.Errorf("%s", out.Message)
 	}
-	return out.Data.Value, CloudStatus{Exists: true, UpdatedAt: out.Data.UpdatedAt}, nil
+	return out.Data.Value, CloudStatus{Exists: true, UpdatedAt: formatAPITime(out.Data.UpdatedAt.String())}, nil
 }
 
 func (c *Client) SetEncryptedValue(value string) (updatedAt string, err error) {
@@ -164,7 +164,7 @@ func (c *Client) SetEncryptedValue(value string) (updatedAt string, err error) {
 		return "", newResponseError(resp.StatusCode, body, fmt.Errorf("upload failed (HTTP %d)", resp.StatusCode))
 	}
 	if out.Data != nil {
-		return out.Data.UpdatedAt, nil
+		return formatAPITime(out.Data.UpdatedAt.String()), nil
 	}
 	return time.Now().Format("2006-01-02 15:04:05"), nil
 }
