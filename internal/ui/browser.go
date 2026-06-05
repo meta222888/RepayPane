@@ -70,6 +70,8 @@ type FilePane struct {
 	selectionAnchor   int
 	lastTapRow  int
 	lastTapTime time.Time
+	renamePendingRow int
+	renamePendingGen int
 	renamingRow int
 	listPointerDown int
 	pendingListRefresh bool
@@ -445,6 +447,7 @@ func (p *FilePane) Navigate(path string) {
 	p.path = path
 	p.clearSelectionQuiet()
 	p.lastTapRow = -1
+	p.cancelPendingRename()
 	if p.kind == PaneLocal && p.localNav != nil {
 		p.localNav.syncFromPath(path)
 	}
@@ -571,6 +574,7 @@ func (p *FilePane) tapRow(row int, ctrl bool) {
 	now := time.Now()
 	elapsed := now.Sub(p.lastTapTime)
 	if row == p.lastTapRow && elapsed <= paneDoubleClickInterval {
+		p.cancelPendingRename()
 		p.lastTapRow = -1
 		p.cancelRename()
 		if !ctrl {
@@ -580,10 +584,12 @@ func (p *FilePane) tapRow(row int, ctrl bool) {
 		return
 	}
 	if !ctrl && len(p.selectedFileRows()) <= 1 && row == p.selectionAnchorRow() && row == p.lastTapRow && elapsed > paneDoubleClickInterval && !p.isParentRow(row) {
-		p.lastTapRow = -1
-		p.startRename(row)
+		p.lastTapRow = row
+		p.lastTapTime = now
+		p.schedulePendingRename(row)
 		return
 	}
+	p.cancelPendingRename()
 	p.lastTapRow = row
 	p.lastTapTime = now
 	if ctrl {
@@ -591,6 +597,32 @@ func (p *FilePane) tapRow(row int, ctrl bool) {
 		return
 	}
 	p.selectRow(row)
+}
+
+func (p *FilePane) cancelPendingRename() {
+	p.renamePendingRow = -1
+	p.renamePendingGen++
+}
+
+func (p *FilePane) schedulePendingRename(row int) {
+	p.renamePendingRow = row
+	p.renamePendingGen++
+	gen := p.renamePendingGen
+	time.AfterFunc(paneDoubleClickInterval, func() {
+		fyne.Do(func() {
+			if p.renamePendingGen != gen || p.renamePendingRow != row {
+				return
+			}
+			p.renamePendingRow = -1
+			if p.renamingRow >= 0 {
+				return
+			}
+			if !p.isRowSelected(row) || p.selectionAnchorRow() != row {
+				return
+			}
+			p.startRename(row)
+		})
+	})
 }
 
 func validRenameName(name string) bool {
@@ -674,6 +706,7 @@ func (p *FilePane) clearSelection() {
 }
 
 func (p *FilePane) clearSelectionQuiet() {
+	p.cancelPendingRename()
 	p.cancelRename()
 	if len(p.selectedRows) == 0 {
 		return
