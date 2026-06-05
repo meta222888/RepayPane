@@ -60,6 +60,7 @@ type FilePane struct {
 	localDriveLbl     fyne.CanvasObject
 	localDriveLblText *canvas.Text
 	list           *widget.List
+	listPaneArea   fyne.CanvasObject
 	listArea       fyne.CanvasObject
 	listHeader     fyne.CanvasObject
 	listLoading    *paneListLoadingOverlay
@@ -106,14 +107,15 @@ func (p *FilePane) build() {
 
 	if p.kind == PaneLocal {
 		p.listHeader = p.buildLocalListHeader()
-		p.listArea = newPaneListArea(p, p.list)
+		p.listPaneArea = newPaneListArea(p, p.list)
+		p.listArea = p.listPaneArea
 		p.root = container.NewBorder(p.buildLocalChrome(), nil, nil, nil,
 			container.NewBorder(p.listHeader, nil, nil, nil, p.listArea))
 	} else {
 		p.listHeader = p.buildRemoteListHeader()
 		p.listLoading = newPaneListLoadingOverlay()
-		base := newPaneListArea(p, p.list)
-		p.listArea = container.NewStack(base, p.listLoading)
+		p.listPaneArea = newPaneListArea(p, p.list)
+		p.listArea = container.NewStack(p.listPaneArea, p.listLoading)
 		p.root = container.NewBorder(p.buildRemoteChrome(), nil, nil, nil,
 			container.NewBorder(p.listHeader, nil, nil, nil, p.listArea))
 	}
@@ -264,7 +266,19 @@ func (p *FilePane) setListLoading(v bool) {
 		return
 	}
 	p.listLoading.setActive(v)
-	canvas.Refresh(p.listArea)
+	if !v {
+		p.relayoutListPane()
+	}
+}
+
+func (p *FilePane) relayoutListPane() {
+	relayoutPaneListArea(p.listPaneArea)
+	if p.listArea != nil && p.listArea != p.listPaneArea {
+		relayoutPaneListArea(p.listArea)
+	}
+	if p.list != nil {
+		p.list.Refresh()
+	}
 }
 
 func (p *FilePane) updateListRow(i widget.ListItemID, obj fyne.CanvasObject) {
@@ -362,6 +376,7 @@ func (p *FilePane) SetConnected(v bool) {
 		p.remote = nil
 		p.setListLoading(false)
 		p.list.Refresh()
+		p.relayoutListPane()
 		return
 	}
 }
@@ -493,13 +508,14 @@ func (p *FilePane) RefreshListing() {
 			if gen != p.listGen || p.path != dir {
 				return
 			}
-			p.setListLoading(false)
 			if err != nil {
+				p.setListLoading(false)
 				dialog.ShowError(err, p.app.window)
 				return
 			}
 			p.remote = entries
 			p.refreshListIfAllowed()
+			p.setListLoading(false)
 		})
 	}()
 }
@@ -527,6 +543,7 @@ func (p *FilePane) refreshListIfAllowed() {
 	}
 	p.pendingListRefresh = false
 	p.list.Refresh()
+	p.relayoutListPane()
 }
 
 func (p *FilePane) tapRow(row int, ctrl bool) {

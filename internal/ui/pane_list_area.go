@@ -85,3 +85,14 @@ func newPaneListArea(p *FilePane, list *widget.List) fyne.CanvasObject {
 	// Underlay first, list second — hit-testing prefers later children so list receives row clicks.
 	return container.New(&paneListStackLayout{pane: p}, newPaneListUnderlay(p), compactList)
 }
+
+func relayoutPaneListArea(area fyne.CanvasObject) {
+	if area == nil {
+		return
+	}
+	size := area.Size()
+	if size.Width > 0 && size.Height > 0 {
+		area.Resize(size)
+	}
+	canvas.Refresh(area)
+}
