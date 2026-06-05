@@ -5,6 +5,7 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -33,4 +34,20 @@ func dialogShowError(a *App, err error) {
 	w.SetContent(container.NewPadded(withBackground(body, colorBG)))
 	w.CenterOnScreen()
 	w.Show()
+}
+
+// dialogShowOn shows an informational dialog as an overlay on parent (stays above that window).
+func dialogShowOn(parent fyne.Window, title, msg string) {
+	if parent == nil {
+		return
+	}
+	dialog.ShowInformation(title, msg, parent)
+}
+
+// dialogShowErrorOn shows an error dialog as an overlay on parent (stays above that window).
+func dialogShowErrorOn(parent fyne.Window, err error) {
+	if err == nil || parent == nil {
+		return
+	}
+	dialog.ShowError(err, parent)
 }

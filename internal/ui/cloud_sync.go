@@ -16,7 +16,13 @@ import (
 )
 
 func (a *App) showCloudSync() {
-	var dlg *modalDialog
+	var cloudDlg *modalDialog
+	parent := func() fyne.Window {
+		if cloudDlg != nil && cloudDlg.Window() != nil {
+			return cloudDlg.Window()
+		}
+		return a.window
+	}
 
 	apiSecret := widget.NewPasswordEntry()
 	apiSecret.SetText(a.settings.CloudSyncAPISecret)
@@ -47,13 +53,13 @@ func (a *App) showCloudSync() {
 
 	saveKeysBtn := widget.NewButton(i18n.T(i18n.KeyCloudSyncSaveLocal), func() {
 		saveLocalConfig()
-		dialogShow(a, i18n.T(i18n.KeyCloudSyncTitle), i18n.T(i18n.KeyCloudSyncSaveLocalOK))
+		dialogShowOn(parent(), i18n.T(i18n.KeyCloudSyncTitle), i18n.T(i18n.KeyCloudSyncSaveLocalOK))
 	})
 
 	queryCloudBtn := widget.NewButton(i18n.T(i18n.KeyCloudSyncQueryCloud), func() {
 		saveLocalConfig()
 		if apiSecret.Text == "" {
-			dialogShow(a, i18n.T(i18n.KeyCloudSyncTitle), i18n.T(i18n.KeyCloudSyncNeedSecret))
+			dialogShowOn(parent(), i18n.T(i18n.KeyCloudSyncTitle), i18n.T(i18n.KeyCloudSyncNeedSecret))
 			return
 		}
 		cloudStatusLbl.SetText(i18n.T(i18n.KeyCloudSyncQuerying))
@@ -62,7 +68,7 @@ func (a *App) showCloudSync() {
 			fyne.Do(func() {
 				if err != nil {
 					cloudStatusLbl.SetText(i18n.T(i18n.KeyCloudSyncCloudUnknown))
-					dialogShowError(a, err)
+					dialogShowErrorOn(parent(), err)
 					return
 				}
 				if !st.Exists {
@@ -77,15 +83,15 @@ func (a *App) showCloudSync() {
 	syncUpBtn := newAccentButton(i18n.T(i18n.KeyCloudSyncUpload), func() {
 		saveLocalConfig()
 		if apiSecret.Text == "" {
-			dialogShow(a, i18n.T(i18n.KeyCloudSyncTitle), i18n.T(i18n.KeyCloudSyncNeedSecret))
+			dialogShowOn(parent(), i18n.T(i18n.KeyCloudSyncTitle), i18n.T(i18n.KeyCloudSyncNeedSecret))
 			return
 		}
 		if encPass.Text == "" {
-			dialogShow(a, i18n.T(i18n.KeyCloudSyncTitle), i18n.T(i18n.KeyCloudSyncNeedPassword))
+			dialogShowOn(parent(), i18n.T(i18n.KeyCloudSyncTitle), i18n.T(i18n.KeyCloudSyncNeedPassword))
 			return
 		}
 		if len(a.store.Servers) == 0 {
-			dialogShow(a, i18n.T(i18n.KeyCloudSyncTitle), i18n.T(i18n.KeyCloudSyncNoLocalData))
+			dialogShowOn(parent(), i18n.T(i18n.KeyCloudSyncTitle), i18n.T(i18n.KeyCloudSyncNoLocalData))
 			return
 		}
 		localStatusLbl.SetText(i18n.T(i18n.KeyCloudSyncUploading))
@@ -94,7 +100,7 @@ func (a *App) showCloudSync() {
 			fyne.Do(func() {
 				if err != nil {
 					refreshLocalStatus()
-					dialogShowError(a, err)
+					dialogShowErrorOn(parent(), err)
 					return
 				}
 				now := time.Now().Format("2006-01-02 15:04:05")
@@ -108,7 +114,7 @@ func (a *App) showCloudSync() {
 				if updatedAt != "" {
 					cloudStatusLbl.SetText(i18n.Tf(i18n.KeyCloudSyncCloudSavedAt, updatedAt))
 				}
-				dialogShow(a, i18n.T(i18n.KeyCloudSyncTitle), i18n.Tf(i18n.KeyCloudSyncUploadOK, a.settings.CloudSyncLastSyncAt))
+				dialogShowOn(parent(), i18n.T(i18n.KeyCloudSyncTitle), i18n.Tf(i18n.KeyCloudSyncUploadOK, a.settings.CloudSyncLastSyncAt))
 			})
 		}()
 	})
@@ -116,22 +122,22 @@ func (a *App) showCloudSync() {
 	syncDownBtn := newAccentButton(i18n.T(i18n.KeyCloudSyncDownload), func() {
 		saveLocalConfig()
 		if apiSecret.Text == "" {
-			dialogShow(a, i18n.T(i18n.KeyCloudSyncTitle), i18n.T(i18n.KeyCloudSyncNeedSecret))
+			dialogShowOn(parent(), i18n.T(i18n.KeyCloudSyncTitle), i18n.T(i18n.KeyCloudSyncNeedSecret))
 			return
 		}
 		if encPass.Text == "" {
-			dialogShow(a, i18n.T(i18n.KeyCloudSyncTitle), i18n.T(i18n.KeyCloudSyncNeedPassword))
+			dialogShowOn(parent(), i18n.T(i18n.KeyCloudSyncTitle), i18n.T(i18n.KeyCloudSyncNeedPassword))
 			return
 		}
 		go func() {
 			plain, st, err := cloudsync.Download(apiSecret.Text, encPass.Text)
 			fyne.Do(func() {
 				if err != nil {
-					dialogShowError(a, err)
+					dialogShowErrorOn(parent(), err)
 					return
 				}
 				if !st.Exists || len(plain) == 0 {
-					dialogShow(a, i18n.T(i18n.KeyCloudSyncTitle), i18n.T(i18n.KeyCloudSyncCloudNoData))
+					dialogShowOn(parent(), i18n.T(i18n.KeyCloudSyncTitle), i18n.T(i18n.KeyCloudSyncCloudNoData))
 					return
 				}
 				dialog.ShowConfirm(
@@ -144,7 +150,7 @@ func (a *App) showCloudSync() {
 						go func() {
 							newStore := &config.Store{}
 							if err := cloudsync.ApplyPayload(plain, newStore); err != nil {
-								fyne.Do(func() { dialogShowError(a, err) })
+								fyne.Do(func() { dialogShowErrorOn(parent(), err) })
 								return
 							}
 							fyne.Do(func() {
@@ -155,11 +161,11 @@ func (a *App) showCloudSync() {
 								_ = config.SaveSettings(a.settings)
 								refreshLocalStatus()
 								a.tabBar.Refresh()
-								dialogShow(a, i18n.T(i18n.KeyCloudSyncTitle), i18n.Tf(i18n.KeyCloudSyncDownloadOK, now))
+								dialogShowOn(parent(), i18n.T(i18n.KeyCloudSyncTitle), i18n.Tf(i18n.KeyCloudSyncDownloadOK, now))
 							})
 						}()
 					},
-					a.window,
+					parent(),
 				)
 			})
 		}()
@@ -168,7 +174,7 @@ func (a *App) showCloudSync() {
 	deleteBtn := newAccentButton(i18n.T(i18n.KeyCloudSyncDeleteCloud), func() {
 		saveLocalConfig()
 		if apiSecret.Text == "" {
-			dialogShow(a, i18n.T(i18n.KeyCloudSyncTitle), i18n.T(i18n.KeyCloudSyncNeedSecret))
+			dialogShowOn(parent(), i18n.T(i18n.KeyCloudSyncTitle), i18n.T(i18n.KeyCloudSyncNeedSecret))
 			return
 		}
 		dialog.ShowConfirm(
@@ -183,15 +189,15 @@ func (a *App) showCloudSync() {
 					fyne.Do(func() {
 						resultTitle := i18n.T(i18n.KeyCloudSyncDeleteResultTitle)
 						if err != nil {
-							dialogShow(a, resultTitle, i18n.Tf(i18n.KeyCloudSyncDeleteFail, err.Error()))
+							dialogShowOn(parent(), resultTitle, i18n.Tf(i18n.KeyCloudSyncDeleteFail, err.Error()))
 							return
 						}
 						cloudStatusLbl.SetText(i18n.T(i18n.KeyCloudSyncCloudEmpty))
-						dialogShow(a, resultTitle, i18n.T(i18n.KeyCloudSyncDeleteOK))
+						dialogShowOn(parent(), resultTitle, i18n.T(i18n.KeyCloudSyncDeleteOK))
 					})
 				}()
 			},
-			a.window,
+			parent(),
 		)
 	})
 	deleteBtn.Importance = widget.DangerImportance
@@ -224,8 +230,8 @@ func (a *App) showCloudSync() {
 		widget.NewSeparator(),
 		actionSection,
 	)
-	dlg = newModalDialogAuto(a, i18n.T(i18n.KeyCloudSyncTitle), 560, body)
-	dlg.SetOnClose(saveLocalConfig)
+	cloudDlg = newModalDialogAuto(a, i18n.T(i18n.KeyCloudSyncTitle), 560, body)
+	cloudDlg.SetOnClose(saveLocalConfig)
 }
 
 func cloudSyncLocalStatus(lastSync string) string {
