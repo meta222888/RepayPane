@@ -266,12 +266,28 @@ func (p *FilePane) relayoutListPane() {
 			}
 		}
 	}
-	if p.list != nil {
-		p.list.Refresh()
-	}
 	if p.root != nil {
 		canvas.Refresh(p.root)
 	}
+}
+
+func (p *FilePane) syncListView() {
+	if p.list == nil {
+		return
+	}
+	p.pendingListRefresh = false
+	p.list.UnselectAll()
+	p.list.ScrollToTop()
+	p.list.Refresh()
+	n := p.rowCount()
+	limit := n
+	if limit > 64 {
+		limit = 64
+	}
+	for i := 0; i < limit; i++ {
+		p.list.RefreshItem(widget.ListItemID(i))
+	}
+	p.relayoutListPane()
 }
 
 func (p *FilePane) updateListRow(i widget.ListItemID, obj fyne.CanvasObject) {
@@ -368,8 +384,7 @@ func (p *FilePane) SetConnected(v bool) {
 	if !v {
 		p.remote = nil
 		p.setListLoading(false)
-		p.list.Refresh()
-		p.relayoutListPane()
+		p.syncListView()
 		return
 	}
 }
@@ -410,6 +425,7 @@ func (p *FilePane) refreshPathDisplay() {
 
 func (p *FilePane) Navigate(path string) {
 	p.cancelRename()
+	p.listGen++
 	if p.kind == PaneLocal {
 		path = filepath.Clean(path)
 		st, err := os.Stat(path)
@@ -475,7 +491,7 @@ func (p *FilePane) RefreshListing() {
 			return
 		}
 		p.local = entries
-		p.refreshListIfAllowed()
+		p.syncListView()
 		return
 	}
 	if !p.connected || p.app.activeClient() == nil {
@@ -508,8 +524,7 @@ func (p *FilePane) RefreshListing() {
 			}
 			p.remote = entries
 			p.setListLoading(false)
-			p.refreshListIfAllowed()
-			p.relayoutListPane()
+			p.syncListView()
 		})
 	}()
 }
@@ -535,9 +550,7 @@ func (p *FilePane) refreshListIfAllowed() {
 		p.pendingListRefresh = true
 		return
 	}
-	p.pendingListRefresh = false
-	p.list.Refresh()
-	p.relayoutListPane()
+	p.syncListView()
 }
 
 func (p *FilePane) tapRow(row int, ctrl bool) {

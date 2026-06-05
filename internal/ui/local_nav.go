@@ -63,7 +63,8 @@ func (n *LocalNav) showRootMenu() {
 			active := strings.EqualFold(drive, current)
 			rows = append(rows, newLocalNavMenuRow(theme.ComputerIcon(), drive, "", active, func() {
 				dismiss()
-				n.pane.Navigate(drive)
+				target := drive
+				fyne.Do(func() { n.pane.Navigate(target) })
 			}))
 		}
 		rows = append(rows, localNavPopupSeparator())
@@ -72,7 +73,8 @@ func (n *LocalNav) showRootMenu() {
 			p := place
 			rows = append(rows, newLocalNavMenuRow(p.icon, p.label, p.short, false, func() {
 				dismiss()
-				n.pane.Navigate(p.path)
+				target := p.path
+				fyne.Do(func() { n.pane.Navigate(target) })
 			}))
 		}
 		return container.NewVBox(rows...)
