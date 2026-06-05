@@ -2,7 +2,13 @@
 
 package ui
 
-import "fyne.io/fyne/v2"
+import (
+	"time"
+
+	"fyne.io/fyne/v2"
+)
+
+func doubleClickInterval() time.Duration { return 500 * time.Millisecond }
 
 func winStartCaptionDrag(fyne.Window) bool { return false }
 

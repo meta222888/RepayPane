@@ -3,13 +3,19 @@
 package ui
 
 import (
+	"image/color"
 	"reflect"
 	"sync"
 	"syscall"
+	"time"
 	"unsafe"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
+	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/driver"
+	"fyne.io/fyne/v2/driver/desktop"
+	"fyne.io/fyne/v2/widget"
 )
 
 var (
@@ -20,6 +26,7 @@ var (
 	procGetCurrentProcessId      = kernel32.NewProc("GetCurrentProcessId")
 	procGetWindowLongPtrW        = user32.NewProc("GetWindowLongPtrW")
 	procSetWindowLongPtrW        = user32.NewProc("SetWindowLongPtrW")
+	procSetWindowPos             = user32.NewProc("SetWindowPos")
 	procCallWindowProcW          = user32.NewProc("CallWindowProcW")
 	procDefWindowProcW           = user32.NewProc("DefWindowProcW")
 	procShowWindow               = user32.NewProc("ShowWindow")
@@ -27,25 +34,34 @@ var (
 	procIsWindow                 = user32.NewProc("IsWindow")
 	procReleaseCapture           = user32.NewProc("ReleaseCapture")
 	procPostMessageW             = user32.NewProc("PostMessageW")
+	procGetDoubleClickTime       = user32.NewProc("GetDoubleClickTime")
 )
 
 const (
-	gwlpWndProc    = ^uintptr(3) // GWLP_WNDPROC (-4)
-	wmNcHitTest    = 0x0084
+	gwlStyle        = ^uintptr(15) // GWL_STYLE (-16)
+	gwlpWndProc     = ^uintptr(3)  // GWLP_WNDPROC (-4)
+	wmNcHitTest     = 0x0084
 	wmNcLButtonDown = 0x00A1
-	swMinimize     = 6
-	swMaximize     = 3
-	swRestore      = 9
-	htCaption      = 2
-	htLeft         = 10
-	htRight        = 11
-	htTop          = 12
-	htTopLeft      = 13
-	htTopRight     = 14
-	htBottom       = 15
-	htBottomLeft   = 16
-	htBottomRight  = 17
-	edgeBorderPx   = 8
+	swMinimize      = 6
+	swMaximize      = 3
+	swRestore       = 9
+	htCaption       = 2
+	htLeft          = 10
+	htRight         = 11
+	htTop           = 12
+	htTopLeft       = 13
+	htTopRight      = 14
+	htBottom        = 15
+	htBottomLeft    = 16
+	htBottomRight   = 17
+	wsThickFrame    = 0x00040000
+	wsMaximizeBox   = 0x00010000
+	swpNoMove       = 0x0002
+	swpNoSize       = 0x0001
+	swpNoZOrder     = 0x0004
+	swpFrameChanged = 0x0020
+	edgeBorderPx    = 8
+	gripThickness   float32 = 8
 )
 
 type winRect struct {
@@ -53,12 +69,20 @@ type winRect struct {
 }
 
 var (
-	frameMainWindow     fyne.Window
-	frameHookedHWND     uintptr
-	frameOriginalProc   uintptr
-	frameWndProcCB      = syscall.NewCallback(frameWndProc)
-	hwndCache           sync.Map
+	frameMainWindow   fyne.Window
+	frameHookedHWND   uintptr
+	frameOriginalProc uintptr
+	frameWndProcCB    = syscall.NewCallback(frameWndProc)
+	hwndCache         sync.Map
 )
+
+func doubleClickInterval() time.Duration {
+	ms, _, _ := procGetDoubleClickTime.Call()
+	if ms == 0 {
+		return 500 * time.Millisecond
+	}
+	return time.Duration(ms) * time.Millisecond
+}
 
 func frameWndProc(hwnd, msg, wParam, lParam uintptr) uintptr {
 	if msg == wmNcHitTest {
@@ -207,6 +231,19 @@ func resolveHWND(w fyne.Window) uintptr {
 	return 0
 }
 
+func enableWindowResizeFrame(hwnd uintptr) {
+	style, _, _ := procGetWindowLongPtrW.Call(hwnd, gwlStyle)
+	if style == 0 {
+		return
+	}
+	newStyle := style | wsThickFrame | wsMaximizeBox
+	procSetWindowLongPtrW.Call(hwnd, gwlStyle, newStyle)
+	procSetWindowPos.Call(
+		hwnd, 0, 0, 0, 0, 0,
+		swpNoMove|swpNoSize|swpNoZOrder|swpFrameChanged,
+	)
+}
+
 func ensureFrameWndProcHook(hwnd uintptr) {
 	if hwnd == 0 || frameHookedHWND == hwnd {
 		return
@@ -217,6 +254,7 @@ func ensureFrameWndProcHook(hwnd uintptr) {
 	}
 	if prev == frameWndProcCB {
 		frameHookedHWND = hwnd
+		enableWindowResizeFrame(hwnd)
 		return
 	}
 	ret, _, _ := procSetWindowLongPtrW.Call(hwnd, gwlpWndProc, frameWndProcCB)
@@ -225,6 +263,7 @@ func ensureFrameWndProcHook(hwnd uintptr) {
 	}
 	frameOriginalProc = prev
 	frameHookedHWND = hwnd
+	enableWindowResizeFrame(hwnd)
 }
 
 func winInstallResizeHook(w fyne.Window) bool {
@@ -239,8 +278,58 @@ func winInstallResizeHook(w fyne.Window) bool {
 
 func wrapWindowResizePlatform(w fyne.Window, content fyne.CanvasObject) fyne.CanvasObject {
 	_ = winInstallResizeHook(w)
-	return content
+	return wrapResizeEdges(w, content)
 }
+
+func wrapResizeEdges(w fyne.Window, content fyne.CanvasObject) fyne.CanvasObject {
+	mk := func(edge uintptr) fyne.CanvasObject {
+		return newResizeEdge(w, edge)
+	}
+	top := container.NewGridWithColumns(3, mk(htTopLeft), mk(htTop), mk(htTopRight))
+	bottom := container.NewGridWithColumns(3, mk(htBottomLeft), mk(htBottom), mk(htBottomRight))
+	mid := container.NewBorder(nil, nil, mk(htLeft), mk(htRight), content)
+	return container.NewBorder(top, bottom, nil, nil, mid)
+}
+
+type resizeEdge struct {
+	widget.BaseWidget
+	win  fyne.Window
+	edge uintptr
+}
+
+func newResizeEdge(w fyne.Window, edge uintptr) *resizeEdge {
+	g := &resizeEdge{win: w, edge: edge}
+	g.ExtendBaseWidget(g)
+	return g
+}
+
+func (g *resizeEdge) CreateRenderer() fyne.WidgetRenderer {
+	bg := canvas.NewRectangle(color.Transparent)
+	return widget.NewSimpleRenderer(bg)
+}
+
+func (g *resizeEdge) MinSize() fyne.Size {
+	if g.edge == htTop || g.edge == htBottom {
+		return fyne.NewSize(0, gripThickness)
+	}
+	if g.edge == htLeft || g.edge == htRight {
+		return fyne.NewSize(gripThickness, 0)
+	}
+	return fyne.NewSize(gripThickness, gripThickness)
+}
+
+func (g *resizeEdge) MouseDown(e *desktop.MouseEvent) {
+	if e.Button != desktop.MouseButtonPrimary || winIsMaximized(g.win) {
+		return
+	}
+	winStartEdgeResize(g.win, g.edge)
+}
+
+func (g *resizeEdge) MouseUp(*desktop.MouseEvent) {}
+func (g *resizeEdge) MouseIn(*desktop.MouseEvent) {}
+func (g *resizeEdge) MouseOut()                   {}
+
+var _ desktop.Mouseable = (*resizeEdge)(nil)
 
 func winIsMaximized(w fyne.Window) bool {
 	hwnd := winHWND(w)
@@ -261,6 +350,11 @@ func winToggleMaximize(w fyne.Window) {
 	})
 }
 
+func winPostNcMouseDown(hwnd, edge uintptr) {
+	procReleaseCapture.Call()
+	procPostMessageW.Call(hwnd, wmNcLButtonDown, edge, 0)
+}
+
 func winStartCaptionDrag(w fyne.Window) bool {
 	hwnd := winHWND(w)
 	if hwnd == 0 {
@@ -273,8 +367,16 @@ func winStartCaptionDrag(w fyne.Window) bool {
 			return false
 		}
 	}
-	procReleaseCapture.Call()
-	procPostMessageW.Call(hwnd, wmNcLButtonDown, htCaption, 0)
+	winPostNcMouseDown(hwnd, htCaption)
+	return true
+}
+
+func winStartEdgeResize(w fyne.Window, edge uintptr) bool {
+	hwnd := winHWND(w)
+	if hwnd == 0 {
+		return false
+	}
+	winPostNcMouseDown(hwnd, edge)
 	return true
 }
 
