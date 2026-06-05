@@ -12,10 +12,9 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-func (a *App) showConnectPicker() {
-	selected := -1
-	var dlg *modalDialog
+var serverPickerDialogSize = fyne.NewSize(520, 420)
 
+func (a *App) buildServerPickerList(selected *int, onActivate func(idx int)) *widget.List {
 	var list *widget.List
 	list = widget.NewList(
 		func() int { return len(a.store.Servers) },
@@ -27,44 +26,57 @@ func (a *App) showConnectPicker() {
 			}
 			row := obj.(*connectPickerRow)
 			s := a.store.Servers[idx]
-			name := s.Name
-			if name == "" {
-				name = s.Host
-			}
-			row.onPrimary = func() { selectPickerRow(list, &selected, idx) }
+			name := serverDisplayName(s)
+			row.onPrimary = func() { selectPickerRow(list, selected, idx) }
 			row.onDouble = func() {
-				selectPickerRow(list, &selected, idx)
-				dlg.Close()
-				a.openServerTab(a.store.Servers[idx])
+				selectPickerRow(list, selected, idx)
+				if onActivate != nil {
+					onActivate(idx)
+				}
 			}
-			row.update(name, serverSubtitle(s), idx == selected)
+			row.update(idx, serverPickerIcon, name, serverSubtitle(s), idx == *selected)
 		},
 	)
-
 	list.OnSelected = func(id widget.ListItemID) {
-		selectPickerRow(list, &selected, int(id))
+		selectPickerRow(list, selected, int(id))
 	}
+	return list
+}
 
-	connectBtn := newAccentButton(i18n.T(i18n.KeyConnect), func() {
-		if selected < 0 || selected >= len(a.store.Servers) {
-			return
-		}
-		dlg.Close()
-		a.openServerTab(a.store.Servers[selected])
+func serverPickerBody(hint string, list fyne.CanvasObject, buttons fyne.CanvasObject) fyne.CanvasObject {
+	hintLbl := widget.NewLabel(hint)
+	hintLbl.Wrapping = fyne.TextWrapWord
+	return container.NewBorder(hintLbl, buttons, nil, nil, list)
+}
+
+func (a *App) connectSelectedServer(dlg *modalDialog, selected int) {
+	if selected < 0 || selected >= len(a.store.Servers) {
+		return
+	}
+	dlg.Close()
+	a.openServerTab(a.store.Servers[selected])
+}
+
+func (a *App) showConnectPicker() {
+	selected := -1
+	var dlg *modalDialog
+
+	list := a.buildServerPickerList(&selected, func(idx int) {
+		a.connectSelectedServer(dlg, idx)
 	})
 
+	connectBtn := newAccentButton(i18n.T(i18n.KeyConnect), func() {
+		a.connectSelectedServer(dlg, selected)
+	})
 	newBtn := newAccentButton(i18n.T(i18n.KeyNewConnection), func() {
 		dlg.Close()
 		a.showAddServer()
 	})
 	cancelBtn := newAccentButton(i18n.T(i18n.KeyCancel), func() { dlg.Close() })
 
-	hint := widget.NewLabel(i18n.T(i18n.KeyConnectPickerHint))
 	buttons := container.NewHBox(cancelBtn, newBtn, connectBtn)
-	body := container.NewBorder(hint, buttons, nil, nil, list)
-
-	title := i18n.T(i18n.KeyConnectPickerTitle)
-	dlg = newModalDialog(a.window, title, fyne.NewSize(520, 420), body)
+	body := serverPickerBody(i18n.T(i18n.KeyConnectPickerHint), list, buttons)
+	dlg = newModalDialog(a.window, i18n.T(i18n.KeyConnectPickerTitle), serverPickerDialogSize, body)
 }
 
 func selectPickerRow(list *widget.List, selected *int, row int) {
@@ -72,12 +84,22 @@ func selectPickerRow(list *widget.List, selected *int, row int) {
 		return
 	}
 	prev := *selected
+	if prev == row {
+		return
+	}
 	*selected = row
 	list.Select(widget.ListItemID(row))
-	if prev >= 0 && prev != row {
+	if prev >= 0 {
 		list.RefreshItem(widget.ListItemID(prev))
 	}
 	list.RefreshItem(widget.ListItemID(row))
+}
+
+func serverDisplayName(s config.Server) string {
+	if s.Name != "" {
+		return s.Name
+	}
+	return s.Host
 }
 
 func serverSubtitle(s config.Server) string {

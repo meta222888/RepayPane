@@ -50,37 +50,12 @@ func (a *App) showAboutUs() {
 }
 
 func (a *App) showMyServers() {
-	title := i18n.T(i18n.KeyMyServersTitle)
 	var dlg *modalDialog
-
 	selected := -1
-	prevSelected := -1
-	list := widget.NewList(
-		func() int { return len(a.store.Servers) },
-		func() fyne.CanvasObject { return newConnectPickerRow() },
-		func(id widget.ListItemID, obj fyne.CanvasObject) {
-			if int(id) >= len(a.store.Servers) {
-				return
-			}
-			s := a.store.Servers[id]
-			name := s.Name
-			if name == "" {
-				name = s.Host
-			}
-			obj.(*connectPickerRow).update(name, s.Host, int(id) == selected)
-		},
-	)
-	list.OnSelected = func(id widget.ListItemID) {
-		if int(id) >= len(a.store.Servers) {
-			return
-		}
-		prevSelected = selected
-		selected = int(id)
-		if prevSelected >= 0 {
-			list.RefreshItem(widget.ListItemID(prevSelected))
-		}
-		list.RefreshItem(id)
-	}
+
+	list := a.buildServerPickerList(&selected, func(idx int) {
+		a.connectSelectedServer(dlg, idx)
+	})
 
 	buttons := container.NewHBox(
 		newAccentButton(i18n.T(i18n.KeyAddServer), func() {
@@ -105,11 +80,14 @@ func (a *App) showMyServers() {
 			dlg.Close()
 			a.showDeleteServer()
 		}),
-		newAccentButton(i18n.T(i18n.KeyOK), func() { dlg.Close() }),
+		newAccentButton(i18n.T(i18n.KeyConnect), func() {
+			a.connectSelectedServer(dlg, selected)
+		}),
+		newAccentButton(i18n.T(i18n.KeyCancel), func() { dlg.Close() }),
 	)
 
-	body := container.NewBorder(nil, buttons, nil, nil, list)
-	dlg = newModalDialog(a.window, title, fyne.NewSize(480, 360), body)
+	body := serverPickerBody(i18n.T(i18n.KeyMyServersHint), list, buttons)
+	dlg = newModalDialog(a.window, i18n.T(i18n.KeyMyServersTitle), serverPickerDialogSize, body)
 }
 
 func initLanguage(settings *config.Settings) {

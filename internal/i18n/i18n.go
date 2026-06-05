@@ -127,6 +127,7 @@ const (
 	KeyAboutVersion     = "about.version"
 	KeyAboutWebsite     = "about.website"
 	KeyMyServersTitle   = "about.my_servers_title"
+	KeyMyServersHint    = "about.my_servers_hint"
 
 	KeyColName       = "col.name"
 	KeyColSize       = "col.size"
@@ -295,6 +296,7 @@ var enStrings = map[string]string{
 	KeyAboutVersion:     "Version %s",
 	KeyAboutWebsite:     "https://pc530.com",
 	KeyMyServersTitle:   "My Servers",
+	KeyMyServersHint:    "Select a saved server (double-click to connect), or manage your server list.",
 
 	KeyColName:        "Name",
 	KeyColSize:        "Size",
@@ -463,6 +465,7 @@ var zhStrings = map[string]string{
 	KeyAboutVersion:     "版本 %s",
 	KeyAboutWebsite:     "https://pc530.com",
 	KeyMyServersTitle:   "我的服务器",
+	KeyMyServersHint:    "选择已保存的服务器（双击可连接），或管理服务器列表。",
 
 	KeyColName:        "名称",
 	KeyColSize:        "大小",

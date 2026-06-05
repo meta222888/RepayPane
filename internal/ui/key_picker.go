@@ -23,7 +23,8 @@ func showSSHKeyPicker(a *App, current string, onPick func(path string)) {
 	}
 
 	selected := -1
-	list := widget.NewList(
+	var list *widget.List
+	list = widget.NewList(
 		func() int { return len(paths) },
 		func() fyne.CanvasObject { return newConnectPickerRow() },
 		func(id widget.ListItemID, obj fyne.CanvasObject) {
@@ -32,16 +33,13 @@ func showSSHKeyPicker(a *App, current string, onPick func(path string)) {
 			}
 			row := obj.(*connectPickerRow)
 			p := paths[id]
-			row.update(filepath.Base(p), p, int(id) == selected)
+			idx := int(id)
+			row.onPrimary = func() { selectPickerRow(list, &selected, idx) }
+			row.update(idx, "🔑", filepath.Base(p), p, idx == selected)
 		},
 	)
 	list.OnSelected = func(id widget.ListItemID) {
-		prev := selected
-		selected = int(id)
-		if prev >= 0 {
-			list.RefreshItem(widget.ListItemID(prev))
-		}
-		list.RefreshItem(id)
+		selectPickerRow(list, &selected, int(id))
 		if int(id) < len(paths) {
 			pathEntry.SetText(paths[id])
 		}
