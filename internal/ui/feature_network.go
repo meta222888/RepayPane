@@ -33,16 +33,16 @@ type netIfaceStat struct {
 }
 
 type netTrafficState struct {
-	box        *fyne.Container
-	summary    *widget.Label
-	prev       map[string]netIfaceStat
-	prevAt     time.Time
-	showRate   bool
-	hasContent bool
-	hint       fyne.CanvasObject
-	cards      map[string]*netIfaceCardView
-	cardOrder  []string
-	routeObjs  []fyne.CanvasObject
+	box         *fyne.Container
+	summary     *widget.Label
+	bootTotals  *widget.Label
+	prev        map[string]netIfaceStat
+	prevAt      time.Time
+	showRate    bool
+	hasContent  bool
+	cards       map[string]*netIfaceCardView
+	cardOrder   []string
+	routeObjs   []fyne.CanvasObject
 }
 
 type netIfaceCardView struct {
@@ -60,11 +60,13 @@ func (a *App) showNetworkInfo() {
 	}
 	title := i18n.T(i18n.KeyFeatNetwork)
 	trafficState := &netTrafficState{
-		box:     container.NewVBox(),
-		summary: widget.NewLabel(i18n.T(i18n.KeyFeatNetRatePending)),
-		cards:   make(map[string]*netIfaceCardView),
+		box:        container.NewVBox(),
+		summary:    widget.NewLabel(i18n.T(i18n.KeyFeatNetRatePending)),
+		bootTotals: widget.NewLabel(""),
+		cards:      make(map[string]*netIfaceCardView),
 	}
 	trafficState.summary.Importance = widget.MediumImportance
+	trafficState.bootTotals.Importance = widget.LowImportance
 	trafficScroll := container.NewVScroll(trafficState.box)
 	setPorts, portsScroll := scrollSelectableText()
 
@@ -96,12 +98,9 @@ func (a *App) showNetworkInfo() {
 		loadNetPorts(client, setPorts)
 	})
 
-	trafficHeader := container.NewHBox(
-		widget.NewLabelWithStyle(i18n.T(i18n.KeyFeatNetTraffic), fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
-		autoRefresh,
-	)
-	trafficBox := container.NewBorder(trafficHeader, refreshTraffic, nil, nil,
-		container.NewBorder(trafficState.summary, nil, nil, nil, trafficScroll))
+	trafficLeft := container.NewVBox(trafficState.summary, trafficState.bootTotals)
+	trafficHeader := container.NewBorder(nil, nil, trafficLeft, autoRefresh, nil)
+	trafficBox := container.NewBorder(trafficHeader, refreshTraffic, nil, nil, trafficScroll)
 
 	portsHeader := widget.NewLabelWithStyle(i18n.T(i18n.KeyFeatNetPorts), fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
 	portsBox := container.NewBorder(portsHeader, refreshPorts, nil, nil, portsScroll)
@@ -245,7 +244,20 @@ func applyNetSample(state *netTrafficState, stats []netIfaceStat) (showRates boo
 		state.prev = next
 		state.prevAt = now
 	}
+	setNetBootTotals(state, stats)
 	return showRates, rxRates, txRates
+}
+
+func setNetBootTotals(state *netTrafficState, stats []netIfaceStat) {
+	if state.bootTotals == nil {
+		return
+	}
+	var totalRx, totalTx int64
+	for _, stat := range stats {
+		totalRx += stat.rx
+		totalTx += stat.tx
+	}
+	state.bootTotals.SetText(i18n.Tf(i18n.KeyFeatNetBootTotals, formatBytes(totalRx), formatBytes(totalTx)))
 }
 
 func statNames(stats []netIfaceStat) []string {
@@ -257,10 +269,7 @@ func statNames(stats []netIfaceStat) []string {
 }
 
 func rebuildTrafficBox(state *netTrafficState, stats []netIfaceStat) {
-	objs := make([]fyne.CanvasObject, 0, 1+len(stats)+len(state.routeObjs))
-	if state.hint != nil {
-		objs = append(objs, state.hint)
-	}
+	objs := make([]fyne.CanvasObject, 0, len(stats)+len(state.routeObjs))
 	for _, stat := range stats {
 		objs = append(objs, state.cards[stat.name].root)
 	}
@@ -274,7 +283,6 @@ func renderNetTraffic(state *netTrafficState, ifaceOut, routeOut string, ifaceEr
 	state.cards = make(map[string]*netIfaceCardView)
 	state.cardOrder = nil
 	state.routeObjs = nil
-	state.hint = nil
 
 	stats := filterNetIfaces(parseNetIfaces(ifaceOut))
 	if len(stats) == 0 {
@@ -283,16 +291,12 @@ func renderNetTraffic(state *netTrafficState, ifaceOut, routeOut string, ifaceEr
 		} else {
 			state.box.Add(widget.NewLabel(i18n.T(i18n.KeyFeatNoData)))
 		}
+		state.bootTotals.SetText("")
 		state.box.Refresh()
 		return
 	}
 
 	showRates, rxRates, txRates := applyNetSample(state, stats)
-
-	hint := widget.NewLabel(i18n.T(i18n.KeyFeatNetSinceBoot))
-	hint.Importance = widget.LowImportance
-	state.hint = hint
-	state.box.Add(hint)
 
 	state.cardOrder = statNames(stats)
 	for _, stat := range stats {

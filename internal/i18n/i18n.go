@@ -237,6 +237,7 @@ const (
 	KeyFeatNetRate        = "feat.net_rate"
 	KeyFeatNetRouting     = "feat.net_routing"
 	KeyFeatNetSinceBoot   = "feat.net_since_boot"
+	KeyFeatNetBootTotals  = "feat.net_boot_totals"
 	KeyFeatNetBandwidthTotal = "feat.net_bandwidth_total"
 	KeyFeatNetRatePending = "feat.net_rate_pending"
 	KeyFeatNetRateOff     = "feat.net_rate_off"
@@ -484,6 +485,7 @@ var enStrings = map[string]string{
 	KeyFeatNetRate:        "Current speed: ↓ %s  ·  ↑ %s",
 	KeyFeatNetRouting:     "Routing",
 	KeyFeatNetSinceBoot:   "Cumulative since boot",
+	KeyFeatNetBootTotals:  "Since boot: ↓ %s  ·  ↑ %s",
 	KeyFeatNetBandwidthTotal: "Current bandwidth: ↓ %s  ·  ↑ %s",
 	KeyFeatNetRatePending: "Measuring current bandwidth…",
 	KeyFeatNetRateOff:     "Enable auto refresh to show current bandwidth",
@@ -731,6 +733,7 @@ var zhStrings = map[string]string{
 	KeyFeatNetRate:        "当前速率：↓ %s  ·  ↑ %s",
 	KeyFeatNetRouting:     "路由",
 	KeyFeatNetSinceBoot:   "自启动以来累计",
+	KeyFeatNetBootTotals:  "自启动以来累计 ↓ %s  ·  ↑ %s",
 	KeyFeatNetBandwidthTotal: "当前带宽：↓ %s  ·  ↑ %s",
 	KeyFeatNetRatePending: "正在测量当前带宽…",
 	KeyFeatNetRateOff:     "勾选自动刷新以显示当前带宽",
