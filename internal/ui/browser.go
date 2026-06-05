@@ -49,10 +49,8 @@ type FilePane struct {
 	panelPrefixLbl *widget.Label
 	localDriveLbl  *canvas.Text
 	list           *widget.List
-	listHeader    fyne.CanvasObject
-	toolbar       fyne.CanvasObject
-	panelHdr      fyne.CanvasObject
-	root          fyne.CanvasObject
+	listHeader fyne.CanvasObject
+	root       fyne.CanvasObject
 
 	selectedRow int
 
@@ -75,10 +73,7 @@ func NewRemotePane(app *App) *FilePane {
 
 func (p *FilePane) build() {
 	rowFactory := func() fyne.CanvasObject {
-		if p.kind == PaneLocal {
-			return newLocalFileListRow()
-		}
-		return newFileListRow()
+		return newPaneFileListRow(p.kind == PaneRemote)
 	}
 	p.list = widget.NewList(
 		func() int { return p.rowCount() },
@@ -92,11 +87,8 @@ func (p *FilePane) build() {
 		p.root = container.NewBorder(p.buildLocalChrome(), nil, nil, nil,
 			container.NewBorder(p.listHeader, nil, nil, nil, p.list))
 	} else {
-		p.listHeader = p.buildListHeader()
-		p.toolbar = p.buildToolbar()
-		p.panelHdr = p.buildPanelHeader()
-		chrome := container.NewVBox(p.toolbar, p.panelHdr)
-		p.root = container.NewBorder(chrome, nil, nil, nil,
+		p.listHeader = p.buildRemoteListHeader()
+		p.root = container.NewBorder(p.buildRemoteChrome(), nil, nil, nil,
 			container.NewBorder(p.listHeader, nil, nil, nil, p.list))
 	}
 	p.ApplyLanguage()
@@ -112,10 +104,7 @@ func (p *FilePane) buildLocalListHeader() fyne.CanvasObject {
 
 func (p *FilePane) buildLocalChrome() fyne.CanvasObject {
 	p.localNav = NewLocalNav(p)
-
-	prefixT := labelCText("[L]", colorAccent, 11)
-	p.localDriveLbl = labelCText("", colorMuted, 11)
-	labelRow := container.NewHBox(prefixT, p.localDriveLbl)
+	p.localDriveLbl = labelCText(i18n.T(i18n.KeyPanelLocal), colorMuted, 12)
 
 	up := widget.NewButtonWithIcon("", theme.MoveUpIcon(), p.goUp)
 	newFolder := widget.NewButtonWithIcon("", theme.FolderNewIcon(), p.promptNewFolder)
@@ -132,51 +121,32 @@ func (p *FilePane) buildLocalChrome() fyne.CanvasObject {
 			p.Navigate(text)
 		}
 	}
-	pathRow := container.NewBorder(nil, nil, p.localNav.Button(), actions, p.pathEntry)
-
-	return container.NewVBox(
-		panelBand(labelRow, 22),
-		panelBand(pathRow, 32),
-	)
+	left := container.NewHBox(p.localDriveLbl, p.localNav.Button())
+	pathRow := container.NewBorder(nil, nil, left, actions, p.pathEntry)
+	return panelBand(pathRow, 32)
 }
 
-func (p *FilePane) localPanelSubtitle() string {
-	drive := p.path
-	if len(drive) >= 2 && drive[1] == ':' {
-		drive = strings.ToUpper(drive[:2]) + `\`
-	}
-	return i18n.T(i18n.KeyPanelLocal) + " — " + drive
+func (p *FilePane) buildRemoteListHeader() fyne.CanvasObject {
+	nameCol := labelCText(strings.ToUpper(i18n.T(i18n.KeyColName)), colorMuted, 11)
+	sizeCol := labelCText(strings.ToUpper(i18n.T(i18n.KeyColSize)), colorMuted, 11)
+	metaCol := labelCText(strings.ToUpper(i18n.T(i18n.KeyColModified)), colorMuted, 11)
+	right := container.NewHBox(fixedWidth(metaCol, 128), fixedWidth(sizeCol, 72))
+	row := container.NewBorder(nil, nil, nil, right, nameCol)
+	return panelBand(row, 24)
 }
 
-func (p *FilePane) buildListHeader() fyne.CanvasObject {
-	name := widget.NewLabel(strings.ToUpper(i18n.T(i18n.KeyColName)))
-	size := widget.NewLabel(strings.ToUpper(i18n.T(i18n.KeyColSize)))
-	meta := widget.NewLabel(strings.ToUpper(i18n.T(i18n.KeyColModified)))
-	name.Importance = widget.MediumImportance
-	size.Importance = widget.MediumImportance
-	meta.Importance = widget.MediumImportance
-	size.Alignment = fyne.TextAlignTrailing
-	meta.Alignment = fyne.TextAlignTrailing
-	row := container.NewBorder(nil, nil, name, container.NewHBox(fixedWidth(meta, 128), fixedWidth(size, 72)), nil)
-	return withBackground(container.NewPadded(row), colorPanelHeader)
-}
+func (p *FilePane) buildRemoteChrome() fyne.CanvasObject {
+	p.panelPrefixLbl = widget.NewLabel("")
+	p.panelPrefixLbl.Importance = widget.MediumImportance
 
-func (p *FilePane) buildToolbar() fyne.CanvasObject {
 	up := widget.NewButtonWithIcon("", theme.MoveUpIcon(), p.goUp)
 	newFolder := widget.NewButtonWithIcon("", theme.FolderNewIcon(), p.promptNewFolder)
 	refresh := widget.NewButtonWithIcon("", theme.ViewRefreshIcon(), p.RefreshListing)
 	for _, b := range []*widget.Button{up, newFolder, refresh} {
 		b.Importance = widget.LowImportance
 	}
-	btns := container.NewHBox(up, newFolder, refresh)
-	left := container.NewHBox(widget.NewLabel("🖥"), btns)
-	return withPanelHeader(left)
-}
+	actions := container.NewHBox(up, newFolder, refresh)
 
-func (p *FilePane) buildPanelHeader() fyne.CanvasObject {
-	iconLbl := widget.NewLabel("🖥")
-	p.panelPrefixLbl = widget.NewLabel("")
-	p.panelPrefixLbl.Importance = widget.MediumImportance
 	p.pathEntry = widget.NewEntry()
 	p.pathEntry.OnSubmitted = func(text string) {
 		text = strings.TrimSpace(text)
@@ -184,9 +154,9 @@ func (p *FilePane) buildPanelHeader() fyne.CanvasObject {
 			p.Navigate(text)
 		}
 	}
-	titleRow := container.NewHBox(iconLbl, p.panelPrefixLbl)
-	row := container.NewBorder(nil, nil, titleRow, nil, p.pathEntry)
-	return withPanelLabel(row)
+	left := container.NewHBox(widget.NewLabel("🖥"), p.panelPrefixLbl)
+	pathRow := container.NewBorder(nil, nil, left, actions, p.pathEntry)
+	return panelBand(pathRow, 32)
 }
 
 func (p *FilePane) hasParentRow() bool {
@@ -223,11 +193,7 @@ func (p *FilePane) rowCount() int {
 
 func (p *FilePane) updateListRow(i widget.ListItemID, obj fyne.CanvasObject) {
 	idx := int(i)
-	if p.kind == PaneLocal {
-		p.updateLocalListRow(idx, obj.(*localFileListRow))
-		return
-	}
-	row := obj.(*fileListRow)
+	row := obj.(*paneFileListRow)
 	row.onPrimary = func() { p.selectRow(idx) }
 	row.onDouble = func() {
 		p.selectRow(idx)
@@ -237,61 +203,31 @@ func (p *FilePane) updateListRow(i widget.ListItemID, obj fyne.CanvasObject) {
 		p.selectRow(idx)
 		p.showContextMenu(ev.AbsolutePosition)
 	}
-	row.setRowStyle(idx, idx == p.selectedRow)
 
+	selected := idx == p.selectedRow
 	if p.isParentRow(idx) {
-		row.nameLbl.SetText("↩  ..")
-		row.sizeLbl.SetText("—")
-		row.metaLbl.SetText("—")
+		if p.kind == PaneLocal {
+			row.updateLocal(idx, "..", "—", "—", true, true, selected)
+		} else {
+			row.updateRemote(idx, "..", "—", "—", true, true, selected)
+		}
 		return
 	}
 
 	dataIdx := p.dataRowIndex(idx)
+	if p.kind == PaneLocal {
+		if dataIdx < 0 || dataIdx >= len(p.local) {
+			return
+		}
+		e := p.local[dataIdx]
+		row.updateLocal(idx, e.name, formatSize(e.size, e.isDir), formatTime(e.mod), e.isDir, false, selected)
+		return
+	}
 	if dataIdx < 0 || dataIdx >= len(p.remote) {
 		return
 	}
 	e := p.remote[dataIdx]
-	row.nameLbl.SetText(fileIcon(e.IsDir) + "  " + e.Name)
-	row.sizeLbl.SetText(formatSize(e.Size, e.IsDir))
-	row.metaLbl.SetText(formatTime(e.ModTime))
-}
-
-func (p *FilePane) updateLocalListRow(idx int, row *localFileListRow) {
-	row.onPrimary = func() { p.selectRow(idx) }
-	row.onDouble = func() {
-		p.selectRow(idx)
-		p.activateRow(idx)
-	}
-	row.onSecondary = func(ev *fyne.PointEvent) {
-		p.selectRow(idx)
-		p.showContextMenu(ev.AbsolutePosition)
-	}
-
-	if p.isParentRow(idx) {
-		row.update(idx, "..", "—", "—", true, true, idx == p.selectedRow)
-		return
-	}
-
-	dataIdx := p.dataRowIndex(idx)
-	if dataIdx < 0 || dataIdx >= len(p.local) {
-		return
-	}
-	e := p.local[dataIdx]
-	row.update(idx, e.name, formatSize(e.size, e.isDir), formatTime(e.mod), e.isDir, false, idx == p.selectedRow)
-}
-
-func (p *FilePane) Toolbar() fyne.CanvasObject {
-	if p.kind == PaneLocal {
-		return emptyPaneSlot()
-	}
-	return p.toolbar
-}
-
-func (p *FilePane) PanelHeader() fyne.CanvasObject {
-	if p.kind == PaneLocal {
-		return emptyPaneSlot()
-	}
-	return p.panelHdr
+	row.updateRemote(idx, e.Name, formatSize(e.Size, e.IsDir), formatTime(e.ModTime), e.IsDir, false, selected)
 }
 func (p *FilePane) Container() fyne.CanvasObject   { return p.root }
 
@@ -316,7 +252,7 @@ func (p *FilePane) ApplyLanguage() {
 func (p *FilePane) refreshPathDisplay() {
 	if p.kind == PaneLocal {
 		if p.localDriveLbl != nil {
-			p.localDriveLbl.Text = p.localPanelSubtitle()
+			p.localDriveLbl.Text = i18n.T(i18n.KeyPanelLocal)
 			canvas.Refresh(p.localDriveLbl)
 		}
 		if p.pathEntry != nil {
@@ -429,9 +365,12 @@ func (p *FilePane) selectRow(row int) {
 		return
 	}
 	prev := p.selectedRow
+	if prev == row {
+		return
+	}
 	p.selectedRow = row
 	p.list.Select(widget.ListItemID(row))
-	if prev >= 0 && prev != row {
+	if prev >= 0 {
 		p.list.RefreshItem(widget.ListItemID(prev))
 	}
 	p.list.RefreshItem(widget.ListItemID(row))
