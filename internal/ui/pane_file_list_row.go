@@ -7,13 +7,15 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/driver/desktop"
+	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 )
 
 const (
 	paneRowNameSize  float32 = 14
 	paneRowMetaSize  float32 = 13
-	paneRowMinHeight float32 = 34
+	paneRowMinHeight float32 = 40
+	paneRowVPad      float32 = 3
 )
 
 type paneFileListRow struct {
@@ -236,7 +238,7 @@ func (r *paneFileListRow) CreateRenderer() fyne.WidgetRenderer {
 			r.onRenameCommit(text)
 		}
 	}
-	nameCol := container.NewStack(wrapCanvasText(r.nameT), r.nameEntry)
+	nameCol := container.NewStack(wrapCanvasText(r.nameT), container.NewMax(r.nameEntry))
 
 	var row fyne.CanvasObject
 	if r.remote {
@@ -245,14 +247,15 @@ func (r *paneFileListRow) CreateRenderer() fyne.WidgetRenderer {
 		r.metaT = canvas.NewText("", colorMuted)
 		r.metaT.TextSize = paneRowMetaSize
 		right := container.NewHBox(fixedWidth(wrapCanvasText(r.metaT), 128), fixedWidth(wrapCanvasText(r.sizeT), 72))
-		row = container.NewBorder(nil, nil, nameCol, right, nil)
+		row = container.NewBorder(nil, nil, nil, right, nameCol)
 	} else {
 		r.rightT = canvas.NewText("", colorMuted)
 		r.rightT.TextSize = paneRowMetaSize
 		row = container.NewBorder(nil, nil, nil, wrapCanvasText(r.rightT), nameCol)
 	}
 
-	content := container.NewStack(r.bg, container.NewPadded(row))
+	content := container.NewStack(r.bg, container.New(
+		layout.NewCustomPaddedLayout(8, paneRowVPad, 8, paneRowVPad), row))
 	return widget.NewSimpleRenderer(content)
 }
 
