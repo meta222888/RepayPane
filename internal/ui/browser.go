@@ -320,11 +320,14 @@ func (p *FilePane) updateListRow(i widget.ListItemID, obj fyne.CanvasObject) {
 				return
 			}
 			p.dragReady = true
+			applyFileDragCursor()
 		}
 		p.lastDragAbs = e.AbsolutePosition
+		applyFileDragCursor()
 	}
 	row.onDragEnd = func() {
 		p.dragReady = false
+		clearFileDragCursor()
 		if p.app.clipboard != nil {
 			p.app.completePaneDrop(p, p.lastDragAbs)
 		}

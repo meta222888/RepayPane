@@ -6,6 +6,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -42,8 +43,21 @@ func (b *paneListUnderlay) TappedSecondary(ev *fyne.PointEvent) {
 	b.pane.showContextMenu(ev.AbsolutePosition, -1)
 }
 
+func (b *paneListUnderlay) Cursor() desktop.Cursor {
+	if b.pane.dragReady {
+		return fileDragCursor()
+	}
+	return desktop.DefaultCursor
+}
+
+func (b *paneListUnderlay) MouseIn(*desktop.MouseEvent)  {}
+func (b *paneListUnderlay) MouseMoved(*desktop.MouseEvent) {}
+func (b *paneListUnderlay) MouseOut()                      {}
+
 var _ fyne.Tappable = (*paneListUnderlay)(nil)
 var _ fyne.SecondaryTappable = (*paneListUnderlay)(nil)
+var _ desktop.Cursorable = (*paneListUnderlay)(nil)
+var _ desktop.Hoverable = (*paneListUnderlay)(nil)
 
 type paneListStackLayout struct {
 	pane *FilePane

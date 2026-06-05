@@ -232,7 +232,7 @@ func (r *paneFileListRow) Cursor() desktop.Cursor {
 		return desktop.DefaultCursor
 	}
 	if r.dragActive {
-		return desktop.CrosshairCursor
+		return fileDragCursor()
 	}
 	if r.hovered {
 		return desktop.PointerCursor
