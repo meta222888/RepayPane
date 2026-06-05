@@ -87,15 +87,14 @@ func (p *FilePane) build() {
 	if p.kind == PaneLocal {
 		p.listHeader = p.buildLocalListHeader()
 		p.root = container.NewBorder(p.buildLocalChrome(), nil, nil, nil,
-			container.NewBorder(p.listHeader, nil, nil, nil, p.list))
+			container.NewBorder(p.listHeader, nil, nil, nil, newPaneListArea(p, p.list)))
 	} else {
 		p.listHeader = p.buildRemoteListHeader()
 		p.root = container.NewBorder(p.buildRemoteChrome(), nil, nil, nil,
-			container.NewBorder(p.listHeader, nil, nil, nil, p.list))
+			container.NewBorder(p.listHeader, nil, nil, nil, newPaneListArea(p, p.list)))
 	}
 	p.ApplyLanguage()
 	p.refreshPathDisplay()
-	p.initBlankRowHeight()
 }
 
 func (p *FilePane) buildLocalListHeader() fyne.CanvasObject {
@@ -191,31 +190,17 @@ func (p *FilePane) rowCount() int {
 	if p.hasParentRow() {
 		n++
 	}
-	n++ // blank filler row for empty-area context menu
 	return n
 }
 
-func (p *FilePane) isBlankRow(row int) bool {
-	return row == p.rowCount()-1
+func (p *FilePane) listContentHeight() float32 {
+	return float32(p.rowCount()) * paneRowMinHeight
 }
 
 func (p *FilePane) updateListRow(i widget.ListItemID, obj fyne.CanvasObject) {
 	idx := int(i)
 	row := obj.(*paneFileListRow)
 	selected := idx == p.selectedRow
-
-	if p.isBlankRow(idx) {
-		row.showBlank(selected)
-		row.onPrimary = func() { p.clearSelection() }
-		row.onDouble = nil
-		row.onSecondary = func(ev *fyne.PointEvent) {
-			p.clearSelection()
-			p.showContextMenu(ev.AbsolutePosition)
-		}
-		row.onDragged = nil
-		row.onDragEnd = nil
-		return
-	}
 
 	row.onPrimary = func() { p.selectRow(idx) }
 	row.onDouble = func() {
@@ -379,7 +364,6 @@ func (p *FilePane) RefreshListing() {
 		}
 		p.local = entries
 		p.list.Refresh()
-		p.initBlankRowHeight()
 		return
 	}
 	if !p.connected || p.app.activeClient() == nil {
@@ -398,32 +382,13 @@ func (p *FilePane) RefreshListing() {
 	})
 	p.remote = entries
 	p.list.Refresh()
-	p.initBlankRowHeight()
-}
-
-// Blank filler row for right-click on empty list area (fixed height; never read list.Size during row update).
-const paneBlankRowHeight float32 = 64
-
-func (p *FilePane) initBlankRowHeight() {
-	if p.list == nil {
-		return
-	}
-	count := p.rowCount()
-	if count == 0 {
-		return
-	}
-	// Clear stale per-row heights when row indices shift (otherwise the first file keeps the old blank height).
-	for i := 0; i < count-1; i++ {
-		p.list.SetItemHeight(widget.ListItemID(i), paneRowMinHeight)
-	}
-	p.list.SetItemHeight(widget.ListItemID(count-1), paneBlankRowHeight)
 }
 
 func (p *FilePane) clearSelection() {
 	prev := p.selectedRow
 	p.selectedRow = -1
 	p.list.UnselectAll()
-	if prev >= 0 && !p.isBlankRow(prev) {
+	if prev >= 0 {
 		p.list.RefreshItem(widget.ListItemID(prev))
 	}
 }
@@ -575,7 +540,7 @@ func (p *FilePane) ctxCopy() {
 }
 
 func (p *FilePane) setClipboardFromRow(row int) bool {
-	if row < 0 || p.isParentRow(row) || p.isBlankRow(row) {
+	if row < 0 || p.isParentRow(row) {
 		return false
 	}
 	path := p.fullPathForRow(row)
@@ -633,7 +598,7 @@ func (p *FilePane) pasteClipboard(clip *PaneClipboard) {
 }
 
 func (p *FilePane) fullPathForRow(row int) string {
-	if p.isParentRow(row) || p.isBlankRow(row) {
+	if p.isParentRow(row) {
 		return ""
 	}
 	dataIdx := p.dataRowIndex(row)
@@ -650,7 +615,7 @@ func (p *FilePane) fullPathForRow(row int) string {
 }
 
 func (p *FilePane) nameForRow(row int) string {
-	if p.isParentRow(row) || p.isBlankRow(row) {
+	if p.isParentRow(row) {
 		return ""
 	}
 	dataIdx := p.dataRowIndex(row)
@@ -667,7 +632,7 @@ func (p *FilePane) nameForRow(row int) string {
 }
 
 func (p *FilePane) isDirForRow(row int) bool {
-	if p.isParentRow(row) || p.isBlankRow(row) {
+	if p.isParentRow(row) {
 		return false
 	}
 	dataIdx := p.dataRowIndex(row)

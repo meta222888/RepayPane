@@ -37,7 +37,6 @@ type paneFileListRow struct {
 	onDragEnd   func()
 
 	dragActive bool
-	blankRow   bool
 }
 
 func newPaneFileListRow(remote bool) *paneFileListRow {
@@ -47,7 +46,6 @@ func newPaneFileListRow(remote bool) *paneFileListRow {
 }
 
 func (r *paneFileListRow) updateLocal(rowIndex int, name, size, modified string, isDir, isParent, selected bool) {
-	r.blankRow = false
 	r.rowIndex = rowIndex
 	r.selected = selected
 	if r.nameT == nil {
@@ -68,7 +66,6 @@ func (r *paneFileListRow) updateLocal(rowIndex int, name, size, modified string,
 }
 
 func (r *paneFileListRow) updateRemote(rowIndex int, name, size, modified string, isDir, isParent, selected bool) {
-	r.blankRow = false
 	r.rowIndex = rowIndex
 	r.selected = selected
 	if r.nameT == nil {
@@ -138,37 +135,17 @@ func (r *paneFileListRow) TappedSecondary(ev *fyne.PointEvent) {
 }
 
 func (r *paneFileListRow) Dragged(e *fyne.DragEvent) {
-	if r.blankRow || r.onDragged == nil {
+	if r.onDragged == nil {
 		return
 	}
 	r.onDragged(e)
 }
 
 func (r *paneFileListRow) DragEnd() {
-	if r.blankRow {
-		return
-	}
 	if r.onDragEnd != nil {
 		r.onDragEnd()
 	}
 	r.dragActive = false
-}
-
-func (r *paneFileListRow) showBlank(selected bool) {
-	r.blankRow = true
-	r.rowIndex = -1
-	r.selected = selected
-	if r.nameT == nil {
-		return
-	}
-	r.nameT.Text = ""
-	if r.remote {
-		r.sizeT.Text = ""
-		r.metaT.Text = ""
-	} else {
-		r.rightT.Text = ""
-	}
-	r.refreshStyle()
 }
 
 func (r *paneFileListRow) MouseIn(_ *desktop.MouseEvent) {

@@ -21,21 +21,26 @@ import (
 var (
 	user32                       = syscall.NewLazyDLL("user32.dll")
 	kernel32                     = syscall.NewLazyDLL("kernel32.dll")
+	procGetWindowRect            = user32.NewProc("GetWindowRect")
 	procGetWindowThreadProcessId = user32.NewProc("GetWindowThreadProcessId")
 	procGetCurrentProcessId      = kernel32.NewProc("GetCurrentProcessId")
 	procGetWindowLongPtrW        = user32.NewProc("GetWindowLongPtrW")
 	procSetWindowLongPtrW        = user32.NewProc("SetWindowLongPtrW")
 	procSetWindowPos             = user32.NewProc("SetWindowPos")
+	procCallWindowProcW          = user32.NewProc("CallWindowProcW")
+	procDefWindowProcW           = user32.NewProc("DefWindowProcW")
 	procShowWindow               = user32.NewProc("ShowWindow")
 	procIsZoomed                 = user32.NewProc("IsZoomed")
 	procIsWindow                 = user32.NewProc("IsWindow")
+	procReleaseCapture           = user32.NewProc("ReleaseCapture")
 	procPostMessageW             = user32.NewProc("PostMessageW")
-	procSetForegroundWindow      = user32.NewProc("SetForegroundWindow")
 	procGetDoubleClickTime       = user32.NewProc("GetDoubleClickTime")
 )
 
 const (
 	gwlStyle        = ^uintptr(15) // GWL_STYLE (-16)
+	gwlpWndProc     = ^uintptr(3)  // GWLP_WNDPROC (-4)
+	wmNcHitTest     = 0x0084
 	wmNcLButtonDown = 0x00A1
 	swMinimize      = 6
 	swMaximize      = 3
@@ -55,13 +60,20 @@ const (
 	swpNoSize       = 0x0001
 	swpNoZOrder     = 0x0004
 	swpFrameChanged = 0x0020
+	edgeBorderPx    = 8
 	gripThickness   float32 = 8
 )
 
+type winRect struct {
+	Left, Top, Right, Bottom int32
+}
+
 var (
-	frameMainWindow    fyne.Window
-	frameResizeStyled  uintptr
-	hwndCache          sync.Map
+	frameMainWindow   fyne.Window
+	frameHookedHWND   uintptr
+	frameOriginalProc uintptr
+	frameWndProcCB    = syscall.NewCallback(frameWndProc)
+	hwndCache         sync.Map
 )
 
 func doubleClickInterval() time.Duration {
@@ -70,6 +82,66 @@ func doubleClickInterval() time.Duration {
 		return 500 * time.Millisecond
 	}
 	return time.Duration(ms) * time.Millisecond
+}
+
+func frameWndProc(hwnd, msg, wParam, lParam uintptr) uintptr {
+	if msg == wmNcHitTest {
+		x := int32(int16(uint16(lParam & 0xffff)))
+		y := int32(int16(uint16(lParam >> 16)))
+		if hit := hitTestResizeEdges(hwnd, x, y); hit != 0 {
+			return hit
+		}
+	}
+	if frameOriginalProc != 0 {
+		r, _, _ := procCallWindowProcW.Call(frameOriginalProc, hwnd, msg, wParam, lParam)
+		return r
+	}
+	r, _, _ := procDefWindowProcW.Call(hwnd, msg, wParam, lParam)
+	return r
+}
+
+func hitTestResizeEdges(hwnd uintptr, sx, sy int32) uintptr {
+	if hwnd != frameHookedHWND {
+		return 0
+	}
+	zoomed, _, _ := procIsZoomed.Call(hwnd)
+	if zoomed != 0 {
+		return 0
+	}
+	var rc winRect
+	procGetWindowRect.Call(hwnd, uintptr(unsafe.Pointer(&rc)))
+
+	// Never call Fyne from the Win32 wndproc thread (breaks focus/z-order).
+	border := int32(edgeBorderPx)
+	x := sx - rc.Left
+	y := sy - rc.Top
+	w := rc.Right - rc.Left
+	h := rc.Bottom - rc.Top
+
+	atLeft := x < border
+	atRight := w-x <= border
+	atTop := y < border
+	atBottom := h-y <= border
+
+	switch {
+	case atLeft && atTop:
+		return htTopLeft
+	case atRight && atTop:
+		return htTopRight
+	case atLeft && atBottom:
+		return htBottomLeft
+	case atRight && atBottom:
+		return htBottomRight
+	case atLeft:
+		return htLeft
+	case atRight:
+		return htRight
+	case atTop:
+		return htTop
+	case atBottom:
+		return htBottom
+	}
+	return 0
 }
 
 func windowKey(w fyne.Window) uintptr {
@@ -146,19 +218,38 @@ func resolveHWND(w fyne.Window) uintptr {
 }
 
 func enableWindowResizeFrame(hwnd uintptr) {
-	if hwnd == 0 || frameResizeStyled == hwnd {
-		return
-	}
 	style, _, _ := procGetWindowLongPtrW.Call(hwnd, gwlStyle)
 	if style == 0 {
 		return
 	}
-	procSetWindowLongPtrW.Call(hwnd, gwlStyle, style|wsThickFrame|wsMaximizeBox)
+	newStyle := style | wsThickFrame | wsMaximizeBox
+	procSetWindowLongPtrW.Call(hwnd, gwlStyle, newStyle)
 	procSetWindowPos.Call(
 		hwnd, 0, 0, 0, 0, 0,
 		swpNoMove|swpNoSize|swpNoZOrder|swpFrameChanged,
 	)
-	frameResizeStyled = hwnd
+}
+
+func ensureFrameWndProcHook(hwnd uintptr) {
+	if hwnd == 0 || frameHookedHWND == hwnd {
+		return
+	}
+	prev, _, _ := procGetWindowLongPtrW.Call(hwnd, gwlpWndProc)
+	if prev == 0 {
+		return
+	}
+	if prev == frameWndProcCB {
+		frameHookedHWND = hwnd
+		enableWindowResizeFrame(hwnd)
+		return
+	}
+	ret, _, _ := procSetWindowLongPtrW.Call(hwnd, gwlpWndProc, frameWndProcCB)
+	if ret == 0 && prev != frameWndProcCB {
+		return
+	}
+	frameOriginalProc = prev
+	frameHookedHWND = hwnd
+	enableWindowResizeFrame(hwnd)
 }
 
 func winInstallResizeHook(w fyne.Window) bool {
@@ -167,8 +258,8 @@ func winInstallResizeHook(w fyne.Window) bool {
 	if hwnd == 0 {
 		return false
 	}
-	enableWindowResizeFrame(hwnd)
-	return true
+	ensureFrameWndProcHook(hwnd)
+	return frameHookedHWND != 0
 }
 
 func wrapWindowResizePlatform(w fyne.Window, content fyne.CanvasObject) fyne.CanvasObject {
@@ -246,8 +337,8 @@ func winToggleMaximize(w fyne.Window) {
 }
 
 func winPostNcMouseDown(hwnd, edge uintptr) {
+	procReleaseCapture.Call()
 	procPostMessageW.Call(hwnd, wmNcLButtonDown, edge, 0)
-	procSetForegroundWindow.Call(hwnd)
 }
 
 func winStartCaptionDrag(w fyne.Window) bool {
