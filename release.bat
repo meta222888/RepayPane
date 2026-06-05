@@ -3,7 +3,7 @@ setlocal
 cd /d "%~dp0"
 
 set "VER=%~1"
-if "%VER%"=="" set "VER=1.0.1"
+if "%VER%"=="" set "VER=1.0.2"
 
 if not exist logo.png (
   echo logo.png not found in project root
