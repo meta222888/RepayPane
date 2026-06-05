@@ -28,7 +28,6 @@ func (t *paneEllipsisText) SetText(text string) {
 		return
 	}
 	t.fullText = text
-	t.lastW = 0
 	t.Refresh()
 }
 
@@ -46,12 +45,17 @@ type paneEllipsisTextRenderer struct {
 	text  *canvas.Text
 }
 
+func (r *paneEllipsisTextRenderer) applyDisplayedText(width float32) {
+	if width <= 0 {
+		return
+	}
+	r.text.Text = ellipsizeText(r.label.fullText, width, r.label.textSize, r.text.TextStyle, r.text.FontSource)
+	r.label.lastW = width
+}
+
 func (r *paneEllipsisTextRenderer) Layout(size fyne.Size) {
 	r.label.Resize(size)
-	if size.Width != r.label.lastW {
-		r.label.lastW = size.Width
-		r.text.Text = ellipsizeText(r.label.fullText, size.Width, r.label.textSize, r.text.TextStyle, r.text.FontSource)
-	}
+	r.applyDisplayedText(size.Width)
 	r.text.Color = r.label.textCol
 	textH := r.text.MinSize().Height
 	if textH < r.label.textSize {
@@ -66,8 +70,8 @@ func (r *paneEllipsisTextRenderer) MinSize() fyne.Size {
 }
 
 func (r *paneEllipsisTextRenderer) Refresh() {
-	r.label.lastW = 0
 	r.text.Color = r.label.textCol
+	r.applyDisplayedText(r.label.Size().Width)
 	canvas.Refresh(r.text)
 }
 
