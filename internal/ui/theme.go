@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/relaypane/relaypane/internal/i18n"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
@@ -103,28 +105,73 @@ func emptyPaneSlot() fyne.CanvasObject {
 }
 
 type relayPaneTheme struct {
-	font fyne.Resource
+	regular fyne.Resource
+	bold    fyne.Resource
+	mono    fyne.Resource
+}
+
+type uiFontSet struct {
+	regular, bold, mono string
 }
 
 func newRelayPaneTheme() *relayPaneTheme {
-	return &relayPaneTheme{font: loadSystemFont()}
+	regular, bold, mono := loadUIFonts(i18n.Current())
+	return &relayPaneTheme{regular: regular, bold: bold, mono: mono}
 }
 
-func loadSystemFont() fyne.Resource {
-	if runtime.GOOS == "windows" {
-		windir := os.Getenv("WINDIR")
-		if windir == "" {
-			windir = `C:\Windows`
+func loadUIFonts(lang i18n.Lang) (regular, bold, mono fyne.Resource) {
+	def := theme.DefaultTheme()
+	if runtime.GOOS != "windows" {
+		return def.Font(fyne.TextStyle{}), def.Font(fyne.TextStyle{Bold: true}), def.Font(fyne.TextStyle{Monospace: true})
+	}
+	windir := os.Getenv("WINDIR")
+	if windir == "" {
+		windir = `C:\Windows`
+	}
+	fontDir := filepath.Join(windir, "Fonts")
+
+	// Fyne only supports single .ttf files (not .ttc collections like msyh.ttc).
+	candidates := englishFontCandidates()
+	if lang == i18n.ZH {
+		candidates = chineseFontCandidates()
+	}
+	for _, set := range candidates {
+		reg, err := fyne.LoadResourceFromPath(filepath.Join(fontDir, set.regular))
+		if err != nil {
+			continue
 		}
-		// Fyne cannot use .ttc font collections — only single .ttf files.
-		for _, name := range []string{"msyh.ttf", "simhei.ttf", "deng.ttf", "segoeui.ttf", "arial.ttf"} {
-			p := filepath.Join(windir, "Fonts", name)
-			if res, err := fyne.LoadResourceFromPath(p); err == nil {
-				return res
+		bld := reg
+		if set.bold != "" {
+			if res, err := fyne.LoadResourceFromPath(filepath.Join(fontDir, set.bold)); err == nil {
+				bld = res
 			}
 		}
+		mon := bld
+		if set.mono != "" {
+			if res, err := fyne.LoadResourceFromPath(filepath.Join(fontDir, set.mono)); err == nil {
+				mon = res
+			}
+		}
+		return reg, bld, mon
 	}
-	return theme.DefaultTheme().Font(fyne.TextStyle{})
+	return def.Font(fyne.TextStyle{}), def.Font(fyne.TextStyle{Bold: true}), def.Font(fyne.TextStyle{Monospace: true})
+}
+
+func englishFontCandidates() []uiFontSet {
+	return []uiFontSet{
+		{regular: "segoeui.ttf", bold: "segoeuib.ttf", mono: "CascadiaMono.ttf"},
+		{regular: "segoeuisl.ttf", bold: "segoeuib.ttf", mono: "CascadiaMono.ttf"},
+		{regular: "arial.ttf", bold: "arialbd.ttf", mono: "consola.ttf"},
+	}
+}
+
+func chineseFontCandidates() []uiFontSet {
+	return []uiFontSet{
+		{regular: "HarmonyOS_Sans_SC_Regular.ttf", bold: "HarmonyOS_Sans_SC_Bold.ttf", mono: "CascadiaMono.ttf"},
+		{regular: "Deng.ttf", bold: "Dengb.ttf", mono: "CascadiaMono.ttf"},
+		// simhei has poor Latin glyphs; keep only as last-resort for CJK coverage.
+		{regular: "simhei.ttf", bold: "simhei.ttf", mono: "CascadiaMono.ttf"},
+	}
 }
 
 func (relayPaneTheme) Color(name fyne.ThemeColorName, _ fyne.ThemeVariant) color.Color {
@@ -170,8 +217,14 @@ func (relayPaneTheme) Color(name fyne.ThemeColorName, _ fyne.ThemeVariant) color
 }
 
 func (t *relayPaneTheme) Font(style fyne.TextStyle) fyne.Resource {
-	if t.font != nil {
-		return t.font
+	if style.Monospace && t.mono != nil {
+		return t.mono
+	}
+	if style.Bold && t.bold != nil {
+		return t.bold
+	}
+	if t.regular != nil {
+		return t.regular
 	}
 	return theme.DefaultTheme().Font(style)
 }

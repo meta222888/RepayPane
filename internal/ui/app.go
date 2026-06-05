@@ -58,6 +58,7 @@ func NewApp(a fyne.App, w fyne.Window) *App {
 	if settings.Language != "" {
 		_ = config.SaveSettings(settings)
 	}
+	ApplyTheme(a)
 
 	appUI := &App{
 		fyneApp:  a,
@@ -123,6 +124,7 @@ func defaultRemoteRoot(s *config.Server) string {
 }
 
 func (a *App) applyLanguage() {
+	ApplyTheme(a.fyneApp)
 	a.window.SetTitle(i18n.T(i18n.KeyAppTitle))
 	a.window.SetMainMenu(nil)
 	a.topBar.ApplyLanguage()
@@ -130,6 +132,9 @@ func (a *App) applyLanguage() {
 	a.remotePane.ApplyLanguage()
 	a.statusBar.ApplyLanguage()
 	a.tabBar.Refresh()
+	if c := a.window.Canvas(); c != nil {
+		c.Refresh(c.Content())
+	}
 }
 
 func (a *App) onWindowDropped(pos fyne.Position, uris []fyne.URI) {
