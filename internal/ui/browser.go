@@ -903,35 +903,11 @@ func (p *FilePane) ctxDelete() {
 }
 
 func (p *FilePane) promptNewFolder() {
-	entry := widget.NewEntry()
-	dialog.ShowForm(i18n.T(i18n.KeyCtxNewFolder), i18n.T(i18n.KeyOK), i18n.T(i18n.KeyCancel),
-		[]*widget.FormItem{widget.NewFormItem(i18n.T(i18n.KeyFormName), entry)},
-		func(ok bool) {
-			if !ok {
-				return
-			}
-			name := strings.TrimSpace(entry.Text)
-			if name == "" {
-				return
-			}
-			p.createFolder(name)
-		}, p.app.window)
+	dialogNameFormOn(p.app.window, i18n.T(i18n.KeyCtxNewFolder), p.createFolder)
 }
 
 func (p *FilePane) promptNewFile() {
-	entry := widget.NewEntry()
-	dialog.ShowForm(i18n.T(i18n.KeyCtxNewFile), i18n.T(i18n.KeyOK), i18n.T(i18n.KeyCancel),
-		[]*widget.FormItem{widget.NewFormItem(i18n.T(i18n.KeyFormName), entry)},
-		func(ok bool) {
-			if !ok {
-				return
-			}
-			name := strings.TrimSpace(entry.Text)
-			if name == "" {
-				return
-			}
-			p.createFile(name)
-		}, p.app.window)
+	dialogNameFormOn(p.app.window, i18n.T(i18n.KeyCtxNewFile), p.createFile)
 }
 
 func (p *FilePane) createFolder(name string) {
