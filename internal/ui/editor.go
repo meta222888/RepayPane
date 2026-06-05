@@ -157,17 +157,23 @@ func (e *EditorWindow) save() {
 
 func (e *EditorWindow) revert() {
 	doReload := func() {
-		e.setStatus(i18n.T(i18n.KeyEditorSaving))
+		if e.saving {
+			return
+		}
+		e.saving = true
+		e.setStatus(i18n.T(i18n.KeyEditorReverting))
 		go func() {
 			raw, err := e.loadRawFn()
 			if err != nil {
 				fyne.Do(func() {
+					e.saving = false
 					e.setStatus(i18n.Tf(i18n.KeyEditorRevertFailed, err.Error()))
 				})
 				return
 			}
 			text, enc, err := textencoding.Decode(raw)
 			fyne.Do(func() {
+				e.saving = false
 				if err != nil {
 					e.setStatus(i18n.Tf(i18n.KeyEditorRevertFailed, err.Error()))
 					return

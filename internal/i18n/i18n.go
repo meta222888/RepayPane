@@ -118,6 +118,7 @@ const (
 	KeySavedMsg      = "editor.saved_msg"
 	KeySaveFailed    = "editor.save_failed"
 	KeyEditorSaving  = "editor.saving"
+	KeyEditorReverting = "editor.reverting"
 	KeySaveSuccessTitle = "editor.save_success_title"
 	KeySaveSuccessAt    = "editor.save_success_at"
 	KeySaveFailedTitle  = "editor.save_failed_title"
@@ -366,6 +367,7 @@ var enStrings = map[string]string{
 	KeySavedMsg:        "Saved to %s",
 	KeySaveFailed:      "Save failed: %s",
 	KeyEditorSaving:    "Saving…",
+	KeyEditorReverting: "Reverting…",
 	KeySaveSuccessTitle: "Save successful",
 	KeySaveSuccessAt:    "Save successful [%s]",
 	KeySaveFailedTitle:  "Save failed",
@@ -614,6 +616,7 @@ var zhStrings = map[string]string{
 	KeySavedMsg:        "已保存到 %s",
 	KeySaveFailed:      "保存失败：%s",
 	KeyEditorSaving:    "保存中…",
+	KeyEditorReverting: "还原中…",
 	KeySaveSuccessTitle: "保存成功",
 	KeySaveSuccessAt:    "保存成功 [%s]",
 	KeySaveFailedTitle:  "保存失败",
