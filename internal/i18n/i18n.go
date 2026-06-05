@@ -212,6 +212,10 @@ const (
 	KeyFeatNetAutoRefresh = "feat.net_auto_refresh"
 	KeyFeatRefreshTraffic = "feat.refresh_traffic"
 	KeyFeatRefreshPorts   = "feat.refresh_ports"
+	KeyFeatNetIfaceDetail = "feat.net_iface_detail"
+	KeyFeatNetRate        = "feat.net_rate"
+	KeyFeatNetRouting     = "feat.net_routing"
+	KeyFeatNetSinceBoot   = "feat.net_since_boot"
 	KeyFeatDiskDetail     = "feat.disk_detail"
 	KeyFeatResCPU         = "feat.res_cpu"
 	KeyFeatResMemory      = "feat.res_memory"
@@ -391,6 +395,10 @@ var enStrings = map[string]string{
 	KeyFeatNetAutoRefresh: "Refresh every 5s",
 	KeyFeatRefreshTraffic: "Refresh traffic",
 	KeyFeatRefreshPorts:   "Refresh ports",
+	KeyFeatNetIfaceDetail: "↓ Received %s  ·  ↑ Sent %s",
+	KeyFeatNetRate:        "Current speed: ↓ %s  ·  ↑ %s",
+	KeyFeatNetRouting:     "Routing",
+	KeyFeatNetSinceBoot:   "Cumulative since boot",
 	KeyFeatDiskDetail:     "Used %s / %s  ·  Free %s  ·  %s",
 	KeyFeatResCPU:         "Processor",
 	KeyFeatResMemory:      "Memory",
@@ -570,6 +578,10 @@ var zhStrings = map[string]string{
 	KeyFeatNetAutoRefresh: "每 5 秒刷新",
 	KeyFeatRefreshTraffic: "刷新流量",
 	KeyFeatRefreshPorts:   "刷新端口",
+	KeyFeatNetIfaceDetail: "↓ 接收 %s  ·  ↑ 发送 %s",
+	KeyFeatNetRate:        "当前速率：↓ %s  ·  ↑ %s",
+	KeyFeatNetRouting:     "路由",
+	KeyFeatNetSinceBoot:   "自启动以来累计",
 	KeyFeatDiskDetail:     "已用 %s / %s  ·  可用 %s  ·  %s",
 	KeyFeatResCPU:         "处理器",
 	KeyFeatResMemory:      "内存",
