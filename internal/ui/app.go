@@ -290,6 +290,36 @@ func (a *App) openRemoteEditor(entry remote.FileInfo) {
 	a.loadEditor(entry)
 }
 
+func (a *App) openLocalEditor(path, name string, size int64) {
+	if size > config.MaxEditBytes {
+		dialog.ShowConfirm(
+			i18n.T(i18n.KeyFileTooLarge),
+			i18n.Tf(i18n.KeyFileTooLargeMsg, name, float64(size)/(1024*1024)),
+			func(ok bool) {
+				if ok {
+					a.loadLocalEditor(path, name)
+				}
+			},
+			a.window,
+		)
+		return
+	}
+	a.loadLocalEditor(path, name)
+}
+
+func (a *App) loadLocalEditor(path, name string) {
+	go func() {
+		data, err := os.ReadFile(path)
+		fyne.Do(func() {
+			if err != nil {
+				dialog.ShowError(err, a.window)
+				return
+			}
+			ShowLocalEditor(a, path, name, string(data))
+		})
+	}()
+}
+
 func (a *App) loadEditor(entry remote.FileInfo) {
 	client := a.activeClient()
 	if client == nil {

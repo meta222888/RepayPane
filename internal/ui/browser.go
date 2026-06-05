@@ -393,7 +393,9 @@ func (p *FilePane) activateRow(row int) {
 		e := p.local[dataIdx]
 		if e.isDir {
 			p.Navigate(e.path)
+			return
 		}
+		p.app.openLocalEditor(e.path, e.name, e.size)
 		return
 	}
 	if dataIdx < 0 || dataIdx >= len(p.remote) {
@@ -642,7 +644,7 @@ func (p *FilePane) createFile(name string) {
 			return
 		}
 		p.RefreshListing()
-		ShowLocalEditor(p.app, dst, name)
+		ShowLocalEditor(p.app, dst, name, "")
 		return
 	}
 	client := p.app.activeClient()

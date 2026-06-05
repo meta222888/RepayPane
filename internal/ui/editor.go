@@ -33,8 +33,8 @@ func ShowEditor(app *App, entry remote.FileInfo, text string) {
 	})
 }
 
-func ShowLocalEditor(app *App, path, name string) {
-	showTextEditor(app, i18n.Tf(i18n.KeyEditTitle, name), path, "", i18n.T(i18n.KeyCtrlSSaveLocal), func(data []byte) error {
+func ShowLocalEditor(app *App, path, name, text string) {
+	showTextEditor(app, i18n.Tf(i18n.KeyEditTitle, name), path, text, i18n.T(i18n.KeyCtrlSSaveLocal), func(data []byte) error {
 		return os.WriteFile(path, data, 0o644)
 	})
 }
