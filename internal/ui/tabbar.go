@@ -14,10 +14,11 @@ import (
 )
 
 const (
-	tabBarHeight    float32 = 24
-	tabChipHeight   float32 = 22
+	tabBarHeight    float32 = 20
+	tabChipHeight   float32 = 20
 	tabChipMinWidth float32 = 148
 	tabCloseWidth   float32 = 18
+	tabAccentLineH  float32 = 2
 )
 
 type TabBar struct {
@@ -34,7 +35,7 @@ func (t *TabBar) Container() fyne.CanvasObject {
 	scroll.SetMinSize(fyne.NewSize(0, tabBarHeight))
 	tabBg := canvas.NewRectangle(colorTabInactive)
 	stack := container.NewStack(tabBg, container.New(
-		layout.NewCustomPaddedLayout(0, 1, 4, 4),
+		layout.NewCustomPaddedLayout(4, 0, 4, 0),
 		scroll,
 	))
 	return container.NewVBox(stack, separatorLine())
@@ -169,15 +170,76 @@ func (t *TabBar) buildTab(idx int, tab *TabSession, active bool) fyne.CanvasObje
 	if active {
 		return newTabActiveChip(bgColor, tabRow)
 	}
-	bg := canvas.NewRectangle(bgColor)
-	bg.SetMinSize(fyne.NewSize(tabChipMinWidth, tabChipHeight))
-	return container.NewStack(bg, container.New(
-		layout.NewCustomPaddedLayout(2, 1, 4, 2),
-		tabRow,
-	))
+	return newTabInactiveChip(bgColor, tabRow)
 }
 
-const tabAccentLineH float32 = 2
+type tabInactiveChip struct {
+	widget.BaseWidget
+	bgColor color.Color
+	content fyne.CanvasObject
+}
+
+func newTabInactiveChip(bgColor color.Color, content fyne.CanvasObject) *tabInactiveChip {
+	c := &tabInactiveChip{bgColor: bgColor, content: content}
+	c.ExtendBaseWidget(c)
+	return c
+}
+
+func (c *tabInactiveChip) MinSize() fyne.Size {
+	return fyne.NewSize(tabChipMinWidth, tabChipHeight)
+}
+
+type tabInactiveChipRenderer struct {
+	chip *tabInactiveChip
+	bg   *canvas.Rectangle
+	body fyne.CanvasObject
+}
+
+func (r *tabInactiveChipRenderer) Layout(size fyne.Size) {
+	size.Height = tabChipHeight
+	r.chip.Resize(size)
+	r.bg.Resize(size)
+	r.bg.Move(fyne.NewPos(0, 0))
+
+	padH := float32(4)
+	innerW := size.Width - padH*2
+	if innerW < 0 {
+		innerW = 0
+	}
+	r.body.Resize(fyne.NewSize(innerW, size.Height))
+	contentH := r.body.MinSize().Height
+	if contentH > size.Height {
+		contentH = size.Height
+	}
+	y := (size.Height - contentH) / 2
+	if y < 0 {
+		y = 0
+	}
+	r.body.Move(fyne.NewPos(padH, y))
+}
+
+func (r *tabInactiveChipRenderer) MinSize() fyne.Size {
+	return r.chip.MinSize()
+}
+
+func (r *tabInactiveChipRenderer) Refresh() {
+	r.bg.FillColor = r.chip.bgColor
+	canvas.Refresh(r.bg)
+}
+
+func (r *tabInactiveChipRenderer) Objects() []fyne.CanvasObject {
+	return []fyne.CanvasObject{r.bg, r.body}
+}
+
+func (r *tabInactiveChipRenderer) Destroy() {}
+
+func (c *tabInactiveChip) CreateRenderer() fyne.WidgetRenderer {
+	return &tabInactiveChipRenderer{
+		chip: c,
+		bg:   canvas.NewRectangle(c.bgColor),
+		body: c.content,
+	}
+}
 
 type tabActiveChip struct {
 	widget.BaseWidget
@@ -214,9 +276,8 @@ func (r *tabActiveChipRenderer) Layout(size fyne.Size) {
 	r.bg.Move(fyne.NewPos(0, tabAccentLineH))
 
 	padH := float32(4)
-	padV := float32(1)
 	innerW := size.Width - padH*2
-	innerH := bodyH - padV*2
+	innerH := bodyH
 	if innerW < 0 {
 		innerW = 0
 	}
@@ -224,7 +285,15 @@ func (r *tabActiveChipRenderer) Layout(size fyne.Size) {
 		innerH = 0
 	}
 	r.padded.Resize(fyne.NewSize(innerW, innerH))
-	r.padded.Move(fyne.NewPos(padH, tabAccentLineH+padV))
+	contentH := r.padded.MinSize().Height
+	if contentH > innerH {
+		contentH = innerH
+	}
+	y := tabAccentLineH + (bodyH-contentH)/2
+	if y < tabAccentLineH {
+		y = tabAccentLineH
+	}
+	r.padded.Move(fyne.NewPos(padH, y))
 }
 
 func (r *tabActiveChipRenderer) MinSize() fyne.Size {
