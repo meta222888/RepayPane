@@ -43,6 +43,14 @@ var (
 	colorWarning        = color.NRGBA{R: 0xff, G: 0x8c, B: 0x42, A: 255}
 )
 
+const (
+	textDescenderPad     float32 = 4
+	panePathBandHeight   float32 = 28
+	paneHeaderBandHeight float32 = 18
+	topBarHeight         float32 = 28
+	statusBarHeight      float32 = 22
+)
+
 func withBorderBottom(obj fyne.CanvasObject) fyne.CanvasObject {
 	line := canvas.NewRectangle(colorBorder)
 	line.SetMinSize(fyne.NewSize(0, 1))
@@ -55,13 +63,25 @@ func withBackground(obj fyne.CanvasObject, bg color.Color) fyne.CanvasObject {
 }
 
 func withPanelHeader(obj fyne.CanvasObject) fyne.CanvasObject {
-	return withBorderBottom(obj)
+	bg := canvas.NewRectangle(colorPanelHeader)
+	bg.SetMinSize(fyne.NewSize(0, topBarHeight))
+	line := canvas.NewRectangle(colorBorder)
+	line.SetMinSize(fyne.NewSize(0, 1))
+	padded := container.New(layout.NewCustomPaddedLayout(6, 2, 8, 2), obj)
+	return container.NewVBox(
+		container.NewStack(bg, padded),
+		line,
+	)
 }
 
 func withStatusBar(obj fyne.CanvasObject) fyne.CanvasObject {
 	top := canvas.NewRectangle(colorBorder)
 	top.SetMinSize(fyne.NewSize(0, 1))
-	return container.NewBorder(top, nil, nil, nil, withBackground(obj, colorStatusBar))
+	bg := canvas.NewRectangle(colorStatusBar)
+	bg.SetMinSize(fyne.NewSize(0, statusBarHeight))
+	padded := container.New(layout.NewCustomPaddedLayout(6, 2, 8, 2), obj)
+	inner := container.NewStack(bg, padded)
+	return container.NewBorder(top, nil, nil, nil, inner)
 }
 
 func withPanelLabel(obj fyne.CanvasObject) fyne.CanvasObject {
@@ -92,7 +112,20 @@ func labelCText(text string, c color.Color, size float32) fyne.CanvasObject {
 	return wrapCanvasText(t)
 }
 
-const textDescenderPad float32 = 4
+func labelCBandText(text string, c color.Color, size float32) fyne.CanvasObject {
+	t := canvas.NewText(text, c)
+	t.TextSize = size
+	sz, _ := fyne.CurrentApp().Driver().RenderedTextSize(t.Text, t.TextSize, t.TextStyle, t.FontSource)
+	if sz.Height < size {
+		sz.Height = size
+	}
+	if sz.Width < 1 {
+		sz.Width = 1
+	}
+	spacer := canvas.NewRectangle(color.Transparent)
+	spacer.SetMinSize(sz)
+	return container.NewStack(spacer, t)
+}
 
 // wrapCanvasText reserves vertical space so Latin descenders (g, j, p, y) are not clipped.
 func wrapCanvasText(t *canvas.Text) fyne.CanvasObject {
@@ -111,8 +144,7 @@ func wrapCanvasText(t *canvas.Text) fyne.CanvasObject {
 }
 
 func bandPadding(content fyne.CanvasObject) fyne.CanvasObject {
-	// Extra bottom padding keeps Latin descenders visible in fixed-height bands.
-	return container.New(layout.NewCustomPaddedLayout(8, 4, 8, 6), content)
+	return container.New(layout.NewCustomPaddedLayout(4, 1, 4, 2), content)
 }
 
 func panelBand(content fyne.CanvasObject, height float32) fyne.CanvasObject {
@@ -321,6 +353,79 @@ func (t *listCompactTheme) Icon(name fyne.ThemeIconName) fyne.Resource {
 func (t *listCompactTheme) Size(name fyne.ThemeSizeName) float32 {
 	if name == theme.SizeNamePadding {
 		return 0
+	}
+	return t.base.Size(name)
+}
+
+type compactToolbarTheme struct {
+	base fyne.Theme
+}
+
+func newCompactToolbarTheme() fyne.Theme {
+	return &compactToolbarTheme{base: fyne.CurrentApp().Settings().Theme()}
+}
+
+func (t *compactToolbarTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) color.Color {
+	return t.base.Color(name, variant)
+}
+
+func (t *compactToolbarTheme) Font(style fyne.TextStyle) fyne.Resource {
+	return t.base.Font(style)
+}
+
+func (t *compactToolbarTheme) Icon(name fyne.ThemeIconName) fyne.Resource {
+	return t.base.Icon(name)
+}
+
+func (t *compactToolbarTheme) Size(name fyne.ThemeSizeName) float32 {
+	switch name {
+	case theme.SizeNameText:
+		return 11
+	case theme.SizeNamePadding:
+		return 2
+	case theme.SizeNameInnerPadding:
+		return 2
+	case theme.SizeNameInlineIcon:
+		return 14
+	}
+	return t.base.Size(name)
+}
+
+type compactEntryTheme struct {
+	base     fyne.Theme
+	textSize float32
+}
+
+func newCompactEntryTheme(textSize float32) fyne.Theme {
+	if textSize < 1 {
+		textSize = 11
+	}
+	return &compactEntryTheme{
+		base:     fyne.CurrentApp().Settings().Theme(),
+		textSize: textSize,
+	}
+}
+
+func (t *compactEntryTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) color.Color {
+	return t.base.Color(name, variant)
+}
+
+func (t *compactEntryTheme) Font(style fyne.TextStyle) fyne.Resource {
+	return t.base.Font(style)
+}
+
+func (t *compactEntryTheme) Icon(name fyne.ThemeIconName) fyne.Resource {
+	return t.base.Icon(name)
+}
+
+func (t *compactEntryTheme) Size(name fyne.ThemeSizeName) float32 {
+	switch name {
+	case theme.SizeNameText:
+		return t.textSize
+	case theme.SizeNamePadding:
+		return 2
+	case theme.SizeNameInnerPadding:
+		return 2
 	}
 	return t.base.Size(name)
 }

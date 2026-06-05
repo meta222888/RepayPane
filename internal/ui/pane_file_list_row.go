@@ -8,7 +8,6 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/layout"
-	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -242,7 +241,7 @@ func (r *paneFileListRow) CreateRenderer() fyne.WidgetRenderer {
 			r.onRenameCommit(text)
 		}
 	}
-	entryThemed := container.NewThemeOverride(r.nameEntry, newPaneRenameEntryTheme())
+	entryThemed := container.NewThemeOverride(r.nameEntry, newCompactEntryTheme(paneRowNameSize))
 	nameCol := container.NewStack(r.nameT, container.NewMax(entryThemed))
 
 	var row fyne.CanvasObject
@@ -274,36 +273,3 @@ var _ fyne.Draggable = (*paneFileListRow)(nil)
 var _ desktop.Hoverable = (*paneFileListRow)(nil)
 var _ desktop.Mouseable = (*paneFileListRow)(nil)
 var _ desktop.Cursorable = (*paneFileListRow)(nil)
-
-// paneRenameEntryTheme shrinks Entry padding/text so rename fits compact list rows.
-type paneRenameEntryTheme struct {
-	base fyne.Theme
-}
-
-func newPaneRenameEntryTheme() fyne.Theme {
-	return &paneRenameEntryTheme{base: fyne.CurrentApp().Settings().Theme()}
-}
-
-func (t *paneRenameEntryTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) color.Color {
-	return t.base.Color(name, variant)
-}
-
-func (t *paneRenameEntryTheme) Font(style fyne.TextStyle) fyne.Resource {
-	return t.base.Font(style)
-}
-
-func (t *paneRenameEntryTheme) Icon(name fyne.ThemeIconName) fyne.Resource {
-	return t.base.Icon(name)
-}
-
-func (t *paneRenameEntryTheme) Size(name fyne.ThemeSizeName) float32 {
-	switch name {
-	case theme.SizeNameText:
-		return paneRowNameSize
-	case theme.SizeNamePadding:
-		return 2
-	case theme.SizeNameInnerPadding:
-		return 2
-	}
-	return t.base.Size(name)
-}

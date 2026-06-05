@@ -47,7 +47,7 @@ func (r *slimProgressRenderer) Layout(size fyne.Size) {
 }
 
 func (r *slimProgressRenderer) MinSize() fyne.Size {
-	return fyne.NewSize(160, 6)
+	return fyne.NewSize(120, 3)
 }
 
 func (r *slimProgressRenderer) Refresh() {
@@ -71,39 +71,60 @@ func (p *slimProgressBar) CreateRenderer() fyne.WidgetRenderer {
 }
 
 type StatusBar struct {
-	app         *App
-	connDot     *canvas.Circle
-	conn        *widget.Label
+	app          *App
+	connDot      *canvas.Circle
+	connText     *canvas.Text
 	reconnectBtn *widget.Button
-	syncLabel   *widget.Label
-	speed      *widget.Label
-	progress   *slimProgressBar
-	percent    *widget.Label
-	sep        *canvas.Rectangle
-	queue      *widget.Label
-	root       fyne.CanvasObject
+	syncText     *canvas.Text
+	speedText    *canvas.Text
+	progress     *slimProgressBar
+	percentText  *canvas.Text
+	sep          *canvas.Rectangle
+	queueText    *canvas.Text
+	root         fyne.CanvasObject
+}
+
+func newStatusText(text string, muted bool) *canvas.Text {
+	c := colorForeground
+	if muted {
+		c = colorMuted
+	}
+	t := canvas.NewText(text, c)
+	t.TextSize = 10
+	return t
 }
 
 func NewStatusBar(app *App) *StatusBar {
 	s := &StatusBar{app: app}
 	s.connDot = canvas.NewCircle(colorDisconnected)
-	s.conn = widget.NewLabel(i18n.T(i18n.KeyDisconnected))
+	s.connText = newStatusText(i18n.T(i18n.KeyDisconnected), false)
 	s.reconnectBtn = widget.NewButton(i18n.T(i18n.KeyReconnect), func() {
 		s.app.reconnectActiveTab()
 	})
 	s.reconnectBtn.Importance = widget.LowImportance
 	s.reconnectBtn.Hide()
-	s.syncLabel = widget.NewLabel("")
-	s.syncLabel.Hide()
-	s.speed = widget.NewLabel(i18n.T(i18n.KeyTransferIdle))
+	s.syncText = newStatusText("", false)
+	s.syncText.Hide()
+	s.speedText = newStatusText(i18n.T(i18n.KeyTransferIdle), true)
 	s.progress = newSlimProgressBar()
-	s.percent = widget.NewLabel("0%")
+	s.percentText = newStatusText("0%", true)
 	s.sep = canvas.NewRectangle(colorBorder)
-	s.sep.SetMinSize(fyne.NewSize(1, 12))
-	s.queue = widget.NewLabel(i18n.Tf(i18n.KeyStatusQueue, 0))
+	s.sep.SetMinSize(fyne.NewSize(1, 8))
+	s.queueText = newStatusText(i18n.Tf(i18n.KeyStatusQueue, 0), true)
 
-	left := container.NewHBox(dotWidget(s.connDot, 8), s.conn, s.syncLabel)
-	right := container.NewHBox(s.speed, s.progress, s.percent, s.sep, s.queue)
+	left := container.NewHBox(
+		dotWidget(s.connDot, 6),
+		bandCanvasText(s.connText),
+		bandCanvasText(s.syncText),
+		wrapCompactToolbar(s.reconnectBtn),
+	)
+	right := container.NewHBox(
+		bandCanvasText(s.speedText),
+		s.progress,
+		bandCanvasText(s.percentText),
+		s.sep,
+		bandCanvasText(s.queueText),
+	)
 	inner := container.NewBorder(nil, nil, left, right, nil)
 	s.root = withStatusBar(inner)
 	return s
@@ -115,7 +136,8 @@ func (s *StatusBar) Refresh() {
 	sess := s.app.activeSession()
 	if sess == nil || sess.state != tabConnected {
 		s.connDot.FillColor = colorDisconnected
-		s.conn.SetText(i18n.T(i18n.KeyDisconnected))
+		s.connText.Text = i18n.T(i18n.KeyDisconnected)
+		s.connText.Color = colorForeground
 		if sess != nil && sess.state == tabConnecting {
 			s.reconnectBtn.Hide()
 		} else {
@@ -123,24 +145,30 @@ func (s *StatusBar) Refresh() {
 		}
 	} else {
 		s.connDot.FillColor = colorConnected
-		s.conn.SetText(i18n.T(i18n.KeyStatusConnected) + " " + sess.addr())
+		s.connText.Text = i18n.T(i18n.KeyStatusConnected) + " " + sess.addr()
+		s.connText.Color = colorForeground
 		s.reconnectBtn.Hide()
 	}
 	canvas.Refresh(s.connDot)
+	canvas.Refresh(s.connText)
 	s.RefreshTransfer()
 }
 
 func (s *StatusBar) RefreshTransfer() {
 	active, pct, speed, queue := s.app.transfers.Snapshot()
-	s.speed.SetText(speed)
+	s.speedText.Text = speed
 	s.progress.SetValue(pct / 100)
-	s.percent.SetText(fmt.Sprintf("%.0f%%", pct))
-	s.queue.SetText(i18n.Tf(i18n.KeyStatusQueue, queue))
+	s.percentText.Text = fmt.Sprintf("%.0f%%", pct)
+	s.queueText.Text = i18n.Tf(i18n.KeyStatusQueue, queue)
+	canvas.Refresh(s.speedText)
+	canvas.Refresh(s.percentText)
+	canvas.Refresh(s.queueText)
 	if active {
-		s.syncLabel.SetText("  ⟳ " + i18n.T(i18n.KeyStatusSyncing))
-		s.syncLabel.Show()
+		s.syncText.Text = "  ⟳ " + i18n.T(i18n.KeyStatusSyncing)
+		s.syncText.Show()
+		canvas.Refresh(s.syncText)
 	} else {
-		s.syncLabel.Hide()
+		s.syncText.Hide()
 	}
 }
 

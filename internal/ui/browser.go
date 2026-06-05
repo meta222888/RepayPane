@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"image/color"
 	"os"
 	"path"
 	"path/filepath"
@@ -54,7 +55,8 @@ type FilePane struct {
 	histIndex int
 
 	pathEntry      *widget.Entry
-	panelPrefixLbl *widget.Label
+	panelPrefixLbl     fyne.CanvasObject
+	panelPrefixLblText *canvas.Text
 	localDriveLbl     fyne.CanvasObject
 	localDriveLblText *canvas.Text
 	list           *widget.List
@@ -126,18 +128,18 @@ func (p *FilePane) build() {
 }
 
 func (p *FilePane) buildLocalListHeader() fyne.CanvasObject {
-	nameCol := labelCText(strings.ToUpper(i18n.T(i18n.KeyColName)), colorMuted, 11)
-	rightCol := labelCText(strings.ToUpper(i18n.T(i18n.KeyColSize))+"       "+strings.ToUpper(i18n.T(i18n.KeyColModified)), colorMuted, 11)
+	nameCol := labelCBandText(strings.ToUpper(i18n.T(i18n.KeyColName)), colorMuted, 10)
+	rightCol := labelCBandText(strings.ToUpper(i18n.T(i18n.KeyColSize))+"       "+strings.ToUpper(i18n.T(i18n.KeyColModified)), colorMuted, 10)
 	row := container.NewBorder(nil, nil, nil, rightCol, nameCol)
-	return panelBand(row, 24)
+	return panelBand(row, paneHeaderBandHeight)
 }
 
 func (p *FilePane) buildLocalChrome() fyne.CanvasObject {
 	p.localNav = NewLocalNav(p)
 	t := canvas.NewText(i18n.T(i18n.KeyPanelLocal), colorMuted)
-	t.TextSize = 12
+	t.TextSize = 11
 	p.localDriveLblText = t
-	p.localDriveLbl = wrapCanvasText(t)
+	p.localDriveLbl = bandCanvasText(t)
 
 	up := widget.NewButtonWithIcon("", theme.MoveUpIcon(), p.goUp)
 	newFolder := widget.NewButtonWithIcon("", theme.FolderNewIcon(), p.promptNewFolder)
@@ -145,7 +147,7 @@ func (p *FilePane) buildLocalChrome() fyne.CanvasObject {
 	for _, b := range []*widget.Button{up, newFolder, refresh} {
 		b.Importance = widget.LowImportance
 	}
-	actions := container.NewHBox(up, newFolder, refresh)
+	actions := wrapCompactToolbar(container.NewHBox(up, newFolder, refresh))
 
 	p.pathEntry = widget.NewEntry()
 	p.pathEntry.OnSubmitted = func(text string) {
@@ -154,23 +156,24 @@ func (p *FilePane) buildLocalChrome() fyne.CanvasObject {
 			p.Navigate(text)
 		}
 	}
-	left := container.NewHBox(p.localDriveLbl, p.localNav.Button())
-	pathRow := container.NewBorder(nil, nil, left, actions, p.pathEntry)
-	return panelBand(pathRow, 36)
+	left := container.NewHBox(p.localDriveLbl, wrapCompactToolbar(p.localNav.Button()))
+	pathRow := container.NewBorder(nil, nil, left, actions, wrapCompactEntry(p.pathEntry, 11))
+	return panelBand(pathRow, panePathBandHeight)
 }
 
 func (p *FilePane) buildRemoteListHeader() fyne.CanvasObject {
-	nameCol := labelCText(strings.ToUpper(i18n.T(i18n.KeyColName)), colorMuted, 11)
-	sizeCol := labelCText(strings.ToUpper(i18n.T(i18n.KeyColSize)), colorMuted, 11)
-	metaCol := labelCText(strings.ToUpper(i18n.T(i18n.KeyColModified)), colorMuted, 11)
+	nameCol := labelCBandText(strings.ToUpper(i18n.T(i18n.KeyColName)), colorMuted, 10)
+	sizeCol := labelCBandText(strings.ToUpper(i18n.T(i18n.KeyColSize)), colorMuted, 10)
+	metaCol := labelCBandText(strings.ToUpper(i18n.T(i18n.KeyColModified)), colorMuted, 10)
 	right := container.NewHBox(fixedWidth(metaCol, 128), fixedWidth(sizeCol, 72))
 	row := container.NewBorder(nil, nil, nil, right, nameCol)
-	return panelBand(row, 24)
+	return panelBand(row, paneHeaderBandHeight)
 }
 
 func (p *FilePane) buildRemoteChrome() fyne.CanvasObject {
-	p.panelPrefixLbl = widget.NewLabel("")
-	p.panelPrefixLbl.Importance = widget.MediumImportance
+	p.panelPrefixLblText = canvas.NewText(i18n.T(i18n.KeyPanelRemote), colorMuted)
+	p.panelPrefixLblText.TextSize = 11
+	p.panelPrefixLbl = bandCanvasText(p.panelPrefixLblText)
 
 	up := widget.NewButtonWithIcon("", theme.MoveUpIcon(), p.goUp)
 	newFolder := widget.NewButtonWithIcon("", theme.FolderNewIcon(), p.promptNewFolder)
@@ -178,7 +181,7 @@ func (p *FilePane) buildRemoteChrome() fyne.CanvasObject {
 	for _, b := range []*widget.Button{up, newFolder, refresh} {
 		b.Importance = widget.LowImportance
 	}
-	actions := container.NewHBox(up, newFolder, refresh)
+	actions := wrapCompactToolbar(container.NewHBox(up, newFolder, refresh))
 
 	p.pathEntry = widget.NewEntry()
 	p.pathEntry.OnSubmitted = func(text string) {
@@ -187,9 +190,31 @@ func (p *FilePane) buildRemoteChrome() fyne.CanvasObject {
 			p.Navigate(text)
 		}
 	}
-	left := container.NewHBox(widget.NewLabel("🖥"), p.panelPrefixLbl)
-	pathRow := container.NewBorder(nil, nil, left, actions, p.pathEntry)
-	return panelBand(pathRow, 36)
+	remoteIcon := labelCBandText("🖥", colorAccent, 11)
+	left := container.NewHBox(remoteIcon, p.panelPrefixLbl)
+	pathRow := container.NewBorder(nil, nil, left, actions, wrapCompactEntry(p.pathEntry, 11))
+	return panelBand(pathRow, panePathBandHeight)
+}
+
+func wrapCompactToolbar(obj fyne.CanvasObject) fyne.CanvasObject {
+	return container.NewThemeOverride(obj, newCompactToolbarTheme())
+}
+
+func wrapCompactEntry(entry *widget.Entry, textSize float32) fyne.CanvasObject {
+	return container.NewThemeOverride(entry, newCompactEntryTheme(textSize))
+}
+
+func bandCanvasText(t *canvas.Text) fyne.CanvasObject {
+	sz, _ := fyne.CurrentApp().Driver().RenderedTextSize(t.Text, t.TextSize, t.TextStyle, t.FontSource)
+	if sz.Height < t.TextSize {
+		sz.Height = t.TextSize
+	}
+	if sz.Width < 1 {
+		sz.Width = 1
+	}
+	spacer := canvas.NewRectangle(color.Transparent)
+	spacer.SetMinSize(sz)
+	return container.NewStack(spacer, t)
 }
 
 func (p *FilePane) hasParentRow() bool {
@@ -367,8 +392,9 @@ func (p *FilePane) refreshPathDisplay() {
 		}
 		return
 	}
-	if p.panelPrefixLbl != nil {
-		p.panelPrefixLbl.SetText(i18n.T(i18n.KeyPanelRemote))
+	if p.panelPrefixLblText != nil {
+		p.panelPrefixLblText.Text = i18n.T(i18n.KeyPanelRemote)
+		canvas.Refresh(p.panelPrefixLblText)
 	}
 	if p.pathEntry != nil {
 		p.pathEntry.SetText(p.path)

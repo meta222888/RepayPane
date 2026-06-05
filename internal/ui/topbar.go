@@ -24,11 +24,11 @@ func NewTopBar(app *App) *TopBar {
 	t := &TopBar{app: app}
 	logoImg := canvas.NewImageFromResource(assets.LogoResource())
 	logoImg.FillMode = canvas.ImageFillContain
-	logoImg.SetMinSize(fyne.NewSize(22, 22))
+	logoImg.SetMinSize(fyne.NewSize(18, 18))
 	appName := canvas.NewText(i18n.T(i18n.KeyAppTitle), colorForeground)
-	appName.TextSize = 14
+	appName.TextSize = 12
 	appName.TextStyle = fyne.TextStyle{Bold: true}
-	logo := container.NewHBox(logoImg, wrapCanvasText(appName))
+	logo := container.NewHBox(logoImg, bandCanvasText(appName))
 	t.btnSet = widget.NewButtonWithIcon(i18n.T(i18n.KeyMenuSettings), theme.SettingsIcon(), func() {
 		t.showMenu(app.settingsMenu(), t.btnSet)
 	})
@@ -42,7 +42,7 @@ func NewTopBar(app *App) *TopBar {
 	t.btnFeat.Importance = widget.LowImportance
 	t.btnAbout.Importance = widget.LowImportance
 
-	right := container.NewHBox(t.btnSet, t.btnFeat, t.btnAbout)
+	right := wrapCompactToolbar(container.NewHBox(t.btnSet, t.btnFeat, t.btnAbout))
 	barContent := container.NewBorder(nil, nil, logo, right, layout.NewSpacer())
 	wrapped := withPanelHeader(barContent)
 	t.root = wrapped

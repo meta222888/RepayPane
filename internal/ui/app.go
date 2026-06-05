@@ -226,7 +226,8 @@ func (a *App) connectTab(tab *TabSession) {
 	a.remotePane.SetConnected(false)
 	a.remotePane.setListLoading(true)
 
-	a.statusBar.conn.SetText(i18n.Tf(i18n.KeyConnecting, tab.server.Name))
+	a.statusBar.connText.Text = i18n.Tf(i18n.KeyConnecting, tab.server.Name)
+	canvas.Refresh(a.statusBar.connText)
 	go func() {
 		s := tab.server
 		client, err := a.dialServer(s)
