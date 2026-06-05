@@ -32,9 +32,10 @@ type paneFileListRow struct {
 
 	onSecondary func(*fyne.PointEvent)
 	onPrimary   func()
-	onDouble    func()
 	onDragged   func(*fyne.DragEvent)
 	onDragEnd   func()
+	onMouseDown func()
+	onMouseUp   func()
 
 	dragActive bool
 }
@@ -122,12 +123,6 @@ func (r *paneFileListRow) Tapped(*fyne.PointEvent) {
 	}
 }
 
-func (r *paneFileListRow) DoubleTapped(*fyne.PointEvent) {
-	if r.onDouble != nil {
-		r.onDouble()
-	}
-}
-
 func (r *paneFileListRow) TappedSecondary(ev *fyne.PointEvent) {
 	if r.onSecondary != nil {
 		r.onSecondary(ev)
@@ -147,6 +142,18 @@ func (r *paneFileListRow) DragEnd() {
 		r.onDragEnd()
 	}
 	r.dragActive = false
+}
+
+func (r *paneFileListRow) MouseDown(*desktop.MouseEvent) {
+	if r.onMouseDown != nil {
+		r.onMouseDown()
+	}
+}
+
+func (r *paneFileListRow) MouseUp(*desktop.MouseEvent) {
+	if r.onMouseUp != nil {
+		r.onMouseUp()
+	}
 }
 
 func (r *paneFileListRow) Cursor() desktop.Cursor {
@@ -203,8 +210,8 @@ func (r *paneFileListRow) MinSize() fyne.Size {
 }
 
 var _ fyne.Tappable = (*paneFileListRow)(nil)
-var _ fyne.DoubleTappable = (*paneFileListRow)(nil)
 var _ fyne.SecondaryTappable = (*paneFileListRow)(nil)
 var _ fyne.Draggable = (*paneFileListRow)(nil)
 var _ desktop.Hoverable = (*paneFileListRow)(nil)
+var _ desktop.Mouseable = (*paneFileListRow)(nil)
 var _ desktop.Cursorable = (*paneFileListRow)(nil)

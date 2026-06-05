@@ -30,7 +30,7 @@ func (b *paneListUnderlay) MinSize() fyne.Size {
 }
 
 func (b *paneListUnderlay) Tapped(*fyne.PointEvent) {
-	b.pane.dismissContextMenu()
+	// Primary taps on blank list area only clear selection; must not sit above rows (see list z-order).
 	b.pane.clearSelectionQuiet()
 }
 
@@ -49,14 +49,17 @@ func (l paneListStackLayout) MinSize(objects []fyne.CanvasObject) fyne.Size {
 	if len(objects) == 0 {
 		return fyne.NewSize(0, 0)
 	}
-	return objects[0].MinSize()
+	if len(objects) == 1 {
+		return objects[0].MinSize()
+	}
+	return objects[1].MinSize()
 }
 
 func (l paneListStackLayout) Layout(objects []fyne.CanvasObject, size fyne.Size) {
 	if len(objects) < 2 {
 		return
 	}
-	list, underlay := objects[0], objects[1]
+	underlay, list := objects[0], objects[1]
 	list.Resize(size)
 	list.Move(fyne.NewPos(0, 0))
 
@@ -72,5 +75,6 @@ func (l paneListStackLayout) Layout(objects []fyne.CanvasObject, size fyne.Size)
 }
 
 func newPaneListArea(p *FilePane, list *widget.List) fyne.CanvasObject {
-	return container.New(&paneListStackLayout{pane: p}, list, newPaneListUnderlay(p))
+	// Underlay first, list second — hit-testing prefers later children so list receives row clicks.
+	return container.New(&paneListStackLayout{pane: p}, newPaneListUnderlay(p), list)
 }

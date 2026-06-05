@@ -60,6 +60,8 @@ type FilePane struct {
 	selectedRow int
 	lastTapRow  int
 	lastTapTime time.Time
+	listPointerDown int
+	pendingListRefresh bool
 	lastDragAbs fyne.Position
 	dragReady   bool
 	listGen     int
@@ -218,24 +220,13 @@ func (p *FilePane) updateListRow(i widget.ListItemID, obj fyne.CanvasObject) {
 	row := obj.(*paneFileListRow)
 	selected := idx == p.selectedRow
 
-	row.onPrimary = func() {
-		now := time.Now()
-		if idx == p.lastTapRow && now.Sub(p.lastTapTime) <= paneDoubleClickInterval {
-			p.lastTapRow = -1
-			p.activateRow(idx)
-			return
-		}
-		p.lastTapRow = idx
-		p.lastTapTime = now
-		p.selectRow(idx)
-	}
-	row.onDouble = func() {
-		p.lastTapRow = -1
-		p.activateRow(idx)
-	}
+	row.onPrimary = func() { p.tapRow(idx) }
 	row.onSecondary = func(ev *fyne.PointEvent) {
+		p.selectRow(idx)
 		p.showContextMenu(ev.AbsolutePosition, idx)
 	}
+	row.onMouseDown = func() { p.noteListPointerDown() }
+	row.onMouseUp = func() { p.noteListPointerUp() }
 	row.onDragged = func(e *fyne.DragEvent) {
 		if !p.dragReady {
 			if !p.setClipboardFromRow(idx) {
@@ -266,6 +257,7 @@ func (p *FilePane) updateListRow(i widget.ListItemID, obj fyne.CanvasObject) {
 	dataIdx := p.dataRowIndex(idx)
 	if p.kind == PaneLocal {
 		if dataIdx < 0 || dataIdx >= len(p.local) {
+			row.onPrimary = func() { p.tapRow(idx) }
 			return
 		}
 		e := p.local[dataIdx]
@@ -273,6 +265,7 @@ func (p *FilePane) updateListRow(i widget.ListItemID, obj fyne.CanvasObject) {
 		return
 	}
 	if dataIdx < 0 || dataIdx >= len(p.remote) {
+		row.onPrimary = func() { p.tapRow(idx) }
 		return
 	}
 	e := p.remote[dataIdx]
@@ -386,7 +379,7 @@ func (p *FilePane) RefreshListing() {
 			return
 		}
 		p.local = entries
-		p.list.Refresh()
+		p.refreshListIfAllowed()
 		return
 	}
 	if !p.connected || p.app.activeClient() == nil {
@@ -415,9 +408,49 @@ func (p *FilePane) RefreshListing() {
 				return
 			}
 			p.remote = entries
-			p.list.Refresh()
+			p.refreshListIfAllowed()
 		})
 	}()
+}
+
+func (p *FilePane) noteListPointerDown() {
+	p.listPointerDown++
+}
+
+func (p *FilePane) noteListPointerUp() {
+	if p.listPointerDown > 0 {
+		p.listPointerDown--
+	}
+	if p.listPointerDown == 0 && p.pendingListRefresh {
+		p.refreshListIfAllowed()
+	}
+}
+
+func (p *FilePane) refreshListIfAllowed() {
+	if p.list == nil {
+		return
+	}
+	if p.listPointerDown > 0 {
+		p.pendingListRefresh = true
+		return
+	}
+	p.pendingListRefresh = false
+	p.list.Refresh()
+}
+
+func (p *FilePane) tapRow(row int) {
+	if row < 0 || row >= p.rowCount() {
+		return
+	}
+	now := time.Now()
+	if row == p.lastTapRow && now.Sub(p.lastTapTime) <= paneDoubleClickInterval {
+		p.lastTapRow = -1
+		p.activateRow(row)
+		return
+	}
+	p.lastTapRow = row
+	p.lastTapTime = now
+	p.selectRow(row)
 }
 
 func (p *FilePane) clearSelection() {
@@ -442,11 +475,24 @@ func (p *FilePane) selectRow(row int) {
 		return
 	}
 	p.selectedRow = row
+	if prev >= 0 {
+		p.list.RefreshItem(widget.ListItemID(prev))
+	}
+	p.list.RefreshItem(widget.ListItemID(row))
 	p.list.Select(widget.ListItemID(row))
 }
 
 func (p *FilePane) handleListSelect(id widget.ListItemID) {
-	p.selectRow(int(id))
+	row := int(id)
+	prev := p.selectedRow
+	if prev == row {
+		return
+	}
+	p.selectedRow = row
+	if prev >= 0 {
+		p.list.RefreshItem(widget.ListItemID(prev))
+	}
+	p.list.RefreshItem(widget.ListItemID(row))
 }
 
 func (p *FilePane) activateRow(row int) {
