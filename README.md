@@ -1,55 +1,192 @@
 # RelayPane
 
-A lightweight WinSCP-style SFTP client written in Go.
+一款用 Go 编写的轻量级 **SFTP 双栏文件管理器**，界面与操作习惯接近 WinSCP，并针对「长时间挂着就断线」这一常见痛点做了专门优化。
 
-**RelayPane** = relay files between your machine and remote servers, in a dual-pane view.
+**RelayPane** = 在本机与远程服务器之间中继文件，双栏对照、拖放即传。
 
-## Features
+---
 
-- **Server management** — save, edit, delete SFTP connections (password or private key)
-- **Dual-pane browser** — local files on the left, remote on the right
-- **Drag & drop** — drop files from Explorer onto the right half to upload; onto the left half to copy locally
-- **Upload / Download** — select a file and use the toolbar buttons
-- **Remote file editor** — double-click a remote file to edit; **Ctrl+S** saves directly back to the server
-- **Large file guard** — files over 2 MB prompt before opening in the editor
+## 为什么选择 RelayPane？
 
-## Requirements
+如果你用过 WinSCP，多半遇到过这些情况：
 
-- Go 1.22+
-- C compiler for Fyne (on Windows: [TDM-GCC](https://jmeubank.github.io/tdm-gcc/) or MinGW-w64)
+- 窗口开着去忙别的，回来发现会话已断，要重新连、重新找目录
+- 传大文件或挂着编辑，NAT / 防火墙把空闲 SSH 掐掉，传到一半失败
+- 不知道连接是「真断了」还是「还在」，只能手动点刷新碰运气
 
-## Build & Run
+**RelayPane 为每个服务器单独配置 SSH 心跳（Keepalive）**，在后台定时向服务器发送 SFTP 探测，保持隧道活跃。默认每 **30 秒** 一次，可按服务器自定义间隔，也可设为 `0` 关闭。
+
+| 能力 | 说明 |
+|------|------|
+| **可配置心跳** | 添加/编辑服务器时设置「心跳间隔（秒）」，写入该服务器配置 |
+| **断线可感知** | 心跳失败时标记会话断开，状态栏变红并提示 |
+| **一键重连** | 断线后状态栏出现 **「重新连接」**，无需重新翻找服务器列表 |
+| **多标签会话** | 可同时打开多台服务器，每台独立心跳与连接状态 |
+
+> 心跳解决的是「长时间空闲被中间设备断开」；若服务器主动踢人或网络彻底中断，仍会提示断线并支持重连。
+
+---
+
+## 功能一览
+
+### 连接与会话
+
+- **服务器管理**：保存多台服务器（主机、端口、用户名、密码或私钥路径、别名）
+- **私钥登录**：支持指定私钥文件，或自动读取 `~/.ssh` 下的密钥；私钥有口令时弹窗输入
+- **快速连接**：启动时连接选择器；也可在「设置 → 我的服务器」中管理
+- **多标签**：顶部标签页同时维持多个 SSH/SFTP 连接，点击切换
+- **心跳保活**：每服务器独立 `heartbeat_sec`（默认 30 秒，0 = 关闭）
+- **断线重连**：状态栏显示连接状态；断开时一键重连当前标签
+
+### 双栏文件浏览
+
+- **左栏本地、右栏远程**：文件名、大小、修改时间对照浏览
+- **本地盘符导航**：快速切换 C:、D: 等盘符与常用路径
+- **路径栏**：可编辑路径回车跳转；远程支持返回上级
+- **后台加载**：远程目录列表在后台拉取，浏览时界面不卡死
+- **右键菜单**：上传、下载、删除、重命名、新建文件/文件夹等
+- **同名冲突**：覆盖、跳过、重命名
+
+### 文件传输
+
+- **拖放上传**：从资源管理器拖文件到窗口右侧 → 上传到当前远程目录
+- **拖放到本地**：拖到左侧 → 复制到当前本地目录
+- **工具栏上传/下载**：选中文件后一键传输
+- **传输队列**：多文件顺序传输，状态栏显示**总进度、速度、剩余队列**
+- **目录同步**（功能菜单）：本地目录 ↔ 远程目录双向同步
+
+### 远程编辑
+
+- **双击打开**：远程文本文件在独立编辑器窗口中打开
+- **Ctrl+S 保存**：直接写回服务器，无需手动再传一遍
+- **大文件提示**：超过 2 MB 时先确认再打开，避免误开巨型文件卡死
+- **未保存提醒**：关闭编辑器前提示是否丢弃修改
+
+### 功能菜单（远程运维小工具）
+
+连接成功后，顶部 **「功能」** 菜单可打开独立原生窗口（可拖动、缩放）：
+
+| 菜单项 | 作用 |
+|--------|------|
+| **系统信息** | 主机名、系统版本、内核、CPU 架构等 |
+| **网络信息** | 各网卡累计流量（可读单位）、实时速率（可自动刷新）、路由表、监听端口 |
+| **磁盘空间** | `df` 结果卡片化，占用比例一目了然 |
+| **详细占用空间** | 按目录浏览 `du` 树，点击文件夹下钻，按体积排序 |
+| **CPU、内存使用** | CPU/内存占用条、运行时间、高占用进程列表 |
+| **同步** | 将当前本地目录与远程目录双向同步 |
+| **执行远程命令** | 运行 shell 命令（支持历史记录；不支持 vim/top 等交互程序） |
+
+### 界面与设置
+
+- **中 / 英界面**：设置 → 语言，即时切换
+- **Windows 原生窗口**：主窗口与各功能对话框均使用系统标题栏，可移动、缩放
+- **深色主题**：护眼配色，状态栏绿点/红点指示连接状态
+
+---
+
+## 环境要求
+
+- **Go 1.22+**
+- **Windows**（当前主要目标平台）
+- **C 编译器**（Fyne 依赖）：[TDM-GCC](https://jmeubank.github.io/tdm-gcc/) 或 MinGW-w64
+
+---
+
+## 编译与运行
 
 ```powershell
-cd d:\work\RelayPane
+cd RelayPane
 go mod tidy
 go run ./cmd/relaypane
 ```
 
-Or build an executable:
+或编译无控制台窗口的 exe：
 
 ```powershell
-go build -o RelayPane.exe ./cmd/relaypane
+go build -ldflags="-H=windowsgui -s -w" -o RelayPane.exe ./cmd/relaypane
 ```
 
-## Usage
+也可直接运行项目中的 `build.bat`。
 
-1. Click **Add Server** and fill in host, port (22), username, and password or private key path.
-2. Select a server in the list to connect.
-3. Browse folders by double-clicking directories.
-4. Double-click a remote file to edit it; press **Ctrl+S** to save to the server.
-5. Drag files from Windows Explorer onto the window (right side = upload, left side = local copy).
+---
 
-Server profiles are stored in `%USERPROFILE%\.relaypane\servers.json`.
+## 使用说明
 
-## Project layout
+### 1. 添加服务器并设置心跳
+
+1. 点击 **「+ 连接」** 或 **设置 → 我的服务器 → 添加**
+2. 填写主机、端口（默认 22）、用户名
+3. 选择 **密码** 或 **私钥路径**（可勾选自动使用 `~/.ssh` 密钥）
+4. **心跳间隔**：建议保持默认 **30** 秒；若网络环境稳定且不需要保活可填 **0** 关闭
+5. 保存后双击或选中连接
+
+状态栏连接成功后会显示 `已连接 host:port · 心跳 30秒`（间隔随你的配置变化）。
+
+### 2. 传文件
+
+- 在右栏进入目标远程目录
+- 从资源管理器拖入文件，或选中本地/远程文件后使用工具栏上传/下载
+- 底部状态栏查看进度与速度
+
+### 3. 编辑远程文件
+
+- 双击远程文件 → 编辑器窗口打开
+- 修改后 **Ctrl+S** 保存到服务器
+
+### 4. 断线后重连
+
+- 若心跳探测失败，标签页与状态栏会显示断开
+- 点击状态栏 **「重新连接」** 恢复当前服务器会话
+
+---
+
+## 配置存储
+
+| 文件 | 路径 |
+|------|------|
+| 服务器列表 | `%USERPROFILE%\.relaypane\servers.json` |
+| 应用设置（语言、Shell 历史等） | `%USERPROFILE%\.relaypane\settings.json` |
+
+每台服务器的 `heartbeat_sec` 保存在对应服务器条目内，示例：
+
+```json
+{
+  "name": "生产机",
+  "host": "192.168.1.10",
+  "port": 22,
+  "username": "deploy",
+  "heartbeat_sec": 30
+}
+```
+
+---
+
+## 项目结构
 
 ```
-cmd/relaypane/     entry point
-internal/config/   saved server profiles
-internal/remote/   SFTP client
-internal/ui/       Fyne GUI
+cmd/relaypane/       程序入口
+internal/config/     服务器与设置持久化
+internal/remote/     SSH/SFTP 客户端、心跳保活
+internal/i18n/       中英文文案
+internal/ui/         Fyne 图形界面
+internal/version/    版本号
 ```
+
+---
+
+## 技术栈
+
+- [Fyne v2](https://fyne.io/) — 跨平台 GUI
+- [golang.org/x/crypto/ssh](https://pkg.go.dev/golang.org/x/crypto/ssh) — SSH
+- [github.com/pkg/sftp](https://github.com/pkg/sftp) — SFTP
+
+---
+
+## 版本
+
+当前版本：**1.0.0**（见 `internal/version/version.go`）
+
+---
 
 ## License
 
