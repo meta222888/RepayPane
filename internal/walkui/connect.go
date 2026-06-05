@@ -2,12 +2,85 @@ package walkui
 
 import (
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/relaypane/relaypane/internal/config"
+	"github.com/relaypane/relaypane/internal/i18n"
 
 	"github.com/lxn/walk"
 	. "github.com/lxn/walk/declarative"
 )
+
+func initLanguage(settings *config.Settings) {
+	if settings.Language == "zh" {
+		i18n.SetLanguage(i18n.ZH)
+		return
+	}
+	if settings.Language == "en" {
+		i18n.SetLanguage(i18n.EN)
+		return
+	}
+	if lang := os.Getenv("LANG"); strings.HasPrefix(strings.ToLower(lang), "en") {
+		i18n.SetLanguage(i18n.EN)
+		settings.Language = "en"
+		return
+	}
+	i18n.SetLanguage(i18n.ZH)
+	settings.Language = "zh"
+}
+
+func (a *App) showConnectDialog() {
+	if len(a.store.Servers) == 0 {
+		a.showAddServer()
+		return
+	}
+
+	var dlg *walk.Dialog
+	var lb *walk.ListBox
+	selected := -1
+
+	names := make([]string, len(a.store.Servers))
+	for i, s := range a.store.Servers {
+		names[i] = serverDisplayName(s) + "  (" + serverSubtitle(s) + ")"
+	}
+
+	_, _ = Dialog{
+		AssignTo: &dlg,
+		Title:    i18n.T(i18n.KeyConnectPickerTitle),
+		MinSize:  Size{480, 320},
+		Layout:   VBox{},
+		Children: []Widget{
+			Label{Text: i18n.T(i18n.KeyConnectPickerHint)},
+			ListBox{
+				AssignTo: &lb,
+				Model:    names,
+				OnCurrentIndexChanged: func() {
+					selected = lb.CurrentIndex()
+				},
+			},
+			Composite{
+				Layout: HBox{},
+				Children: []Widget{
+					PushButton{Text: i18n.T(i18n.KeyCancel), OnClicked: func() { dlg.Cancel() }},
+					PushButton{Text: i18n.T(i18n.KeyNewConnection), OnClicked: func() {
+						dlg.Cancel()
+						a.showAddServer()
+					}},
+					HSpacer{},
+					PushButton{Text: i18n.T(i18n.KeyConnect), OnClicked: func() {
+						if selected < 0 {
+							a.showMsg(i18n.T(i18n.KeyConnectPickerTitle), i18n.T(i18n.KeySelectServer))
+							return
+						}
+						dlg.Cancel()
+						a.openServerTab(a.store.Servers[selected])
+					}},
+				},
+			},
+		},
+	}.Run(a.mw)
+}
 
 func (a *App) askPassphrase() []byte {
 	var dlg *walk.Dialog
@@ -15,7 +88,7 @@ func (a *App) askPassphrase() []byte {
 	var acceptBtn *walk.PushButton
 	accepted := false
 
-	if _, err := (Dialog{
+	_, _ = Dialog{
 		AssignTo:      &dlg,
 		Title:         "SSH Passphrase",
 		DefaultButton: &acceptBtn,
@@ -36,81 +109,15 @@ func (a *App) askPassphrase() []byte {
 							dlg.Accept()
 						},
 					},
-					PushButton{
-						Text: "Cancel",
-						OnClicked: func() {
-							dlg.Cancel()
-						},
-					},
+					PushButton{Text: "Cancel", OnClicked: func() { dlg.Cancel() }},
 				},
 			},
 		},
-	}).Run(a.mw); err != nil {
-		return nil
-	}
+	}.Run(a.mw)
 	if !accepted {
 		return nil
 	}
 	return []byte(edit.Text())
-}
-
-func (a *App) showConnectDialog() {
-	if len(a.store.Servers) == 0 {
-		walk.MsgBox(a.mw, "RelayPane", "No saved servers. Add one in the Fyne edition or edit ~/.relaypane/servers.json.", walk.MsgBoxIconInformation)
-		return
-	}
-
-	var dlg *walk.Dialog
-	var lb *walk.ListBox
-	selected := -1
-
-	names := make([]string, len(a.store.Servers))
-	for i, s := range a.store.Servers {
-		names[i] = serverDisplayName(s) + "  (" + serverSubtitle(s) + ")"
-	}
-
-	if _, err := (Dialog{
-		AssignTo: &dlg,
-		Title:    "Connect to Server",
-		MinSize:  Size{480, 320},
-		Layout:   VBox{},
-		Children: []Widget{
-			Label{Text: "Select a server and click Connect:"},
-			ListBox{
-				AssignTo: &lb,
-				Model:    names,
-				OnCurrentIndexChanged: func() {
-					selected = lb.CurrentIndex()
-				},
-			},
-			Composite{
-				Layout: HBox{},
-				Children: []Widget{
-					HSpacer{},
-					PushButton{
-						Text: "Connect",
-						OnClicked: func() {
-							if selected < 0 || selected >= len(a.store.Servers) {
-								walk.MsgBox(dlg, "Connect", "Please select a server.", walk.MsgBoxIconWarning)
-								return
-							}
-							s := a.store.Servers[selected]
-							dlg.Accept()
-							a.connectServer(s)
-						},
-					},
-					PushButton{
-						Text: "Cancel",
-						OnClicked: func() {
-							dlg.Cancel()
-						},
-					},
-				},
-			},
-		},
-	}).Run(a.mw); err != nil {
-		return
-	}
 }
 
 func serverSubtitle(s config.Server) string {

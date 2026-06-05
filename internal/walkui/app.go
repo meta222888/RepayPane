@@ -15,16 +15,26 @@ import (
 )
 
 type App struct {
-	mw    *walk.MainWindow
-	store *config.Store
+	mw       *walk.MainWindow
+	store    *config.Store
+	settings *config.Settings
 
-	localPathEdit  *walk.LineEdit
-	remotePathEdit *walk.LineEdit
-	localTV        *walk.TableView
-	remoteTV       *walk.TableView
-	localModel     *dirModel
-	remoteModel    *dirModel
+	tabs      []*TabSession
+	activeTab int
+
+	tabBar *walk.Composite
+
+	localDriveCombo *walk.ComboBox
+	localPathEdit   *walk.LineEdit
+	remotePathEdit  *walk.LineEdit
+	localTV         *walk.TableView
+	remoteTV        *walk.TableView
+	localModel      *dirModel
+	remoteModel     *dirModel
+
 	statusLabel    *walk.Label
+	transferLabel  *walk.Label
+	progressBar    *walk.ProgressBar
 	reconnectBtn   *walk.PushButton
 
 	localPath  string
@@ -34,16 +44,25 @@ type App struct {
 	server     config.Server
 	connected  bool
 	connecting bool
+
+	transfers *TransferQueue
+	clipboard *paneClipboard
 }
 
-func newApp(store *config.Store) *App {
+func newApp(store *config.Store, settings *config.Settings) *App {
 	return &App{
 		store:      store,
+		settings:   settings,
 		localModel: newDirModel(),
 		remoteModel: newDirModel(),
 		localPath:  defaultLocalDir(),
 		remotePath: "/",
+		activeTab:  -1,
 	}
+}
+
+func (a *App) initTransfers() {
+	a.transfers = NewTransferQueue(a)
 }
 
 func (a *App) dialServer(s config.Server) (*remote.Client, error) {
@@ -92,13 +111,6 @@ func defaultLocalDir() string {
 	return home
 }
 
-func (a *App) setStatus(text string) {
-	if a.statusLabel == nil {
-		return
-	}
-	a.statusLabel.SetText(text)
-}
-
 func (a *App) syncUI(fn func()) {
 	if a.mw == nil {
 		fn()
@@ -116,6 +128,56 @@ func (a *App) showError(title string, err error) {
 	})
 }
 
+func (a *App) updateStatusBar() {
+	tab := a.activeSession()
+	var text string
+	switch {
+	case tab == nil:
+		text = i18n.T(i18n.KeyNotConnected)
+	case tab.state == tabConnecting:
+		text = i18n.Tf(i18n.KeyConnecting, serverDisplayName(tab.server))
+	case tab.state == tabConnected:
+		text = i18n.Tf(i18n.KeyConnected, serverDisplayName(tab.server), tab.server.Username, tab.server.Host)
+	default:
+		text = i18n.T(i18n.KeyDisconnected)
+	}
+	a.setStatus(text)
+	if a.reconnectBtn != nil {
+		a.reconnectBtn.SetVisible(tab != nil && tab.state == tabDisconnected)
+	}
+}
+
+func (a *App) setStatus(text string) {
+	if a.statusLabel != nil {
+		a.statusLabel.SetText(text)
+	}
+}
+
+func (a *App) refreshTransferUI() {
+	if a.transfers == nil {
+		return
+	}
+	active, progress, speed, queue := a.transfers.Snapshot()
+	a.syncUI(func() {
+		if a.progressBar != nil {
+			if active {
+				a.progressBar.SetVisible(true)
+				a.progressBar.SetValue(int(progress))
+			} else {
+				a.progressBar.SetVisible(false)
+				a.progressBar.SetValue(0)
+			}
+		}
+		if a.transferLabel != nil {
+			if active || queue > 0 {
+				a.transferLabel.SetText(speed + "  ·  " + i18n.Tf(i18n.KeyQueue, queue))
+			} else {
+				a.transferLabel.SetText(speed)
+			}
+		}
+	})
+}
+
 func (a *App) refreshLocal() {
 	entries, err := listLocalDir(a.localPath)
 	if err != nil {
@@ -126,11 +188,20 @@ func (a *App) refreshLocal() {
 	if a.localPathEdit != nil {
 		a.localPathEdit.SetText(a.localPath)
 	}
+	if a.localDriveCombo != nil {
+		a.syncDriveCombo()
+	}
+	if tab := a.activeSession(); tab != nil {
+		tab.localPath = a.localPath
+	}
 }
 
 func (a *App) refreshRemote() {
 	if !a.connected || a.client == nil {
 		a.remoteModel.setItems(nil)
+		if a.remotePathEdit != nil {
+			a.remotePathEdit.SetText(a.remotePath)
+		}
 		return
 	}
 	entries, err := listRemoteDir(a.client, a.remotePath)
@@ -141,6 +212,9 @@ func (a *App) refreshRemote() {
 	a.remoteModel.setItems(entries)
 	if a.remotePathEdit != nil {
 		a.remotePathEdit.SetText(a.remotePath)
+	}
+	if tab := a.activeSession(); tab != nil {
+		tab.remotePath = a.remotePath
 	}
 }
 
@@ -205,74 +279,6 @@ func listRemoteDir(client *remote.Client, dir string) ([]dirEntry, error) {
 	return out, nil
 }
 
-func (a *App) disconnect() {
-	if a.client != nil {
-		_ = a.client.Close()
-		a.client = nil
-	}
-	a.connected = false
-	a.connecting = false
-	a.remoteModel.setItems(nil)
-	a.setStatus(i18n.T(i18n.KeyNotConnected))
-	if a.reconnectBtn != nil {
-		a.reconnectBtn.SetVisible(false)
-	}
-}
-
-func (a *App) connectServer(s config.Server) {
-	if strings.TrimSpace(s.Host) == "" || strings.TrimSpace(s.Username) == "" {
-		a.showError(i18n.T(i18n.KeyServerFormTitle), errors.New(i18n.T(i18n.KeyFormRequired)))
-		return
-	}
-	if a.connecting {
-		return
-	}
-	a.disconnect()
-	a.server = s
-	a.remotePath = defaultRemoteRoot(&s)
-	a.connecting = true
-	a.setStatus(i18n.Tf(i18n.KeyConnecting, serverDisplayName(s)))
-
-	go func() {
-		client, err := a.dialServer(s)
-		a.syncUI(func() {
-			a.connecting = false
-			if err != nil {
-				a.setStatus(i18n.T(i18n.KeyConnectionFailed))
-				a.showError(i18n.T(i18n.KeyConnectionFailed), err)
-				return
-			}
-			a.client = client
-			a.connected = true
-			a.setStatus(i18n.Tf(i18n.KeyConnected, serverDisplayName(s), s.Username, s.Host))
-			if a.reconnectBtn != nil {
-				a.reconnectBtn.SetVisible(false)
-			}
-			if interval := s.HeartbeatInterval(); interval > 0 {
-				client.StartHeartbeat(interval, func(err error) {
-					a.syncUI(func() {
-						if err != nil {
-							a.handleDisconnect(err)
-						}
-					})
-				})
-			}
-			a.refreshRemote()
-		})
-	}()
-}
-
-func (a *App) handleDisconnect(err error) {
-	a.disconnect()
-	a.setStatus(i18n.T(i18n.KeyConnectionLost))
-	if a.reconnectBtn != nil {
-		a.reconnectBtn.SetVisible(true)
-	}
-	if err != nil {
-		a.showError(i18n.T(i18n.KeyDisconnected), err)
-	}
-}
-
 func serverDisplayName(s config.Server) string {
 	if s.Name != "" {
 		return s.Name
@@ -280,113 +286,14 @@ func serverDisplayName(s config.Server) string {
 	return s.Host
 }
 
-func (a *App) navigateLocal(path string) {
-	if path == "" {
+func (a *App) setLanguage(lang i18n.Lang) {
+	if i18n.Current() == lang {
 		return
 	}
-	a.localPath = path
-	a.refreshLocal()
-}
-
-func (a *App) navigateRemote(path string) {
-	if path == "" || !a.connected {
-		return
+	i18n.SetLanguage(lang)
+	a.settings.Language = string(lang)
+	_ = config.SaveSettings(a.settings)
+	if a.mw != nil {
+		a.mw.SetTitle(i18n.T(i18n.KeyAppTitle) + " (Win32)")
 	}
-	a.remotePath = path
-	a.refreshRemote()
-}
-
-func (a *App) localUp() {
-	parent := filepath.Dir(a.localPath)
-	if parent == a.localPath {
-		return
-	}
-	a.navigateLocal(parent)
-}
-
-func (a *App) remoteUp() {
-	if !a.connected {
-		return
-	}
-	dir := filepath.ToSlash(filepath.Dir(strings.ReplaceAll(a.remotePath, "\\", "/")))
-	if dir == "." {
-		dir = "/"
-	}
-	if !strings.HasPrefix(dir, "/") {
-		dir = "/" + dir
-	}
-	a.navigateRemote(dir)
-}
-
-func (a *App) onLocalActivated() {
-	idx := a.localTV.CurrentIndex()
-	e, ok := a.localModel.entry(idx)
-	if !ok {
-		return
-	}
-	if e.isDir {
-		a.navigateLocal(e.fullPath)
-	}
-}
-
-func (a *App) onRemoteActivated() {
-	if !a.connected {
-		return
-	}
-	idx := a.remoteTV.CurrentIndex()
-	e, ok := a.remoteModel.entry(idx)
-	if !ok {
-		return
-	}
-	if e.isDir {
-		a.navigateRemote(e.fullPath)
-	}
-}
-
-func (a *App) uploadSelected() {
-	if !a.connected || a.client == nil {
-		return
-	}
-	idx := a.localTV.CurrentIndex()
-	e, ok := a.localModel.entry(idx)
-	if !ok || e.isDir {
-		return
-	}
-	remoteDest := strings.TrimSuffix(a.remotePath, "/") + "/" + e.name
-	a.setStatus(i18n.T(i18n.KeyUpload) + " " + e.name)
-	go func() {
-		err := a.client.Upload(e.fullPath, remoteDest)
-		a.syncUI(func() {
-			if err != nil {
-				a.showError(i18n.T(i18n.KeyUpload), err)
-			} else {
-				a.setStatus(i18n.T(i18n.KeyConnected))
-				a.refreshRemote()
-			}
-		})
-	}()
-}
-
-func (a *App) downloadSelected() {
-	if !a.connected || a.client == nil {
-		return
-	}
-	idx := a.remoteTV.CurrentIndex()
-	e, ok := a.remoteModel.entry(idx)
-	if !ok || e.isDir {
-		return
-	}
-	localDest := filepath.Join(a.localPath, e.name)
-	a.setStatus(i18n.T(i18n.KeyDownload) + " " + e.name)
-	go func() {
-		err := a.client.Download(e.fullPath, localDest)
-		a.syncUI(func() {
-			if err != nil {
-				a.showError(i18n.T(i18n.KeyDownload), err)
-			} else {
-				a.setStatus(i18n.T(i18n.KeyConnected))
-				a.refreshLocal()
-			}
-		})
-	}()
 }
