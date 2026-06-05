@@ -12,6 +12,7 @@ import (
 )
 
 const shellCommandTimeout = 90 * time.Second
+const removeCommandTimeout = 10 * time.Minute
 
 var (
 	ErrInteractiveCommand = errors.New("interactive command not supported")
@@ -66,7 +67,7 @@ func commandName(cmd string) string {
 }
 
 func (c *Client) Run(cmd string) (string, error) {
-	out, res := c.runSession(cmd)
+	out, res := c.runSession(cmd, shellCommandTimeout)
 	if res.connErr != nil {
 		return out, res.connErr
 	}
@@ -87,7 +88,11 @@ type shellResult struct {
 }
 
 func (c *Client) RunCombined(cmd string) (string, error) {
-	out, res := c.runSession(cmd)
+	return c.runCombinedTimeout(cmd, shellCommandTimeout)
+}
+
+func (c *Client) runCombinedTimeout(cmd string, timeout time.Duration) (string, error) {
+	out, res := c.runSession(cmd, timeout)
 	if res.connErr != nil {
 		return out, res.connErr
 	}
@@ -103,7 +108,10 @@ func (c *Client) RunCombined(cmd string) (string, error) {
 	return out, nil
 }
 
-func (c *Client) runSession(cmd string) (string, shellResult) {
+func (c *Client) runSession(cmd string, timeout time.Duration) (string, shellResult) {
+	if timeout <= 0 {
+		timeout = shellCommandTimeout
+	}
 	if c.ssh == nil {
 		return "", shellResult{connErr: fmt.Errorf("ssh not connected")}
 	}
@@ -129,7 +137,7 @@ func (c *Client) runSession(cmd string) (string, shellResult) {
 	select {
 	case r := <-done:
 		return strings.TrimRight(string(r.out), "\n"), classifyRunErr(r.err)
-	case <-time.After(shellCommandTimeout):
+	case <-time.After(timeout):
 		_ = session.Signal(ssh.SIGTERM)
 		time.Sleep(200 * time.Millisecond)
 		_ = session.Signal(ssh.SIGKILL)

@@ -274,23 +274,15 @@ func (c *Client) RemoveAll(p string) error {
 	if !st.IsDir() {
 		return c.sftp.Remove(p)
 	}
-	entries, err := c.ListDir(p)
-	if err != nil {
-		return err
+	_, err = c.runCombinedTimeout("rm -rf "+shellQuote(p), removeCommandTimeout)
+	return err
+}
+
+func shellQuote(s string) string {
+	if s == "" {
+		return "''"
 	}
-	for _, e := range entries {
-		child := e.Path
-		if e.IsDir {
-			if err := c.RemoveAll(child); err != nil {
-				return err
-			}
-			continue
-		}
-		if err := c.sftp.Remove(child); err != nil {
-			return err
-		}
-	}
-	return c.sftp.RemoveDirectory(p)
+	return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'"
 }
 
 func (c *Client) CopyPath(src, dst string) error {
