@@ -36,6 +36,9 @@ func (b *paneListUnderlay) Tapped(*fyne.PointEvent) {
 
 func (b *paneListUnderlay) TappedSecondary(ev *fyne.PointEvent) {
 	b.pane.noteActive()
+	if b.pane.renamingRow >= 0 {
+		b.pane.finishRenameBlurFromUI()
+	}
 	b.pane.showContextMenu(ev.AbsolutePosition, -1)
 }
 
@@ -61,9 +64,23 @@ func (l paneListStackLayout) Layout(objects []fyne.CanvasObject, size fyne.Size)
 		return
 	}
 	underlay, list := objects[0], objects[1]
-	list.Resize(size)
+	contentH := l.pane.listContentHeight()
+	listH := contentH
+	if listH > size.Height {
+		listH = size.Height
+	}
+	// Shrink the list to visible rows so blank area below receives underlay taps.
+	list.Resize(fyne.NewSize(size.Width, listH))
 	list.Move(fyne.NewPos(0, 0))
-	underlay.Hide()
+
+	gap := size.Height - listH
+	if gap < 1 {
+		underlay.Hide()
+		return
+	}
+	underlay.Show()
+	underlay.Resize(fyne.NewSize(size.Width, gap))
+	underlay.Move(fyne.NewPos(0, listH))
 }
 
 func newPaneListArea(p *FilePane, list *widget.List) fyne.CanvasObject {

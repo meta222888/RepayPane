@@ -15,6 +15,24 @@ const (
 	paneRowMinHeight = PaneRowHeight
 )
 
+type paneRenameEntry struct {
+	widget.Entry
+	onBlur func()
+}
+
+func newPaneRenameEntry() *paneRenameEntry {
+	e := &paneRenameEntry{}
+	e.Entry.ExtendBaseWidget(&e.Entry)
+	return e
+}
+
+func (e *paneRenameEntry) FocusLost() {
+	e.Entry.FocusLost()
+	if e.onBlur != nil {
+		e.onBlur()
+	}
+}
+
 type paneFileListRow struct {
 	widget.BaseWidget
 
@@ -26,7 +44,7 @@ type paneFileListRow struct {
 
 	bg        *canvas.Rectangle
 	nameCell  *paneFileNameCell
-	nameEntry *widget.Entry
+	nameEntry *paneRenameEntry
 	sizeT     *paneRightText
 	metaT     *paneRightText
 
@@ -49,7 +67,14 @@ func newPaneFileListRow(remote bool) *paneFileListRow {
 	return r
 }
 
-func (r *paneFileListRow) startRename(name string, onCommit func(string), onCancel func()) {
+func (r *paneFileListRow) renameText() string {
+	if r.nameEntry == nil {
+		return ""
+	}
+	return r.nameEntry.Text
+}
+
+func (r *paneFileListRow) startRename(name string, onCommit func(string), onCancel func(), onBlur func()) {
 	r.onRenameCommit = onCommit
 	r.onRenameCancel = onCancel
 	r.renaming = true
@@ -57,6 +82,14 @@ func (r *paneFileListRow) startRename(name string, onCommit func(string), onCanc
 		return
 	}
 	r.nameEntry.SetText(name)
+	r.nameEntry.onBlur = func() {
+		if !r.renaming {
+			return
+		}
+		if onBlur != nil {
+			onBlur()
+		}
+	}
 	r.nameCell.Hide()
 	r.nameEntry.Show()
 	r.nameCell.Refresh()
@@ -76,6 +109,7 @@ func (r *paneFileListRow) endRename() {
 	if r.nameEntry == nil {
 		return
 	}
+	r.nameEntry.onBlur = nil
 	r.nameEntry.Hide()
 	r.nameCell.Show()
 	r.nameCell.Refresh()
@@ -222,7 +256,7 @@ func (r *paneFileListRow) CreateRenderer() fyne.WidgetRenderer {
 	r.bg = canvas.NewRectangle(r.rowBgColor())
 	r.bg.SetMinSize(fyne.NewSize(0, paneRowMinHeight))
 	r.nameCell = newPaneFileNameCell(paneRowNameSize, colorForeground)
-	r.nameEntry = widget.NewEntry()
+	r.nameEntry = newPaneRenameEntry()
 	r.nameEntry.Hide()
 	r.nameEntry.OnSubmitted = func(text string) {
 		if r.renaming && r.onRenameCommit != nil {

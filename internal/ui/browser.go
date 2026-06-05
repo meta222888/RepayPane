@@ -73,6 +73,7 @@ type FilePane struct {
 	renamePendingRow int
 	renamePendingGen int
 	renamingRow int
+	renameTextFn func() string
 	listPointerDown int
 	pendingListRefresh bool
 	lastDragAbs fyne.Position
@@ -296,6 +297,9 @@ func (p *FilePane) updateListRow(i widget.ListItemID, obj fyne.CanvasObject) {
 
 	row.onPrimary = func(ctrl bool) {
 		if p.renamingRow == idx {
+			if ctrl {
+				p.finishRenameBlurFromUI()
+			}
 			return
 		}
 		p.noteActive()
@@ -304,7 +308,7 @@ func (p *FilePane) updateListRow(i widget.ListItemID, obj fyne.CanvasObject) {
 	row.onSecondary = func(ev *fyne.PointEvent) {
 		p.noteActive()
 		if p.renamingRow >= 0 {
-			p.cancelRename()
+			p.finishRenameBlurFromUI()
 		}
 		p.showContextMenu(ev.AbsolutePosition, idx)
 	}
@@ -376,7 +380,10 @@ func (p *FilePane) applyRowRenameState(row *paneFileListRow, idx int) {
 		p.commitRename(idx, newName)
 	}, func() {
 		p.cancelRename()
+	}, func() {
+		p.finishRenameBlurFromUI()
 	})
+	p.renameTextFn = func() string { return row.renameText() }
 }
 func (p *FilePane) Container() fyne.CanvasObject   { return p.root }
 
@@ -569,7 +576,7 @@ func (p *FilePane) tapRow(row int, ctrl bool) {
 		return
 	}
 	if p.renamingRow >= 0 && row != p.renamingRow {
-		p.cancelRename()
+		p.finishRenameBlurFromUI()
 	}
 	now := time.Now()
 	elapsed := now.Sub(p.lastTapTime)
@@ -654,7 +661,33 @@ func (p *FilePane) cancelRename() {
 	}
 	row := p.renamingRow
 	p.renamingRow = -1
+	p.renameTextFn = nil
 	p.list.RefreshItem(widget.ListItemID(row))
+}
+
+func (p *FilePane) finishRenameBlurFromUI() {
+	if p.renamingRow < 0 {
+		return
+	}
+	text := ""
+	if p.renameTextFn != nil {
+		text = p.renameTextFn()
+	}
+	p.finishRenameBlur(text)
+}
+
+func (p *FilePane) finishRenameBlur(text string) {
+	row := p.renamingRow
+	if row < 0 {
+		return
+	}
+	text = strings.TrimSpace(text)
+	oldName := p.nameForRow(row)
+	if text == "" || text == oldName || !validRenameName(text) {
+		p.cancelRename()
+		return
+	}
+	p.commitRename(row, text)
 }
 
 func (p *FilePane) commitRename(row int, newName string) {
@@ -707,7 +740,9 @@ func (p *FilePane) clearSelection() {
 
 func (p *FilePane) clearSelectionQuiet() {
 	p.cancelPendingRename()
-	p.cancelRename()
+	if p.renamingRow >= 0 {
+		p.finishRenameBlurFromUI()
+	}
 	if len(p.selectedRows) == 0 {
 		return
 	}
