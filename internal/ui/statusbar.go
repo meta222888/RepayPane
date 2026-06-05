@@ -192,7 +192,7 @@ func (s *StatusBar) Refresh() {
 }
 
 func (s *StatusBar) RefreshTransfer() {
-	active, pct, speed, queue := s.app.transfers.Snapshot()
+	active, pct, speed, queue, downloading := s.app.transfers.Snapshot()
 	s.speedText.Text = speed
 	s.progress.SetValue(pct / 100)
 	s.percentText.Text = fmt.Sprintf("%.0f%%", pct)
@@ -201,7 +201,11 @@ func (s *StatusBar) RefreshTransfer() {
 	canvas.Refresh(s.percentText)
 	canvas.Refresh(s.queueText)
 	if active {
-		s.syncText.Text = "  ⟳ " + i18n.T(i18n.KeyStatusSyncing)
+		key := i18n.KeyStatusUploading
+		if downloading {
+			key = i18n.KeyStatusDownloading
+		}
+		s.syncText.Text = "  ⟳ " + i18n.T(key)
 		s.syncText.Show()
 		canvas.Refresh(s.syncText)
 	} else {

@@ -159,6 +159,8 @@ const (
 	KeyStatusBarConnected = "status.bar_connected"
 	KeyStatusConnected    = "status.connected_to"
 	KeyStatusSyncing      = "status.syncing"
+	KeyStatusUploading    = "status.uploading"
+	KeyStatusDownloading  = "status.downloading"
 	KeyStatusQueue        = "status.queue_label"
 	KeyTransferIdle  = "status.transfer_idle"
 	KeyQueue         = "status.queue"
@@ -408,6 +410,8 @@ var enStrings = map[string]string{
 	KeyStatusBarConnected: "Connected to %s",
 	KeyStatusConnected:    "Connected to",
 	KeyStatusSyncing:      "Silently syncing to server…",
+	KeyStatusUploading:    "Uploading to server…",
+	KeyStatusDownloading:  "Downloading from server…",
 	KeyStatusQueue:        "Queue: %d",
 	KeyTransferIdle:   "— MB/s",
 	KeyQueue:          "Queue: %d",
@@ -657,6 +661,8 @@ var zhStrings = map[string]string{
 	KeyStatusBarConnected: "已连接到 %s",
 	KeyStatusConnected:    "已连接到",
 	KeyStatusSyncing:      "正在静默同步至服务器…",
+	KeyStatusUploading:    "正在上传到服务器…",
+	KeyStatusDownloading:  "正在从服务器下载…",
 	KeyStatusQueue:        "队列: %d",
 	KeyTransferIdle:   "— MB/s",
 	KeyQueue:          "队列: %d",
