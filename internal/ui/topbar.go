@@ -1,11 +1,9 @@
 package ui
 
 import (
-	"github.com/relaypane/relaypane/internal/assets"
 	"github.com/relaypane/relaypane/internal/i18n"
 
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
@@ -22,13 +20,6 @@ type TopBar struct {
 
 func NewTopBar(app *App) *TopBar {
 	t := &TopBar{app: app}
-	logoImg := canvas.NewImageFromResource(assets.LogoResource())
-	logoImg.FillMode = canvas.ImageFillContain
-	logoImg.SetMinSize(fyne.NewSize(18, 18))
-	appName := canvas.NewText(i18n.T(i18n.KeyAppTitle), colorForeground)
-	appName.TextSize = AppTitleTextSize
-	appName.TextStyle = fyne.TextStyle{Bold: true}
-	logo := container.NewHBox(logoImg, bandCanvasText(appName))
 	t.btnSet = widget.NewButtonWithIcon(i18n.T(i18n.KeyMenuSettings), theme.SettingsIcon(), func() {
 		t.showMenu(app.settingsMenu(), t.btnSet)
 	})
@@ -42,12 +33,12 @@ func NewTopBar(app *App) *TopBar {
 	t.btnFeat.Importance = widget.LowImportance
 	t.btnAbout.Importance = widget.LowImportance
 
-	right := container.NewHBox(
+	barContent := container.NewHBox(
 		wrapTopMenuButton(t.btnSet),
 		wrapTopMenuButton(t.btnFeat),
 		wrapTopMenuButton(t.btnAbout),
+		layout.NewSpacer(),
 	)
-	barContent := container.NewBorder(nil, nil, logo, right, layout.NewSpacer())
 	wrapped := withPanelHeader(barContent)
 	t.root = wrapped
 	return t
