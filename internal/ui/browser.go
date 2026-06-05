@@ -56,6 +56,7 @@ type FilePane struct {
 	selectedRow int
 	lastDragAbs fyne.Position
 	dragReady   bool
+	listGen     int
 
 	localNav *LocalNav
 }
@@ -380,19 +381,32 @@ func (p *FilePane) RefreshListing() {
 	if !p.connected || p.app.activeClient() == nil {
 		return
 	}
-	entries, err := p.app.activeClient().ListDir(p.path)
-	if err != nil {
-		dialog.ShowError(err, p.app.window)
-		return
-	}
-	sort.Slice(entries, func(i, j int) bool {
-		if entries[i].IsDir != entries[j].IsDir {
-			return entries[i].IsDir
+	client := p.app.activeClient()
+	dir := p.path
+	p.listGen++
+	gen := p.listGen
+	go func() {
+		entries, err := client.ListDir(dir)
+		if err == nil {
+			sort.Slice(entries, func(i, j int) bool {
+				if entries[i].IsDir != entries[j].IsDir {
+					return entries[i].IsDir
+				}
+				return strings.ToLower(entries[i].Name) < strings.ToLower(entries[j].Name)
+			})
 		}
-		return strings.ToLower(entries[i].Name) < strings.ToLower(entries[j].Name)
-	})
-	p.remote = entries
-	p.list.Refresh()
+		fyne.Do(func() {
+			if gen != p.listGen || p.path != dir {
+				return
+			}
+			if err != nil {
+				dialog.ShowError(err, p.app.window)
+				return
+			}
+			p.remote = entries
+			p.list.Refresh()
+		})
+	}()
 }
 
 func (p *FilePane) clearSelection() {

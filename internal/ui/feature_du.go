@@ -81,8 +81,8 @@ func (a *App) showDiskUsageTree() {
 		list.Hide()
 
 		go func() {
-			cmd := `du -sh "` + shellQuote(dir) + `"/* 2>/dev/null`
-			out, err := client.RunCombined(cmd)
+			out, err := client.RunCombined(duListCmd(dir))
+			parsed := parseDuLines(out, dir)
 			fyne.Do(func() {
 				if gen != loadGen {
 					return
@@ -93,13 +93,6 @@ func (a *App) showDiskUsageTree() {
 					entries = []duEntry{{size: "—", name: err.Error(), path: dir}}
 					list.Refresh()
 					return
-				}
-				parsed := parseDuLines(out, dir)
-				for i := range parsed {
-					st, statErr := client.Stat(parsed[i].path)
-					if statErr == nil {
-						parsed[i].isDir = st.IsDir
-					}
 				}
 				entries = parsed
 				if len(entries) == 0 {
@@ -135,6 +128,18 @@ func (a *App) showDiskUsageTree() {
 	loadDu("/")
 }
 
+func duListCmd(dir string) string {
+	quoted := `"` + shellQuote(dir) + `"`
+	tab := "\t"
+	return `du -sh ` + quoted + `/* 2>/dev/null | while IFS= read -r line; do
+  sz="${line%%` + tab + `*}"
+  p="${line#*` + tab + `}"
+  [ -z "$p" ] && continue
+  if [ -d "$p" ]; then t=D; else t=F; fi
+  printf "%s` + tab + `%s` + tab + `%s\n" "$t" "$sz" "$p"
+done`
+}
+
 func parseDuLines(out, parent string) []duEntry {
 	lines := strings.Split(strings.TrimSpace(out), "\n")
 	outEntries := make([]duEntry, 0, len(lines))
@@ -143,17 +148,28 @@ func parseDuLines(out, parent string) []duEntry {
 		if line == "" {
 			continue
 		}
-		tab := strings.IndexByte(line, '\t')
-		if tab < 0 {
-			continue
+		parts := strings.Split(line, "\t")
+		var isDir bool
+		var size, p string
+		switch {
+		case len(parts) >= 3 && (parts[0] == "D" || parts[0] == "F"):
+			isDir = parts[0] == "D"
+			size = strings.TrimSpace(parts[1])
+			p = strings.TrimSpace(parts[2])
+		default:
+			tab := strings.IndexByte(line, '\t')
+			if tab < 0 {
+				continue
+			}
+			size = strings.TrimSpace(line[:tab])
+			p = strings.TrimSpace(line[tab+1:])
+			isDir = strings.HasSuffix(p, "/")
 		}
-		size := strings.TrimSpace(line[:tab])
-		p := strings.TrimSpace(line[tab+1:])
 		name := path.Base(p)
 		if name == "" {
 			name = p
 		}
-		outEntries = append(outEntries, duEntry{size: size, name: name, path: p, isDir: strings.HasSuffix(p, "/")})
+		outEntries = append(outEntries, duEntry{size: size, name: name, path: p, isDir: isDir})
 	}
 	sort.Slice(outEntries, func(i, j int) bool {
 		return duSizeRank(outEntries[i].size) > duSizeRank(outEntries[j].size)

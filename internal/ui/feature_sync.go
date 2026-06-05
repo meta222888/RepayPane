@@ -53,42 +53,46 @@ func (a *App) confirmSync(upload bool) {
 }
 
 func (a *App) runSyncUpload(client *remote.Client, localDir, remoteDir string) {
-	_ = filepath.Walk(localDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil || info.IsDir() {
-			return nil
-		}
-		rel, err := filepath.Rel(localDir, path)
-		if err != nil {
-			return nil
-		}
-		remotePath := filepath.ToSlash(filepath.Join(remoteDir, rel))
-		a.transfers.EnqueueUpload(client, path, remotePath, func(err error) {
-			if err != nil {
-				fyne.Do(func() { dialogShowError(a, err) })
+	go func() {
+		_ = filepath.Walk(localDir, func(path string, info os.FileInfo, err error) error {
+			if err != nil || info.IsDir() {
+				return nil
 			}
+			rel, err := filepath.Rel(localDir, path)
+			if err != nil {
+				return nil
+			}
+			remotePath := filepath.ToSlash(filepath.Join(remoteDir, rel))
+			a.transfers.EnqueueUpload(client, path, remotePath, func(err error) {
+				if err != nil {
+					fyne.Do(func() { dialogShowError(a, err) })
+				}
+			})
+			return nil
 		})
-		return nil
-	})
-	fyne.Do(func() { a.remotePane.RefreshListing() })
+		fyne.Do(func() { a.remotePane.RefreshListing() })
+	}()
 }
 
 func (a *App) runSyncDownload(client *remote.Client, remoteDir, localDir string) {
-	walkRemote(client, remoteDir, func(p string, isDir bool) {
-		if isDir {
-			return
-		}
-		rel, err := filepath.Rel(remoteDir, filepath.FromSlash(p))
-		if err != nil {
-			return
-		}
-		localPath := filepath.Join(localDir, rel)
-		a.transfers.EnqueueDownload(client, p, localPath, func(err error) {
-			if err != nil {
-				fyne.Do(func() { dialogShowError(a, err) })
+	go func() {
+		walkRemote(client, remoteDir, func(p string, isDir bool) {
+			if isDir {
+				return
 			}
+			rel, err := filepath.Rel(remoteDir, filepath.FromSlash(p))
+			if err != nil {
+				return
+			}
+			localPath := filepath.Join(localDir, rel)
+			a.transfers.EnqueueDownload(client, p, localPath, func(err error) {
+				if err != nil {
+					fyne.Do(func() { dialogShowError(a, err) })
+				}
+			})
 		})
-	})
-	fyne.Do(func() { a.localPane.RefreshListing() })
+		fyne.Do(func() { a.localPane.RefreshListing() })
+	}()
 }
 
 func walkRemote(client *remote.Client, dir string, fn func(path string, isDir bool)) {
