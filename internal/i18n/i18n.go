@@ -152,6 +152,7 @@ const (
 	KeyColPermissions = "col.permissions"
 	KeyPanelLocal     = "pane.panel_local"
 	KeyPanelRemote    = "pane.panel_remote"
+	KeyPaneListingLoading = "pane.listing_loading"
 	KeyLocalHeader   = "pane.local_header"
 	KeyRemoteHeader  = "pane.remote_header"
 	KeyStatusBarConnected = "status.bar_connected"
@@ -398,6 +399,7 @@ var enStrings = map[string]string{
 	KeyColPermissions: "Permissions",
 	KeyPanelLocal:     "Local",
 	KeyPanelRemote:    "Remote",
+	KeyPaneListingLoading: "Loading…",
 	KeyLocalHeader:    "Local — %s",
 	KeyRemoteHeader:   "Remote — %s",
 	KeyStatusBarConnected: "Connected to %s",
@@ -644,6 +646,7 @@ var zhStrings = map[string]string{
 	KeyColPermissions: "权限",
 	KeyPanelLocal:     "本地",
 	KeyPanelRemote:    "远程",
+	KeyPaneListingLoading: "正在加载中……",
 	KeyLocalHeader:    "本地 — %s",
 	KeyRemoteHeader:   "远程 — %s",
 	KeyStatusBarConnected: "已连接到 %s",

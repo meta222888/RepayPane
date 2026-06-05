@@ -81,6 +81,7 @@ func (l paneListStackLayout) Layout(objects []fyne.CanvasObject, size fyne.Size)
 }
 
 func newPaneListArea(p *FilePane, list *widget.List) fyne.CanvasObject {
+	compactList := container.NewThemeOverride(list, newListCompactTheme())
 	// Underlay first, list second — hit-testing prefers later children so list receives row clicks.
-	return container.New(&paneListStackLayout{pane: p}, newPaneListUnderlay(p), list)
+	return container.New(&paneListStackLayout{pane: p}, newPaneListUnderlay(p), compactList)
 }

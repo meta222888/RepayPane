@@ -297,6 +297,34 @@ func (relayPaneTheme) Size(name fyne.ThemeSizeName) float32 {
 	return theme.DefaultTheme().Size(name)
 }
 
+// listCompactTheme removes inter-row padding from widget.List for dense file rows.
+type listCompactTheme struct {
+	base fyne.Theme
+}
+
+func newListCompactTheme() fyne.Theme {
+	return &listCompactTheme{base: newRelayPaneTheme()}
+}
+
+func (t *listCompactTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) color.Color {
+	return t.base.Color(name, variant)
+}
+
+func (t *listCompactTheme) Font(style fyne.TextStyle) fyne.Resource {
+	return t.base.Font(style)
+}
+
+func (t *listCompactTheme) Icon(name fyne.ThemeIconName) fyne.Resource {
+	return t.base.Icon(name)
+}
+
+func (t *listCompactTheme) Size(name fyne.ThemeSizeName) float32 {
+	if name == theme.SizeNamePadding {
+		return 0
+	}
+	return t.base.Size(name)
+}
+
 func ApplyTheme(a fyne.App) {
 	a.Settings().SetTheme(newRelayPaneTheme())
 }

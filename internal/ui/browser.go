@@ -60,6 +60,8 @@ type FilePane struct {
 	list           *widget.List
 	listArea       fyne.CanvasObject
 	listHeader     fyne.CanvasObject
+	listLoading    fyne.CanvasObject
+	listLoadingLbl *widget.Label
 	root           fyne.CanvasObject
 
 	selectedRows      map[int]struct{}
@@ -108,7 +110,14 @@ func (p *FilePane) build() {
 			container.NewBorder(p.listHeader, nil, nil, nil, p.listArea))
 	} else {
 		p.listHeader = p.buildRemoteListHeader()
-		p.listArea = newPaneListArea(p, p.list)
+		p.listLoadingLbl = widget.NewLabel(i18n.T(i18n.KeyPaneListingLoading))
+		p.listLoading = container.NewStack(
+			canvas.NewRectangle(colorPanel),
+			container.NewCenter(p.listLoadingLbl),
+		)
+		p.listLoading.Hide()
+		base := newPaneListArea(p, p.list)
+		p.listArea = container.NewStack(base, p.listLoading)
 		p.root = container.NewBorder(p.buildRemoteChrome(), nil, nil, nil,
 			container.NewBorder(p.listHeader, nil, nil, nil, p.listArea))
 	}
@@ -120,7 +129,7 @@ func (p *FilePane) buildLocalListHeader() fyne.CanvasObject {
 	nameCol := labelCText(strings.ToUpper(i18n.T(i18n.KeyColName)), colorMuted, 11)
 	rightCol := labelCText(strings.ToUpper(i18n.T(i18n.KeyColSize))+"       "+strings.ToUpper(i18n.T(i18n.KeyColModified)), colorMuted, 11)
 	row := container.NewBorder(nil, nil, nil, rightCol, nameCol)
-	return panelBand(row, 28)
+	return panelBand(row, 24)
 }
 
 func (p *FilePane) buildLocalChrome() fyne.CanvasObject {
@@ -156,7 +165,7 @@ func (p *FilePane) buildRemoteListHeader() fyne.CanvasObject {
 	metaCol := labelCText(strings.ToUpper(i18n.T(i18n.KeyColModified)), colorMuted, 11)
 	right := container.NewHBox(fixedWidth(metaCol, 128), fixedWidth(sizeCol, 72))
 	row := container.NewBorder(nil, nil, nil, right, nameCol)
-	return panelBand(row, 28)
+	return panelBand(row, 24)
 }
 
 func (p *FilePane) buildRemoteChrome() fyne.CanvasObject {
@@ -220,9 +229,18 @@ func (p *FilePane) listContentHeight() float32 {
 	if n == 0 {
 		return 0
 	}
-	// Match widget.List row spacing (item height + theme padding between rows).
-	pad := fyne.CurrentApp().Settings().Theme().Size(theme.SizeNamePadding)
-	return float32(n)*paneRowMinHeight + float32(n-1)*pad
+	return float32(n) * paneRowMinHeight
+}
+
+func (p *FilePane) setListLoading(v bool) {
+	if p.kind != PaneRemote || p.listLoading == nil {
+		return
+	}
+	if v {
+		p.listLoading.Show()
+	} else {
+		p.listLoading.Hide()
+	}
 }
 
 func (p *FilePane) updateListRow(i widget.ListItemID, obj fyne.CanvasObject) {
@@ -318,13 +336,18 @@ func (p *FilePane) SetConnected(v bool) {
 	p.connected = v
 	if !v {
 		p.remote = nil
+		p.setListLoading(false)
 		p.list.Refresh()
+		return
 	}
 }
 
 func (p *FilePane) ApplyLanguage() {
 	if p.localNav != nil {
 		p.localNav.ApplyLanguage()
+	}
+	if p.listLoadingLbl != nil {
+		p.listLoadingLbl.SetText(i18n.T(i18n.KeyPaneListingLoading))
 	}
 	p.refreshPathDisplay()
 	p.list.Refresh()
@@ -423,10 +446,12 @@ func (p *FilePane) RefreshListing() {
 		return
 	}
 	if !p.connected || p.app.activeClient() == nil {
+		p.setListLoading(false)
 		return
 	}
 	client := p.app.activeClient()
 	dir := p.path
+	p.setListLoading(true)
 	p.listGen++
 	gen := p.listGen
 	go func() {
@@ -443,6 +468,7 @@ func (p *FilePane) RefreshListing() {
 			if gen != p.listGen || p.path != dir {
 				return
 			}
+			p.setListLoading(false)
 			if err != nil {
 				dialog.ShowError(err, p.app.window)
 				return

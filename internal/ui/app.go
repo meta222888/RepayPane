@@ -200,6 +200,8 @@ func (a *App) activateTab(index int) {
 		return
 	}
 	if tab.state == tabConnecting {
+		a.remotePane.SetConnected(false)
+		a.remotePane.setListLoading(true)
 		return
 	}
 	a.connectTab(tab)
@@ -214,12 +216,15 @@ func (a *App) connectTab(tab *TabSession) {
 		tab.state = tabDisconnected
 		a.tabBar.Refresh()
 		a.statusBar.Refresh()
+		a.remotePane.setListLoading(false)
 		dialog.ShowInformation(i18n.T(i18n.KeyServerFormTitle), i18n.T(i18n.KeyFormRequired), a.window)
 		return
 	}
 	tab.state = tabConnecting
 	a.tabBar.Refresh()
 	a.statusBar.Refresh()
+	a.remotePane.SetConnected(false)
+	a.remotePane.setListLoading(true)
 
 	a.statusBar.conn.SetText(i18n.Tf(i18n.KeyConnecting, tab.server.Name))
 	go func() {
@@ -237,6 +242,7 @@ func (a *App) connectTab(tab *TabSession) {
 			if err != nil {
 				tab.state = tabDisconnected
 				a.statusBar.Refresh()
+				a.remotePane.setListLoading(false)
 				dialog.ShowError(err, a.window)
 				a.tabBar.Refresh()
 				return
