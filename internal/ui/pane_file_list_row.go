@@ -235,7 +235,7 @@ func (r *paneFileListRow) CreateRenderer() fyne.WidgetRenderer {
 	nameCol := container.NewStack(r.nameT, container.NewMax(entryThemed))
 
 	r.sizeT = newPaneRightText("", colorMuted, paneRowMetaSize)
-	r.metaT = newPaneRightText("", colorMuted, paneRowMetaSize)
+	r.metaT = newPaneModifiedText("", colorMuted, paneRowMetaSize)
 	right := paneFileMetaColumns(r.sizeT, r.metaT)
 	row := container.NewBorder(nil, nil, nil, right, nameCol)
 
