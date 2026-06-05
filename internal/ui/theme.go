@@ -442,10 +442,20 @@ type paneChromeEntryTheme struct {
 
 func newPaneChromeEntryTheme(textSize float32) fyne.Theme {
 	if textSize < 1 {
-		textSize = 11
+		textSize = paneRowNameSize
 	}
 	return &paneChromeEntryTheme{
 		base:     fyne.CurrentApp().Settings().Theme(),
+		textSize: textSize,
+	}
+}
+
+func newPanePathEntryTheme(textSize float32) fyne.Theme {
+	if textSize < 1 {
+		textSize = paneRowNameSize
+	}
+	return &panePathEntryTheme{
+		base:     newRelayPaneTheme(),
 		textSize: textSize,
 	}
 }
@@ -470,6 +480,41 @@ func (t *paneChromeEntryTheme) Size(name fyne.ThemeSizeName) float32 {
 		return 1
 	case theme.SizeNameInnerPadding:
 		return 1
+	}
+	return t.base.Size(name)
+}
+
+type panePathEntryTheme struct {
+	base     fyne.Theme
+	textSize float32
+}
+
+func (t *panePathEntryTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) color.Color {
+	switch name {
+	case theme.ColorNameInputBackground:
+		return colorInput
+	case theme.ColorNameInputBorder:
+		return colorBorder
+	}
+	return t.base.Color(name, variant)
+}
+
+func (t *panePathEntryTheme) Font(style fyne.TextStyle) fyne.Resource {
+	return t.base.Font(style)
+}
+
+func (t *panePathEntryTheme) Icon(name fyne.ThemeIconName) fyne.Resource {
+	return t.base.Icon(name)
+}
+
+func (t *panePathEntryTheme) Size(name fyne.ThemeSizeName) float32 {
+	switch name {
+	case theme.SizeNameText:
+		return t.textSize
+	case theme.SizeNamePadding:
+		return 0
+	case theme.SizeNameInnerPadding:
+		return 0
 	}
 	return t.base.Size(name)
 }

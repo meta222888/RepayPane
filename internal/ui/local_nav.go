@@ -8,8 +8,6 @@ import (
 	"github.com/relaypane/relaypane/internal/i18n"
 
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/theme"
-	"fyne.io/fyne/v2/widget"
 )
 
 type placeEntry struct {
@@ -18,28 +16,25 @@ type placeEntry struct {
 }
 
 type LocalNav struct {
-	pane    *FilePane
-	rootBtn *widget.Button
+	pane *FilePane
+	tap  *paneTapLabel
 }
 
 func NewLocalNav(pane *FilePane) *LocalNav {
 	n := &LocalNav{pane: pane}
-	n.rootBtn = widget.NewButtonWithIcon(n.rootLabel(), theme.ComputerIcon(), func() {
-		n.showRootMenu()
-	})
-	n.rootBtn.Importance = widget.LowImportance
+	n.tap = newPaneTapLabel(n.rootLabel(), colorAccent, paneRowNameSize, n.showRootMenu)
 	return n
 }
 
-func (n *LocalNav) Button() *widget.Button { return n.rootBtn }
+func (n *LocalNav) Widget() fyne.CanvasObject { return n.tap }
 
 func (n *LocalNav) ApplyLanguage() {
-	n.rootBtn.SetText(n.rootLabel())
+	n.tap.SetText(n.rootLabel())
 }
 
 func (n *LocalNav) syncFromPath(path string) {
 	_ = path
-	n.rootBtn.SetText(n.rootLabel())
+	n.tap.SetText(n.rootLabel())
 }
 
 func (n *LocalNav) rootLabel() string {
@@ -62,8 +57,8 @@ func (n *LocalNav) showRootMenu() {
 		items = append(items, fyne.NewMenuItem(p.label, func() { n.pane.Navigate(p.path) }))
 	}
 	menu := fyne.NewMenu("", items...)
-	pos := fyne.CurrentApp().Driver().AbsolutePositionForObject(n.rootBtn)
-	showWidePopUpMenu(n.pane.app.window.Canvas(), menu, pos.Add(fyne.NewPos(0, n.rootBtn.MinSize().Height)))
+	pos := fyne.CurrentApp().Driver().AbsolutePositionForObject(n.tap)
+	showWidePopUpMenu(n.pane.app.window.Canvas(), menu, pos.Add(fyne.NewPos(0, n.tap.MinSize().Height)))
 }
 
 func commonPlaces() []placeEntry {

@@ -3,11 +3,10 @@ package ui
 import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 )
 
-// paneRowBand fixes chrome/header rows to PaneRowHeight so widgets cannot stretch the band taller.
+// paneRowBand fixes chrome/header rows to PaneRowHeight (same as file list rows).
 type paneRowBand struct {
 	widget.BaseWidget
 	content fyne.CanvasObject
@@ -20,20 +19,33 @@ func newPaneRowBand(content fyne.CanvasObject) *paneRowBand {
 }
 
 func (b *paneRowBand) MinSize() fyne.Size {
-	return fyne.NewSize(0, PaneRowHeight)
+	w := b.content.MinSize().Width
+	if w < 1 {
+		w = 1
+	}
+	return fyne.NewSize(w, PaneRowHeight)
 }
 
 type paneRowBandRenderer struct {
 	band    *paneRowBand
 	bg      *canvas.Rectangle
+	line    *canvas.Rectangle
 	content fyne.CanvasObject
 }
 
 func (r *paneRowBandRenderer) Layout(size fyne.Size) {
 	size.Height = PaneRowHeight
-	r.bg.Resize(size)
+	r.band.Resize(size)
+
+	bodyH := PaneRowHeight - paneBandLineH
+	r.bg.Resize(fyne.NewSize(size.Width, bodyH))
+	r.bg.Move(fyne.NewPos(0, 0))
+
+	r.line.Resize(fyne.NewSize(size.Width, paneBandLineH))
+	r.line.Move(fyne.NewPos(0, bodyH))
+
 	innerW := size.Width - paneRowPadH*2
-	innerH := size.Height - paneRowPadV*2
+	innerH := paneBandInnerHeight()
 	if innerW < 0 {
 		innerW = 0
 	}
@@ -45,32 +57,30 @@ func (r *paneRowBandRenderer) Layout(size fyne.Size) {
 }
 
 func (r *paneRowBandRenderer) MinSize() fyne.Size {
-	return fyne.NewSize(0, PaneRowHeight)
+	return r.band.MinSize()
 }
 
 func (r *paneRowBandRenderer) Refresh() {
 	r.bg.FillColor = colorPanelHeader
 	canvas.Refresh(r.bg)
+	canvas.Refresh(r.line)
 }
 
 func (r *paneRowBandRenderer) Objects() []fyne.CanvasObject {
-	return []fyne.CanvasObject{r.bg, r.content}
+	return []fyne.CanvasObject{r.bg, r.content, r.line}
 }
 
 func (r *paneRowBandRenderer) Destroy() {}
 
 func (b *paneRowBand) CreateRenderer() fyne.WidgetRenderer {
-	r := &paneRowBandRenderer{
+	return &paneRowBandRenderer{
 		band:    b,
 		bg:      canvas.NewRectangle(colorPanelHeader),
+		line:    canvas.NewRectangle(colorBorder),
 		content: b.content,
 	}
-	r.bg.SetMinSize(fyne.NewSize(0, PaneRowHeight))
-	return r
 }
 
 func paneBand(content fyne.CanvasObject) fyne.CanvasObject {
-	line := canvas.NewRectangle(colorBorder)
-	line.SetMinSize(fyne.NewSize(0, 1))
-	return container.NewVBox(newPaneRowBand(content), line)
+	return newPaneRowBand(content)
 }
