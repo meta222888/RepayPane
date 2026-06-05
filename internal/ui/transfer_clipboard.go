@@ -31,7 +31,11 @@ func (a *App) completePaneDrop(source *FilePane, absPos fyne.Position) {
 		return
 	}
 	target := a.paneAtPosition(absPos)
-	if target == nil {
+	if target == nil || target == source {
+		return
+	}
+	// Drag-copy only between local (left) and remote (right) panes.
+	if clip.Kind == target.kind {
 		return
 	}
 	a.transferClipboardToPane(clip, target)
@@ -51,10 +55,6 @@ func (a *App) transferClipboardToPane(clip *PaneClipboard, dest *FilePane) {
 		a.downloadClipboardToLocal(clip, dest.CurrentPath(), func() {
 			fyne.Do(func() { dest.RefreshListing() })
 		})
-		return
-	}
-	if clip.Kind == dest.kind {
-		dest.pasteClipboard(clip)
 	}
 }
 
