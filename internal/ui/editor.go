@@ -84,11 +84,12 @@ func showTextEditor(app *App, title, path, text string, enc textencoding.Info, h
 
 	e.window = app.fyneApp.NewWindow(title)
 	e.window.Resize(fyne.NewSize(900, 600))
+	// Entry wraps internally; an outer Scroll uses unwrapped MinSize and breaks word wrap until focus.
 	e.window.SetContent(container.NewBorder(
 		widget.NewLabel(path),
 		bottom,
 		nil, nil,
-		container.NewScroll(e.content),
+		e.content,
 	))
 
 	e.registerSaveShortcut()
