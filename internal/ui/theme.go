@@ -11,7 +11,9 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
+	"fyne.io/fyne/v2/widget"
 )
 
 // RelayPane dark palette — aligned with relaypane-source Fyne shell.
@@ -81,10 +83,33 @@ func dotWidget(dot *canvas.Circle, size float32) fyne.CanvasObject {
 	return container.NewStack(spacer, container.NewCenter(dot))
 }
 
-func labelCText(text string, c color.Color, size float32) *canvas.Text {
+func labelCText(text string, c color.Color, size float32) fyne.CanvasObject {
 	t := canvas.NewText(text, c)
 	t.TextSize = size
-	return t
+	return wrapCanvasText(t)
+}
+
+const textDescenderPad float32 = 4
+
+// wrapCanvasText reserves vertical space so Latin descenders (g, j, p, y) are not clipped.
+func wrapCanvasText(t *canvas.Text) fyne.CanvasObject {
+	sz, _ := fyne.CurrentApp().Driver().RenderedTextSize(t.Text, t.TextSize, t.TextStyle, t.FontSource)
+	if sz.Height < t.TextSize+textDescenderPad {
+		sz.Height = t.TextSize + textDescenderPad
+	} else {
+		sz.Height += 2
+	}
+	if sz.Width < 1 {
+		sz.Width = 1
+	}
+	spacer := canvas.NewRectangle(color.Transparent)
+	spacer.SetMinSize(sz)
+	return container.NewStack(spacer, t)
+}
+
+func bandPadding(content fyne.CanvasObject) fyne.CanvasObject {
+	// Extra bottom padding keeps Latin descenders visible in fixed-height bands.
+	return container.New(layout.NewCustomPaddedLayout(8, 4, 8, 6), content)
 }
 
 func panelBand(content fyne.CanvasObject, height float32) fyne.CanvasObject {
@@ -93,9 +118,14 @@ func panelBand(content fyne.CanvasObject, height float32) fyne.CanvasObject {
 	line := canvas.NewRectangle(colorBorder)
 	line.SetMinSize(fyne.NewSize(0, 1))
 	return container.NewVBox(
-		container.NewStack(bg, container.NewPadded(content)),
+		container.NewStack(bg, bandPadding(content)),
 		line,
 	)
+}
+
+// paddedWidgetLabel wraps a label with room for descenders (g, j, p, y).
+func paddedWidgetLabel(lbl *widget.Label) fyne.CanvasObject {
+	return container.New(layout.NewCustomPaddedLayout(0, 0, 0, 3), lbl)
 }
 
 func emptyPaneSlot() fyne.CanvasObject {
@@ -130,31 +160,40 @@ func loadUIFonts(lang i18n.Lang) (regular, bold, mono fyne.Resource) {
 	}
 	fontDir := filepath.Join(windir, "Fonts")
 
-	// Fyne only supports single .ttf files (not .ttc collections like msyh.ttc).
-	candidates := englishFontCandidates()
-	if lang == i18n.ZH {
-		candidates = chineseFontCandidates()
+	// Prefer Segoe UI first — correct Latin descenders; includes CJK on modern Windows.
+	for _, set := range englishFontCandidates() {
+		if reg, bld, mon, ok := tryLoadFontSet(fontDir, set); ok {
+			return reg, bld, mon
+		}
 	}
-	for _, set := range candidates {
-		reg, err := fyne.LoadResourceFromPath(filepath.Join(fontDir, set.regular))
-		if err != nil {
-			continue
-		}
-		bld := reg
-		if set.bold != "" {
-			if res, err := fyne.LoadResourceFromPath(filepath.Join(fontDir, set.bold)); err == nil {
-				bld = res
+	if lang == i18n.ZH {
+		for _, set := range chineseFontCandidates() {
+			if reg, bld, mon, ok := tryLoadFontSet(fontDir, set); ok {
+				return reg, bld, mon
 			}
 		}
-		mon := bld
-		if set.mono != "" {
-			if res, err := fyne.LoadResourceFromPath(filepath.Join(fontDir, set.mono)); err == nil {
-				mon = res
-			}
-		}
-		return reg, bld, mon
 	}
 	return def.Font(fyne.TextStyle{}), def.Font(fyne.TextStyle{Bold: true}), def.Font(fyne.TextStyle{Monospace: true})
+}
+
+func tryLoadFontSet(fontDir string, set uiFontSet) (regular, bold, mono fyne.Resource, ok bool) {
+	reg, err := fyne.LoadResourceFromPath(filepath.Join(fontDir, set.regular))
+	if err != nil {
+		return nil, nil, nil, false
+	}
+	bld := reg
+	if set.bold != "" {
+		if res, err := fyne.LoadResourceFromPath(filepath.Join(fontDir, set.bold)); err == nil {
+			bld = res
+		}
+	}
+	mon := bld
+	if set.mono != "" {
+		if res, err := fyne.LoadResourceFromPath(filepath.Join(fontDir, set.mono)); err == nil {
+			mon = res
+		}
+	}
+	return reg, bld, mon, true
 }
 
 func englishFontCandidates() []uiFontSet {
@@ -236,15 +275,17 @@ func (relayPaneTheme) Icon(name fyne.ThemeIconName) fyne.Resource {
 func (relayPaneTheme) Size(name fyne.ThemeSizeName) float32 {
 	switch name {
 	case theme.SizeNameText:
-		return 13
-	case theme.SizeNameCaptionText:
-		return 11
-	case theme.SizeNamePadding:
-		return 6
-	case theme.SizeNameInnerPadding:
-		return 4
-	case theme.SizeNameInlineIcon:
 		return 14
+	case theme.SizeNameCaptionText:
+		return 12
+	case theme.SizeNameLineSpacing:
+		return 6
+	case theme.SizeNamePadding:
+		return 8
+	case theme.SizeNameInnerPadding:
+		return 6
+	case theme.SizeNameInlineIcon:
+		return 16
 	}
 	return theme.DefaultTheme().Size(name)
 }

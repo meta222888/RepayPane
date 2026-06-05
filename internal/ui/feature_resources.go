@@ -71,13 +71,15 @@ func loadResources(client *remote.Client, box *fyne.Container) {
 
 			if uptimeLine != "" {
 				box.Add(widget.NewLabelWithStyle(i18n.T(i18n.KeyFeatResUptime), fyne.TextAlignLeading, fyne.TextStyle{Bold: true}))
-				box.Add(widget.NewLabel(uptimeLine))
+				uptimeLbl := widget.NewLabel(uptimeLine)
+				uptimeLbl.Wrapping = fyne.TextWrapWord
+				box.Add(paddedWidgetLabel(uptimeLbl))
 			}
 
 			box.Add(widget.NewLabelWithStyle(i18n.T(i18n.KeyFeatResProcesses), fyne.TextAlignLeading, fyne.TextStyle{Bold: true}))
 			procLbl := widget.NewLabel(extractProcessTable(out))
 			procLbl.Wrapping = fyne.TextWrapWord
-			box.Add(procLbl)
+			box.Add(paddedWidgetLabel(procLbl))
 			box.Refresh()
 		})
 	}()

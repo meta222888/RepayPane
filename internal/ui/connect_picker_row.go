@@ -13,7 +13,7 @@ import (
 const (
 	serverPickerIcon     = "🖥"
 	pickerRowNameSize    float32 = 14
-	pickerRowMinHeight   float32 = 30
+	pickerRowMinHeight   float32 = 34
 )
 
 type connectPickerRow struct {
@@ -115,7 +115,7 @@ func (r *connectPickerRow) CreateRenderer() fyne.WidgetRenderer {
 	r.lineT = canvas.NewText("", colorForeground)
 	r.lineT.TextSize = pickerRowNameSize
 
-	nameBox := container.NewHBox(r.iconT, r.lineT)
+	nameBox := container.NewHBox(wrapCanvasText(r.iconT), wrapCanvasText(r.lineT))
 	content := container.NewStack(r.bg, container.NewPadded(nameBox))
 	return widget.NewSimpleRenderer(content)
 }

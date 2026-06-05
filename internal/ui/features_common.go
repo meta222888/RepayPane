@@ -81,7 +81,7 @@ func scrollLineList() (setText func(string), view fyne.CanvasObject) {
 			}
 			lbl := widget.NewLabel(line)
 			lbl.Wrapping = fyne.TextWrapOff
-			objs = append(objs, lbl)
+			objs = append(objs, paddedWidgetLabel(lbl))
 		}
 		if len(objs) == 0 {
 			empty := widget.NewLabel("")

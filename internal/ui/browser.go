@@ -51,7 +51,8 @@ type FilePane struct {
 
 	pathEntry      *widget.Entry
 	panelPrefixLbl *widget.Label
-	localDriveLbl  *canvas.Text
+	localDriveLbl     fyne.CanvasObject
+	localDriveLblText *canvas.Text
 	list           *widget.List
 	listArea       fyne.CanvasObject
 	listHeader     fyne.CanvasObject
@@ -114,12 +115,15 @@ func (p *FilePane) buildLocalListHeader() fyne.CanvasObject {
 	nameCol := labelCText(strings.ToUpper(i18n.T(i18n.KeyColName)), colorMuted, 11)
 	rightCol := labelCText(strings.ToUpper(i18n.T(i18n.KeyColSize))+"       "+strings.ToUpper(i18n.T(i18n.KeyColModified)), colorMuted, 11)
 	row := container.NewBorder(nil, nil, nil, rightCol, nameCol)
-	return panelBand(row, 24)
+	return panelBand(row, 28)
 }
 
 func (p *FilePane) buildLocalChrome() fyne.CanvasObject {
 	p.localNav = NewLocalNav(p)
-	p.localDriveLbl = labelCText(i18n.T(i18n.KeyPanelLocal), colorMuted, 12)
+	t := canvas.NewText(i18n.T(i18n.KeyPanelLocal), colorMuted)
+	t.TextSize = 12
+	p.localDriveLblText = t
+	p.localDriveLbl = wrapCanvasText(t)
 
 	up := widget.NewButtonWithIcon("", theme.MoveUpIcon(), p.goUp)
 	newFolder := widget.NewButtonWithIcon("", theme.FolderNewIcon(), p.promptNewFolder)
@@ -138,7 +142,7 @@ func (p *FilePane) buildLocalChrome() fyne.CanvasObject {
 	}
 	left := container.NewHBox(p.localDriveLbl, p.localNav.Button())
 	pathRow := container.NewBorder(nil, nil, left, actions, p.pathEntry)
-	return panelBand(pathRow, 32)
+	return panelBand(pathRow, 36)
 }
 
 func (p *FilePane) buildRemoteListHeader() fyne.CanvasObject {
@@ -147,7 +151,7 @@ func (p *FilePane) buildRemoteListHeader() fyne.CanvasObject {
 	metaCol := labelCText(strings.ToUpper(i18n.T(i18n.KeyColModified)), colorMuted, 11)
 	right := container.NewHBox(fixedWidth(metaCol, 128), fixedWidth(sizeCol, 72))
 	row := container.NewBorder(nil, nil, nil, right, nameCol)
-	return panelBand(row, 24)
+	return panelBand(row, 28)
 }
 
 func (p *FilePane) buildRemoteChrome() fyne.CanvasObject {
@@ -171,7 +175,7 @@ func (p *FilePane) buildRemoteChrome() fyne.CanvasObject {
 	}
 	left := container.NewHBox(widget.NewLabel("🖥"), p.panelPrefixLbl)
 	pathRow := container.NewBorder(nil, nil, left, actions, p.pathEntry)
-	return panelBand(pathRow, 32)
+	return panelBand(pathRow, 36)
 }
 
 func (p *FilePane) hasParentRow() bool {
@@ -322,9 +326,9 @@ func (p *FilePane) ApplyLanguage() {
 
 func (p *FilePane) refreshPathDisplay() {
 	if p.kind == PaneLocal {
-		if p.localDriveLbl != nil {
-			p.localDriveLbl.Text = i18n.T(i18n.KeyPanelLocal)
-			canvas.Refresh(p.localDriveLbl)
+		if p.localDriveLblText != nil {
+			p.localDriveLblText.Text = i18n.T(i18n.KeyPanelLocal)
+			canvas.Refresh(p.localDriveLblText)
 		}
 		if p.pathEntry != nil {
 			p.pathEntry.SetText(p.path)

@@ -13,7 +13,7 @@ import (
 const (
 	paneRowNameSize  float32 = 14
 	paneRowMetaSize  float32 = 13
-	paneRowMinHeight float32 = 30
+	paneRowMinHeight float32 = 34
 )
 
 type paneFileListRow struct {
@@ -236,7 +236,7 @@ func (r *paneFileListRow) CreateRenderer() fyne.WidgetRenderer {
 			r.onRenameCommit(text)
 		}
 	}
-	nameCol := container.NewStack(r.nameT, r.nameEntry)
+	nameCol := container.NewStack(wrapCanvasText(r.nameT), r.nameEntry)
 
 	var row fyne.CanvasObject
 	if r.remote {
@@ -244,12 +244,12 @@ func (r *paneFileListRow) CreateRenderer() fyne.WidgetRenderer {
 		r.sizeT.TextSize = paneRowMetaSize
 		r.metaT = canvas.NewText("", colorMuted)
 		r.metaT.TextSize = paneRowMetaSize
-		right := container.NewHBox(fixedWidth(r.metaT, 128), fixedWidth(r.sizeT, 72))
+		right := container.NewHBox(fixedWidth(wrapCanvasText(r.metaT), 128), fixedWidth(wrapCanvasText(r.sizeT), 72))
 		row = container.NewBorder(nil, nil, nameCol, right, nil)
 	} else {
 		r.rightT = canvas.NewText("", colorMuted)
 		r.rightT.TextSize = paneRowMetaSize
-		row = container.NewBorder(nil, nil, nil, r.rightT, nameCol)
+		row = container.NewBorder(nil, nil, nil, wrapCanvasText(r.rightT), nameCol)
 	}
 
 	content := container.NewStack(r.bg, container.NewPadded(row))

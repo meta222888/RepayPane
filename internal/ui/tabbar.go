@@ -21,7 +21,7 @@ func NewTabBar(app *App) *TabBar {
 
 func (t *TabBar) Container() fyne.CanvasObject {
 	scroll := container.NewHScroll(t.inner)
-	scroll.SetMinSize(fyne.NewSize(0, 38))
+	scroll.SetMinSize(fyne.NewSize(0, 42))
 	tabBg := canvas.NewRectangle(colorTabInactive)
 	stack := container.NewStack(tabBg, container.NewPadded(scroll))
 	return container.NewVBox(stack, separatorLine())
@@ -64,14 +64,16 @@ func (t *TabBar) buildTab(idx int, tab *TabSession, active bool) fyne.CanvasObje
 	}
 	nameT := canvas.NewText(name, nameColor)
 	nameT.TextSize = 12
-
 	hostT := canvas.NewText(tab.addr(), colorDisconnected)
 	hostT.TextSize = 10
-
 	serverIcon := canvas.NewText("🖥", colorAccent)
 	serverIcon.TextSize = 11
-
-	selectArea := container.NewHBox(dotWidget(dot, 8), serverIcon, nameT, hostT)
+	selectArea := container.NewHBox(
+		dotWidget(dot, 8),
+		wrapCanvasText(serverIcon),
+		wrapCanvasText(nameT),
+		wrapCanvasText(hostT),
+	)
 	selectBtn := widget.NewButton("", func() { t.app.activateTab(idx) })
 	selectBtn.Importance = widget.LowImportance
 
@@ -87,7 +89,7 @@ func (t *TabBar) buildTab(idx int, tab *TabSession, active bool) fyne.CanvasObje
 		bgColor = colorTabActive
 	}
 	bg := canvas.NewRectangle(bgColor)
-	bg.SetMinSize(fyne.NewSize(180, 34))
+	bg.SetMinSize(fyne.NewSize(180, 38))
 	stack := container.NewStack(bg, container.NewPadded(tabRow))
 	if active {
 		topLine := canvas.NewRectangle(colorAccent)
