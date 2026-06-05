@@ -678,6 +678,7 @@ func (p *FilePane) showContextMenu(at fyne.Position, row int) {
 
 	copyItem := fyne.NewMenuItem(i18n.T(i18n.KeyCtxCopy), p.ctxCopy)
 	pasteItem := fyne.NewMenuItem(i18n.T(i18n.KeyCtxPaste), p.ctxPaste)
+	renameItem := fyne.NewMenuItem(i18n.T(i18n.KeyRename), p.ctxRename)
 	newFolderItem := fyne.NewMenuItem(i18n.T(i18n.KeyCtxNewFolder), p.promptNewFolder)
 	newFileItem := fyne.NewMenuItem(i18n.T(i18n.KeyCtxNewFile), p.promptNewFile)
 	deleteItem := fyne.NewMenuItem(i18n.T(i18n.KeyCtxDelete), p.ctxDelete)
@@ -685,6 +686,9 @@ func (p *FilePane) showContextMenu(at fyne.Position, row int) {
 	if !p.hasFileSelection() {
 		copyItem.Disabled = true
 		deleteItem.Disabled = true
+	}
+	if len(p.selectedFileRows()) != 1 {
+		renameItem.Disabled = true
 	}
 	clip := p.app.clipboard
 	if clip == nil {
@@ -702,11 +706,13 @@ func (p *FilePane) showContextMenu(at fyne.Position, row int) {
 		newFolderItem.Disabled = true
 		newFileItem.Disabled = true
 		deleteItem.Disabled = true
+		renameItem.Disabled = true
 	}
 
 	menu := fyne.NewMenu("",
 		copyItem,
 		pasteItem,
+		renameItem,
 		fyne.NewMenuItemSeparator(),
 		newFolderItem,
 		newFileItem,
@@ -724,6 +730,14 @@ func (p *FilePane) showContextMenu(at fyne.Position, row int) {
 
 func (p *FilePane) ctxCopy() {
 	_ = p.setClipboardFromRows(p.selectedFileRows())
+}
+
+func (p *FilePane) ctxRename() {
+	rows := p.selectedFileRows()
+	if len(rows) != 1 {
+		return
+	}
+	p.startRename(rows[0])
 }
 
 func (p *FilePane) ctxPaste() {
