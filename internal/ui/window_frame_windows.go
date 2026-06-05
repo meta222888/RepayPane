@@ -5,6 +5,10 @@ package ui
 import (
 	"image/color"
 	"syscall"
+	"time"
+	"unsafe"
+
+	"github.com/relaypane/relaypane/internal/i18n"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -15,20 +19,32 @@ import (
 )
 
 var (
-	user32             = syscall.NewLazyDLL("user32.dll")
-	procReleaseCapture = user32.NewProc("ReleaseCapture")
-	procSendMessage    = user32.NewProc("SendMessageW")
-	procShowWindow     = user32.NewProc("ShowWindow")
-	procIsZoomed       = user32.NewProc("IsZoomed")
-	procIsWindow       = user32.NewProc("IsWindow")
+	user32                       = syscall.NewLazyDLL("user32.dll")
+	kernel32                     = syscall.NewLazyDLL("kernel32.dll")
+	procFindWindowW              = user32.NewProc("FindWindowW")
+	procEnumWindows              = user32.NewProc("EnumWindows")
+	procGetWindowTextW           = user32.NewProc("GetWindowTextW")
+	procGetWindowThreadProcessId = user32.NewProc("GetWindowThreadProcessId")
+	procIsWindowVisible          = user32.NewProc("IsWindowVisible")
+	procGetCurrentProcessId      = kernel32.NewProc("GetCurrentProcessId")
+	procGetCursorPos             = user32.NewProc("GetCursorPos")
+	procGetWindowRect            = user32.NewProc("GetWindowRect")
+	procSetWindowPos             = user32.NewProc("SetWindowPos")
+	procSetCapture               = user32.NewProc("SetCapture")
+	procReleaseCapture           = user32.NewProc("ReleaseCapture")
+	procGetAsyncKeyState         = user32.NewProc("GetAsyncKeyState")
+	procShowWindow               = user32.NewProc("ShowWindow")
+	procIsZoomed                 = user32.NewProc("IsZoomed")
+	procIsWindow                 = user32.NewProc("IsWindow")
 )
 
 const (
 	swMinimize      = 6
 	swMaximize      = 3
 	swRestore       = 9
-	wmNcLButtonDown = 0x00A1
-	htCaption       = 2
+	swpNoSize       = 0x0001
+	swpNoZOrder     = 0x0004
+	vkLButton       = 0x01
 	htLeft          = 10
 	htRight         = 11
 	htTop           = 12
@@ -38,9 +54,59 @@ const (
 	htBottomLeft    = 16
 	htBottomRight   = 17
 	gripThickness   float32 = 8
+	minWindowWidth  int32   = 640
+	minWindowHeight int32   = 400
+)
+
+type winPoint struct {
+	X, Y int32
+}
+
+type winRect struct {
+	Left, Top, Right, Bottom int32
+}
+
+type dragSession struct {
+	hwnd    uintptr
+	offsetX int32
+	offsetY int32
+}
+
+type resizeSession struct {
+	hwnd  uintptr
+	edge  uintptr
+	start winRect
+}
+
+var (
+	activeDrag     dragSession
+	activeResize   resizeSession
+	cachedMainHWND uintptr
 )
 
 func winHWND(w fyne.Window) uintptr {
+	if cachedMainHWND != 0 {
+		if ok, _, _ := procIsWindow.Call(cachedMainHWND); ok != 0 {
+			return cachedMainHWND
+		}
+		cachedMainHWND = 0
+	}
+	for _, hwnd := range []uintptr{
+		winHWNDFromNative(w),
+		winHWNDByTitle(w.Title()),
+		winHWNDByTitle(i18n.T(i18n.KeyAppTitle)),
+		winHWNDForProcess(w.Title()),
+		winHWNDForProcess(i18n.T(i18n.KeyAppTitle)),
+	} {
+		if hwnd != 0 {
+			cachedMainHWND = hwnd
+			return hwnd
+		}
+	}
+	return 0
+}
+
+func winHWNDFromNative(w fyne.Window) uintptr {
 	nw, ok := w.(driver.NativeWindow)
 	if !ok {
 		return 0
@@ -56,24 +122,66 @@ func winHWND(w fyne.Window) uintptr {
 	if hwnd == 0 {
 		return 0
 	}
-	okWin, _, _ := procIsWindow.Call(hwnd)
-	if okWin == 0 {
+	if ok, _, _ := procIsWindow.Call(hwnd); ok == 0 {
 		return 0
 	}
 	return hwnd
 }
 
-func winSendNcLButtonDown(w fyne.Window, hit uintptr) bool {
-	if hit != htCaption && winIsMaximized(w) {
-		return false
+func winHWNDByTitle(title string) uintptr {
+	if title == "" {
+		return 0
 	}
-	hwnd := winHWND(w)
+	ptr, err := syscall.UTF16PtrFromString(title)
+	if err != nil {
+		return 0
+	}
+	hwnd, _, _ := procFindWindowW.Call(0, uintptr(unsafe.Pointer(ptr)))
 	if hwnd == 0 {
+		return 0
+	}
+	if ok, _, _ := procIsWindow.Call(hwnd); ok == 0 {
+		return 0
+	}
+	return hwnd
+}
+
+func winHWNDForProcess(title string) uintptr {
+	pid, _, _ := procGetCurrentProcessId.Call()
+	var found uintptr
+	cb := syscall.NewCallback(func(hwnd, _ uintptr) uintptr {
+		if found != 0 {
+			return 1
+		}
+		var winPID uint32
+		procGetWindowThreadProcessId.Call(hwnd, uintptr(unsafe.Pointer(&winPID)), 0)
+		if uintptr(winPID) != pid {
+			return 1
+		}
+		vis, _, _ := procIsWindowVisible.Call(hwnd)
+		if vis == 0 {
+			return 1
+		}
+		if title != "" && !winTitleMatches(hwnd, title) {
+			return 1
+		}
+		if ok, _, _ := procIsWindow.Call(hwnd); ok == 0 {
+			return 1
+		}
+		found = hwnd
+		return 0
+	})
+	procEnumWindows.Call(cb, 0)
+	return found
+}
+
+func winTitleMatches(hwnd uintptr, want string) bool {
+	buf := make([]uint16, 256)
+	n, _, _ := procGetWindowTextW.Call(hwnd, uintptr(unsafe.Pointer(&buf[0])), uintptr(len(buf)))
+	if n == 0 {
 		return false
 	}
-	procReleaseCapture.Call()
-	procSendMessage.Call(hwnd, wmNcLButtonDown, hit, 0)
-	return true
+	return syscall.UTF16ToString(buf[:n]) == want
 }
 
 func winInstallResizeHook(w fyne.Window) bool {
@@ -125,12 +233,12 @@ func (g *resizeGrip) MouseDown(e *desktop.MouseEvent) {
 	if e.Button != desktop.MouseButtonPrimary {
 		return
 	}
-	winSendNcLButtonDown(g.win, g.edge)
+	winBeginResize(g.win, g.edge)
 }
 
-func (g *resizeGrip) MouseUp(*desktop.MouseEvent) {}
-func (g *resizeGrip) MouseIn(*desktop.MouseEvent) {}
-func (g *resizeGrip) MouseOut()                   {}
+func (g *resizeGrip) MouseUp(*desktop.MouseEvent)   {}
+func (g *resizeGrip) MouseIn(*desktop.MouseEvent)   {}
+func (g *resizeGrip) MouseOut()                     {}
 
 var _ desktop.Mouseable = (*resizeGrip)(nil)
 
@@ -151,13 +259,153 @@ func winToggleMaximize(w fyne.Window) {
 	winMaximizeWindows(w)
 }
 
-func winBeginDrag(d *dragRegion) bool {
-	return winSendNcLButtonDown(d.win, htCaption)
+func winBeginDrag(w fyne.Window) bool {
+	hwnd := winHWND(w)
+	if hwnd == 0 {
+		return false
+	}
+	if winIsMaximized(w) {
+		winRestoreWindows(w)
+		hwnd = winHWND(w)
+		if hwnd == 0 {
+			return false
+		}
+	}
+	var pt winPoint
+	var rc winRect
+	procGetCursorPos.Call(uintptr(unsafe.Pointer(&pt)))
+	procGetWindowRect.Call(hwnd, uintptr(unsafe.Pointer(&rc)))
+	activeDrag = dragSession{
+		hwnd:    hwnd,
+		offsetX: pt.X - rc.Left,
+		offsetY: pt.Y - rc.Top,
+	}
+	procSetCapture.Call(hwnd)
+	go dragTrackLoop()
+	return true
 }
 
-func winEndDrag() {}
+func dragTrackLoop() {
+	ticker := time.NewTicker(8 * time.Millisecond)
+	defer ticker.Stop()
+	for winLeftButtonDown() {
+		winContinueDrag()
+		<-ticker.C
+	}
+	winEndDrag()
+}
 
-func winLeftButtonDown() bool { return false }
+func winContinueDrag() {
+	if activeDrag.hwnd == 0 {
+		return
+	}
+	var pt winPoint
+	procGetCursorPos.Call(uintptr(unsafe.Pointer(&pt)))
+	procSetWindowPos.Call(
+		activeDrag.hwnd, 0,
+		uintptr(int64(pt.X)-int64(activeDrag.offsetX)),
+		uintptr(int64(pt.Y)-int64(activeDrag.offsetY)),
+		0, 0,
+		swpNoSize|swpNoZOrder,
+	)
+}
+
+func winEndDrag() {
+	if activeDrag.hwnd != 0 {
+		procReleaseCapture.Call()
+		activeDrag = dragSession{}
+	}
+}
+
+func winBeginResize(w fyne.Window, edge uintptr) bool {
+	if winIsMaximized(w) {
+		return false
+	}
+	hwnd := winHWND(w)
+	if hwnd == 0 {
+		return false
+	}
+	var rc winRect
+	procGetWindowRect.Call(hwnd, uintptr(unsafe.Pointer(&rc)))
+	activeResize = resizeSession{hwnd: hwnd, edge: edge, start: rc}
+	procSetCapture.Call(hwnd)
+	go resizeTrackLoop()
+	return true
+}
+
+func resizeTrackLoop() {
+	ticker := time.NewTicker(8 * time.Millisecond)
+	defer ticker.Stop()
+	for winLeftButtonDown() {
+		winContinueResize()
+		<-ticker.C
+	}
+	winEndResize()
+}
+
+func winContinueResize() {
+	if activeResize.hwnd == 0 {
+		return
+	}
+	var pt winPoint
+	procGetCursorPos.Call(uintptr(unsafe.Pointer(&pt)))
+	rc := activeResize.start
+	x, y := rc.Left, rc.Top
+	w, h := rc.Right-rc.Left, rc.Bottom-rc.Top
+	switch activeResize.edge {
+	case htLeft:
+		x = pt.X
+		w = rc.Right - x
+	case htRight:
+		w = pt.X - rc.Left
+	case htTop:
+		y = pt.Y
+		h = rc.Bottom - y
+	case htBottom:
+		h = pt.Y - rc.Top
+	case htTopLeft:
+		x, y = pt.X, pt.Y
+		w, h = rc.Right-x, rc.Bottom-y
+	case htTopRight:
+		y = pt.Y
+		w, h = pt.X-rc.Left, rc.Bottom-y
+	case htBottomLeft:
+		x = pt.X
+		w, h = rc.Right-x, pt.Y-rc.Top
+	case htBottomRight:
+		w, h = pt.X-rc.Left, pt.Y-rc.Top
+	}
+	if w < minWindowWidth {
+		if activeResize.edge == htLeft || activeResize.edge == htTopLeft || activeResize.edge == htBottomLeft {
+			x = rc.Right - minWindowWidth
+		}
+		w = minWindowWidth
+	}
+	if h < minWindowHeight {
+		if activeResize.edge == htTop || activeResize.edge == htTopLeft || activeResize.edge == htTopRight {
+			y = rc.Bottom - minWindowHeight
+		}
+		h = minWindowHeight
+	}
+	procSetWindowPos.Call(
+		activeResize.hwnd, 0,
+		uintptr(x), uintptr(y),
+		uintptr(w), uintptr(h),
+		0,
+	)
+}
+
+func winEndResize() {
+	if activeResize.hwnd != 0 {
+		procReleaseCapture.Call()
+		activeResize = resizeSession{}
+	}
+}
+
+func winLeftButtonDown() bool {
+	r, _, _ := procGetAsyncKeyState.Call(vkLButton)
+	return r&0x8000 != 0
+}
 
 func winMinimizeWindows(w fyne.Window) {
 	hwnd := winHWND(w)

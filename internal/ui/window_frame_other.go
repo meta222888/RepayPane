@@ -4,7 +4,7 @@ package ui
 
 import "fyne.io/fyne/v2"
 
-func winBeginDrag(*dragRegion) bool  { return false }
+func winBeginDrag(fyne.Window) bool { return false }
 func winContinueDrag(*dragRegion)    {}
 func winEndDrag()                     {}
 func winLeftButtonDown() bool         { return false }
