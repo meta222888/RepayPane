@@ -10,9 +10,10 @@ import (
 	"time"
 
 	"github.com/relaypane/relaypane/internal/config"
+	"github.com/relaypane/relaypane/internal/fileopen"
 	"github.com/relaypane/relaypane/internal/i18n"
-	"github.com/relaypane/relaypane/internal/textencoding"
 	"github.com/relaypane/relaypane/internal/remote"
+	"github.com/relaypane/relaypane/internal/textencoding"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -288,6 +289,10 @@ func (a *App) openRemoteEditor(entry remote.FileInfo) {
 	if client == nil {
 		return
 	}
+	if fileopen.IsImageName(entry.Name) {
+		a.loadRemoteImage(entry)
+		return
+	}
 	if entry.Size > config.MaxEditBytes {
 		dialog.ShowConfirm(
 			i18n.T(i18n.KeyFileTooLarge),
@@ -305,6 +310,12 @@ func (a *App) openRemoteEditor(entry remote.FileInfo) {
 }
 
 func (a *App) openLocalEditor(path, name string, size int64) {
+	if fileopen.IsImageName(name) {
+		if err := fileopen.OpenPath(path); err != nil {
+			dialog.ShowError(err, a.window)
+		}
+		return
+	}
 	if size > config.MaxEditBytes {
 		dialog.ShowConfirm(
 			i18n.T(i18n.KeyFileTooLarge),
@@ -329,6 +340,16 @@ func (a *App) loadLocalEditor(path, name string) {
 				dialog.ShowError(err, a.window)
 				return
 			}
+			if fileopen.IsImageData(data) {
+				if err := fileopen.OpenPath(path); err != nil {
+					dialog.ShowError(err, a.window)
+				}
+				return
+			}
+			if !fileopen.IsLikelyText(data) {
+				dialogShow(a, i18n.T(i18n.KeyNotTextFileTitle), i18n.Tf(i18n.KeyNotTextFileMsg, name))
+				return
+			}
 			text, enc, err := textencoding.Decode(data)
 			if err != nil {
 				dialog.ShowError(err, a.window)
@@ -351,6 +372,14 @@ func (a *App) loadEditor(entry remote.FileInfo) {
 				dialog.ShowError(err, a.window)
 				return
 			}
+			if fileopen.IsImageData(data) {
+				a.openRemoteImageData(entry.Name, data)
+				return
+			}
+			if !fileopen.IsLikelyText(data) {
+				dialogShow(a, i18n.T(i18n.KeyNotTextFileTitle), i18n.Tf(i18n.KeyNotTextFileMsg, entry.Name))
+				return
+			}
 			text, enc, err := textencoding.Decode(data)
 			if err != nil {
 				dialog.ShowError(err, a.window)
@@ -359,6 +388,51 @@ func (a *App) loadEditor(entry remote.FileInfo) {
 			ShowEditor(a, entry, text, enc)
 		})
 	}()
+}
+
+func (a *App) loadRemoteImage(entry remote.FileInfo) {
+	client := a.activeClient()
+	if client == nil {
+		return
+	}
+	go func() {
+		data, err := client.ReadFile(entry.Path)
+		fyne.Do(func() {
+			if err != nil {
+				dialog.ShowError(err, a.window)
+				return
+			}
+			a.openRemoteImageData(entry.Name, data)
+		})
+	}()
+}
+
+func (a *App) openRemoteImageData(name string, data []byte) {
+	ext := filepath.Ext(name)
+	if ext == "" {
+		ext = ".img"
+	}
+	tmp, err := os.CreateTemp("", "relaypane-view-*"+ext)
+	if err != nil {
+		dialog.ShowError(err, a.window)
+		return
+	}
+	path := tmp.Name()
+	if _, err := tmp.Write(data); err != nil {
+		tmp.Close()
+		os.Remove(path)
+		dialog.ShowError(err, a.window)
+		return
+	}
+	if err := tmp.Close(); err != nil {
+		os.Remove(path)
+		dialog.ShowError(err, a.window)
+		return
+	}
+	if err := fileopen.OpenPath(path); err != nil {
+		os.Remove(path)
+		dialog.ShowError(err, a.window)
+	}
 }
 
 func (a *App) saveServers() {

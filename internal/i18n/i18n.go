@@ -84,6 +84,8 @@ const (
 	KeyDeleteConfirm    = "dialog.delete_confirm"
 	KeyFileTooLarge     = "dialog.file_too_large"
 	KeyFileTooLargeMsg  = "dialog.file_too_large_msg"
+	KeyNotTextFileTitle = "dialog.not_text_file_title"
+	KeyNotTextFileMsg   = "dialog.not_text_file_msg"
 	KeyNotConnectedTitle = "dialog.not_connected"
 	KeyNotConnectedUpload = "dialog.not_connected_upload"
 	KeyNotConnectedFirst  = "dialog.not_connected_first"
@@ -324,6 +326,8 @@ var enStrings = map[string]string{
 	KeyDeleteConfirm:        "Delete %q?",
 	KeyFileTooLarge:         "File too large",
 	KeyFileTooLargeMsg:      "%s is %.1f MB. Open anyway? (Ctrl+S saves back to server)",
+	KeyNotTextFileTitle:     "Not a text file",
+	KeyNotTextFileMsg:       "%s is not a text file and cannot be opened in the editor.",
 	KeyNotConnectedTitle:    "Not connected",
 	KeyNotConnectedUpload:   "Connect to a server before uploading.",
 	KeyNotConnectedFirst:    "Connect to a server first.",
@@ -564,6 +568,8 @@ var zhStrings = map[string]string{
 	KeyDeleteConfirm:        "确定删除 %q？",
 	KeyFileTooLarge:         "文件过大",
 	KeyFileTooLargeMsg:      "%s 为 %.1f MB，仍要打开吗？（Ctrl+S 可保存回服务器）",
+	KeyNotTextFileTitle:     "非文本文件",
+	KeyNotTextFileMsg:       "%s 不是文本文件，无法在编辑器中打开。",
 	KeyNotConnectedTitle:    "未连接",
 	KeyNotConnectedUpload:   "请先连接服务器再上传。",
 	KeyNotConnectedFirst:    "请先连接服务器。",
