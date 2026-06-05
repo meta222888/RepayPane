@@ -57,12 +57,15 @@ func (r *paneEllipsisTextRenderer) Layout(size fyne.Size) {
 	r.label.Resize(size)
 	r.applyDisplayedText(size.Width)
 	r.text.Color = r.label.textCol
-	textH := r.text.MinSize().Height
-	if textH < r.label.textSize {
-		textH = r.label.textSize
+	sz, _ := fyne.CurrentApp().Driver().RenderedTextSize(r.text.Text, r.label.textSize, r.text.TextStyle, r.text.FontSource)
+	if sz.Height < r.label.textSize {
+		sz.Height = r.label.textSize
 	}
-	r.text.Resize(fyne.NewSize(size.Width, textH))
-	r.text.Move(fyne.NewPos(0, (size.Height-textH)/2))
+	if sz.Width < 1 {
+		sz.Width = 1
+	}
+	r.text.Resize(sz)
+	r.text.Move(fyne.NewPos(0, paneRowTextCenterY(size.Height, sz.Height)))
 }
 
 func (r *paneEllipsisTextRenderer) MinSize() fyne.Size {

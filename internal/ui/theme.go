@@ -152,6 +152,14 @@ func wrapTitleLabel(lbl *widget.Label) fyne.CanvasObject {
 	return container.NewThemeOverride(lbl, newTitleTextTheme())
 }
 
+func paneRowTextCenterY(rowH, textH float32) float32 {
+	y := (rowH - textH) / 2
+	if y < 0 {
+		return 0
+	}
+	return y
+}
+
 // wrapCanvasText reserves vertical space so Latin descenders (g, j, p, y) are not clipped.
 func wrapCanvasText(t *canvas.Text) fyne.CanvasObject {
 	sz, _ := fyne.CurrentApp().Driver().RenderedTextSize(t.Text, t.TextSize, t.TextStyle, t.FontSource)

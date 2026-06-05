@@ -25,7 +25,7 @@ type paneFileListRow struct {
 	renaming bool
 
 	bg        *canvas.Rectangle
-	nameT     *paneEllipsisText
+	nameCell  *paneFileNameCell
 	nameEntry *widget.Entry
 	sizeT     *paneRightText
 	metaT     *paneRightText
@@ -57,9 +57,9 @@ func (r *paneFileListRow) startRename(name string, onCommit func(string), onCanc
 		return
 	}
 	r.nameEntry.SetText(name)
-	r.nameT.Hide()
+	r.nameCell.Hide()
 	r.nameEntry.Show()
-	r.nameT.Refresh()
+	r.nameCell.Refresh()
 	canvas.Refresh(r.nameEntry)
 	r.Refresh()
 	fyne.Do(func() {
@@ -77,26 +77,26 @@ func (r *paneFileListRow) endRename() {
 		return
 	}
 	r.nameEntry.Hide()
-	r.nameT.Show()
-	r.nameT.Refresh()
+	r.nameCell.Show()
+	r.nameCell.Refresh()
 	canvas.Refresh(r.nameEntry)
 }
 
 func (r *paneFileListRow) updateLocal(rowIndex int, name, size, modified string, isDir, isParent, selected bool) {
 	r.rowIndex = rowIndex
 	r.selected = selected
-	if r.nameT == nil {
+	if r.nameCell == nil {
 		return
 	}
 	if r.renaming {
 		return
 	}
 	if isParent {
-		r.nameT.SetText("↩  ..")
+		r.nameCell.SetContent("↩", "..")
 		r.sizeT.SetText("—")
 		r.metaT.SetText("—")
 	} else {
-		r.nameT.SetText(fileIcon(isDir) + "  " + name)
+		r.nameCell.SetContent(fileIcon(isDir), name)
 		r.sizeT.SetText(size)
 		r.metaT.SetText(modified)
 	}
@@ -106,18 +106,18 @@ func (r *paneFileListRow) updateLocal(rowIndex int, name, size, modified string,
 func (r *paneFileListRow) updateRemote(rowIndex int, name, size, modified string, isDir, isParent, selected bool) {
 	r.rowIndex = rowIndex
 	r.selected = selected
-	if r.nameT == nil {
+	if r.nameCell == nil {
 		return
 	}
 	if r.renaming {
 		return
 	}
 	if isParent {
-		r.nameT.SetText("↩  ..")
+		r.nameCell.SetContent("↩", "..")
 		r.sizeT.SetText("—")
 		r.metaT.SetText("—")
 	} else {
-		r.nameT.SetText(fileIcon(isDir) + "  " + name)
+		r.nameCell.SetContent(fileIcon(isDir), name)
 		r.sizeT.SetText(size)
 		r.metaT.SetText(modified)
 	}
@@ -143,12 +143,12 @@ func (r *paneFileListRow) refreshStyle() {
 	}
 	r.bg.FillColor = r.rowBgColor()
 	if r.selected {
-		r.nameT.SetColor(colorTextHighlight)
+		r.nameCell.SetColor(colorTextHighlight)
 	} else {
-		r.nameT.SetColor(colorForeground)
+		r.nameCell.SetColor(colorForeground)
 	}
 	canvas.Refresh(r.bg)
-	r.nameT.Refresh()
+	r.nameCell.Refresh()
 	r.sizeT.Refresh()
 	r.metaT.Refresh()
 }
@@ -221,7 +221,7 @@ func (r *paneFileListRow) MouseOut() {
 func (r *paneFileListRow) CreateRenderer() fyne.WidgetRenderer {
 	r.bg = canvas.NewRectangle(r.rowBgColor())
 	r.bg.SetMinSize(fyne.NewSize(0, paneRowMinHeight))
-	r.nameT = newPaneEllipsisText(paneRowNameSize, colorForeground)
+	r.nameCell = newPaneFileNameCell(paneRowNameSize, colorForeground)
 	r.nameEntry = widget.NewEntry()
 	r.nameEntry.Hide()
 	r.nameEntry.OnSubmitted = func(text string) {
@@ -230,7 +230,7 @@ func (r *paneFileListRow) CreateRenderer() fyne.WidgetRenderer {
 		}
 	}
 	entryThemed := container.NewThemeOverride(r.nameEntry, newCompactEntryTheme(paneRowNameSize))
-	nameCol := container.NewStack(r.nameT, container.NewMax(entryThemed))
+	nameCol := container.NewStack(r.nameCell, container.NewMax(entryThemed))
 
 	r.sizeT = newPaneRightText("", colorMuted, paneRowMetaSize)
 	r.metaT = newPaneModifiedText("", colorMuted, paneRowMetaSize)
