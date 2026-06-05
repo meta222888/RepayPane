@@ -30,22 +30,25 @@ func (a *App) showDiskSpace() {
 	title := i18n.T(i18n.KeyFeatDisk)
 	listBox := container.NewVBox()
 	scroll := container.NewVScroll(listBox)
+	loadingPanel := diskLoadingPanel()
+	content := container.NewStack(scroll, loadingPanel)
 	refresh := newAccentButton(i18n.T(i18n.KeyRefresh), func() {
-		loadDiskSpace(client, listBox)
+		loadDiskSpace(client, listBox, loadingPanel)
 	})
-	body := container.NewBorder(nil, refresh, nil, nil, scroll)
+	body := container.NewBorder(nil, refresh, nil, nil, content)
 	showThemedFeature(a, title, fyne.NewSize(640, 480), body)
-	loadDiskSpace(client, listBox)
+	loadDiskSpace(client, listBox, loadingPanel)
 }
 
-func loadDiskSpace(client *remote.Client, listBox *fyne.Container) {
+func loadDiskSpace(client *remote.Client, listBox *fyne.Container, loading fyne.CanvasObject) {
 	listBox.Objects = nil
-	listBox.Add(featureLoadingLabel())
+	loading.Show()
 	listBox.Refresh()
 
 	go func() {
 		out, err := client.RunCombined(`df -hP 2>/dev/null || df -h 2>/dev/null`)
 		fyne.Do(func() {
+			loading.Hide()
 			listBox.Objects = nil
 			rows := parseDfOutput(out)
 			if len(rows) == 0 {
@@ -138,6 +141,16 @@ func parseHumanBytes(s string) int64 {
 		return 0
 	}
 	return int64(f * float64(mult))
+}
+
+func diskLoadingPanel() fyne.CanvasObject {
+	bar := widget.NewProgressBarInfinite()
+	bar.Start()
+	lbl := widget.NewLabel(i18n.T(i18n.KeyFeatReading))
+	return container.NewCenter(container.NewVBox(
+		bar,
+		container.NewPadded(lbl),
+	))
 }
 
 func featureLoadingLabel() fyne.CanvasObject {

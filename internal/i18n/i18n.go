@@ -203,6 +203,7 @@ const (
 	KeyCtrlSSaveLocal     = "editor.ctrl_s_local"
 
 	KeyFeatLoading        = "feat.loading"
+	KeyFeatReading        = "feat.reading"
 	KeyFeatNoData         = "feat.no_data"
 	KeyFeatSysInfo        = "feat.sysinfo"
 	KeyFeatNetwork        = "feat.network"
@@ -448,6 +449,7 @@ var enStrings = map[string]string{
 	KeyCtrlSSaveLocal:    "Ctrl+S to save",
 
 	KeyFeatLoading:        "Loading…",
+	KeyFeatReading:        "Reading…",
 	KeyFeatNoData:         "No data",
 	KeyFeatSysInfo:        "System Info",
 	KeyFeatNetwork:        "Network Info",
@@ -693,6 +695,7 @@ var zhStrings = map[string]string{
 	KeyCtrlSSaveLocal:    "Ctrl+S 保存",
 
 	KeyFeatLoading:        "加载中…",
+	KeyFeatReading:        "读取中……",
 	KeyFeatNoData:         "无数据",
 	KeyFeatSysInfo:        "系统信息",
 	KeyFeatNetwork:        "网络信息",
