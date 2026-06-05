@@ -51,6 +51,7 @@ const (
 	KeyMenuLangEN        = "menu.lang.en"
 	KeyMenuLangZH        = "menu.lang.zh"
 	KeyMenuMyServers     = "menu.my_servers"
+	KeyMenuCloudSync     = "menu.cloud_sync"
 	KeyMenuExit          = "menu.exit"
 	KeyMenuCheckUpdate   = "menu.check_update"
 	KeyMenuAboutUs       = "menu.about_us"
@@ -114,6 +115,14 @@ const (
 	KeySaved         = "editor.saved"
 	KeySavedMsg      = "editor.saved_msg"
 	KeySaveFailed    = "editor.save_failed"
+	KeyEditorSaving  = "editor.saving"
+	KeySaveSuccessTitle = "editor.save_success_title"
+	KeySaveSuccessAt    = "editor.save_success_at"
+	KeySaveFailedTitle  = "editor.save_failed_title"
+	KeySaveFailedAt     = "editor.save_failed_at"
+	KeyEditorRevert     = "editor.revert"
+	KeyEditorRevertConfirm = "editor.revert_confirm"
+	KeyEditorRevertFailed  = "editor.revert_failed"
 	KeyUnsaved       = "editor.unsaved"
 	KeyDiscard       = "editor.discard"
 	KeyEditTitle     = "editor.title"
@@ -223,6 +232,40 @@ const (
 	KeyFeatResProcesses   = "feat.res_processes"
 	KeyFeatResCPUPct      = "feat.res_cpu_pct"
 	KeyFeatResMemDetail   = "feat.res_mem_detail"
+
+	KeyCloudSyncTitle           = "cloudsync.title"
+	KeyCloudSyncConfigSection   = "cloudsync.config_section"
+	KeyCloudSyncStatusSection   = "cloudsync.status_section"
+	KeyCloudSyncActionSection   = "cloudsync.action_section"
+	KeyCloudSyncAPISecret       = "cloudsync.api_secret"
+	KeyCloudSyncAPISecretHint   = "cloudsync.api_secret_hint"
+	KeyCloudSyncAPISecretLink   = "cloudsync.api_secret_link"
+	KeyCloudSyncPassword        = "cloudsync.password"
+	KeyCloudSyncPasswordHint    = "cloudsync.password_hint"
+	KeyCloudSyncPrivacyNote     = "cloudsync.privacy_note"
+	KeyCloudSyncQueryCloud      = "cloudsync.query_cloud"
+	KeyCloudSyncLocalStatus     = "cloudsync.local_status"
+	KeyCloudSyncCloudStatus     = "cloudsync.cloud_status"
+	KeyCloudSyncLocalNever      = "cloudsync.local_never"
+	KeyCloudSyncLocalSyncedAt   = "cloudsync.local_synced_at"
+	KeyCloudSyncCloudUnknown    = "cloudsync.cloud_unknown"
+	KeyCloudSyncCloudEmpty      = "cloudsync.cloud_empty"
+	KeyCloudSyncCloudSavedAt    = "cloudsync.cloud_saved_at"
+	KeyCloudSyncQuerying        = "cloudsync.querying"
+	KeyCloudSyncUpload          = "cloudsync.upload"
+	KeyCloudSyncDownload        = "cloudsync.download"
+	KeyCloudSyncDeleteCloud     = "cloudsync.delete_cloud"
+	KeyCloudSyncDeleteTitle     = "cloudsync.delete_title"
+	KeyCloudSyncDeleteConfirm   = "cloudsync.delete_confirm"
+	KeyCloudSyncDeleteOK        = "cloudsync.delete_ok"
+	KeyCloudSyncNeedSecret      = "cloudsync.need_secret"
+	KeyCloudSyncNeedPassword    = "cloudsync.need_password"
+	KeyCloudSyncNoLocalData     = "cloudsync.no_local_data"
+	KeyCloudSyncUploading       = "cloudsync.uploading"
+	KeyCloudSyncUploadOK        = "cloudsync.upload_ok"
+	KeyCloudSyncDownloadConfirm = "cloudsync.download_confirm"
+	KeyCloudSyncDownloadOK      = "cloudsync.download_ok"
+	KeyCloudSyncCloudNoData     = "cloudsync.cloud_no_data"
 )
 
 var enStrings = map[string]string{
@@ -234,6 +277,7 @@ var enStrings = map[string]string{
 	KeyMenuLangEN:     "English",
 	KeyMenuLangZH:     "中文",
 	KeyMenuMyServers:  "My Servers",
+	KeyMenuCloudSync:  "Cloud Sync",
 	KeyMenuExit:       "Exit",
 	KeyMenuCheckUpdate: "Check for Updates",
 	KeyMenuAboutUs:    "About Us",
@@ -297,6 +341,14 @@ var enStrings = map[string]string{
 	KeySaved:           "Saved",
 	KeySavedMsg:        "Saved to %s",
 	KeySaveFailed:      "Save failed: %s",
+	KeyEditorSaving:    "Saving…",
+	KeySaveSuccessTitle: "Save successful",
+	KeySaveSuccessAt:    "Save successful [%s]",
+	KeySaveFailedTitle:  "Save failed",
+	KeySaveFailedAt:     "Save failed: %s [%s]",
+	KeyEditorRevert:     "Revert",
+	KeyEditorRevertConfirm: "Discard unsaved changes and reload from file?",
+	KeyEditorRevertFailed:  "Reload failed: %s",
 	KeyUnsaved:         "Unsaved changes",
 	KeyDiscard:         "Discard changes?",
 	KeyEditTitle:       "Edit: %s",
@@ -406,6 +458,40 @@ var enStrings = map[string]string{
 	KeyFeatResProcesses:   "Top processes (by memory)",
 	KeyFeatResCPUPct:      "In use: %.0f%%",
 	KeyFeatResMemDetail:   "Used %s / %s (%.0f%%)",
+
+	KeyCloudSyncTitle:           "Cloud Sync",
+	KeyCloudSyncConfigSection:   "Configuration",
+	KeyCloudSyncStatusSection:   "Status",
+	KeyCloudSyncActionSection:   "Actions",
+	KeyCloudSyncAPISecret:       "EasyStorage API Secret",
+	KeyCloudSyncAPISecretHint:   "From pc530.com EasyStorage console",
+	KeyCloudSyncAPISecretLink:   "Get my API Secret for free: https://pc530.com/easystorage/",
+	KeyCloudSyncPassword:        "Encryption password",
+	KeyCloudSyncPasswordHint:    "Required; any length (even one character)",
+	KeyCloudSyncPrivacyNote:     "Server configs and private key contents are encrypted before upload. EasyStorage API Secret and encryption password are stored on this device only — never uploaded to the cloud.",
+	KeyCloudSyncQueryCloud:      "Query cloud status",
+	KeyCloudSyncLocalStatus:     "This device:",
+	KeyCloudSyncCloudStatus:     "Cloud:",
+	KeyCloudSyncLocalNever:      "Not synced yet",
+	KeyCloudSyncLocalSyncedAt:   "Last synced at %s",
+	KeyCloudSyncCloudUnknown:    "Not queried",
+	KeyCloudSyncCloudEmpty:      "No data on cloud",
+	KeyCloudSyncCloudSavedAt:    "Last saved on cloud: %s",
+	KeyCloudSyncQuerying:        "Querying…",
+	KeyCloudSyncUpload:          "Sync to cloud",
+	KeyCloudSyncDownload:        "Sync from cloud",
+	KeyCloudSyncDeleteCloud:     "Delete cloud data",
+	KeyCloudSyncDeleteTitle:     "Delete cloud data",
+	KeyCloudSyncDeleteConfirm:   "This permanently deletes cloud server data. It cannot be recovered. Continue?",
+	KeyCloudSyncDeleteOK:        "Cloud data deleted.",
+	KeyCloudSyncNeedSecret:      "Please enter your EasyStorage API Secret.",
+	KeyCloudSyncNeedPassword:    "Please enter an encryption password (cannot be empty).",
+	KeyCloudSyncNoLocalData:     "No local server database to upload.",
+	KeyCloudSyncUploading:       "Uploading to cloud…",
+	KeyCloudSyncUploadOK:        "Synced to cloud. Local last sync: %s",
+	KeyCloudSyncDownloadConfirm: "This will overwrite local server data with the cloud copy. Continue?",
+	KeyCloudSyncDownloadOK:      "Synced from cloud at %s",
+	KeyCloudSyncCloudNoData:     "No data on cloud.",
 }
 
 var zhStrings = map[string]string{
@@ -417,6 +503,7 @@ var zhStrings = map[string]string{
 	KeyMenuLangEN:     "English",
 	KeyMenuLangZH:     "中文",
 	KeyMenuMyServers:  "我的服务器",
+	KeyMenuCloudSync:  "云端同步",
 	KeyMenuExit:       "退出",
 	KeyMenuCheckUpdate: "检查更新",
 	KeyMenuAboutUs:    "关于我们",
@@ -480,6 +567,14 @@ var zhStrings = map[string]string{
 	KeySaved:           "已保存",
 	KeySavedMsg:        "已保存到 %s",
 	KeySaveFailed:      "保存失败：%s",
+	KeyEditorSaving:    "保存中…",
+	KeySaveSuccessTitle: "保存成功",
+	KeySaveSuccessAt:    "保存成功 [%s]",
+	KeySaveFailedTitle:  "保存失败",
+	KeySaveFailedAt:     "保存失败：%s [%s]",
+	KeyEditorRevert:     "还原",
+	KeyEditorRevertConfirm: "放弃未保存的更改并从文件重新读取？",
+	KeyEditorRevertFailed:  "读取失败：%s",
 	KeyUnsaved:         "未保存的更改",
 	KeyDiscard:         "放弃更改？",
 	KeyEditTitle:       "编辑：%s",
@@ -589,4 +684,38 @@ var zhStrings = map[string]string{
 	KeyFeatResProcesses:   "占用最高的进程（按内存）",
 	KeyFeatResCPUPct:      "使用率：%.0f%%",
 	KeyFeatResMemDetail:   "已用 %s / %s（%.0f%%）",
+
+	KeyCloudSyncTitle:           "云端同步",
+	KeyCloudSyncConfigSection:   "配置",
+	KeyCloudSyncStatusSection:   "状态",
+	KeyCloudSyncActionSection:   "操作",
+	KeyCloudSyncAPISecret:       "易储 API Secret",
+	KeyCloudSyncAPISecretHint:   "从 pc530.com 易储控制台获取",
+	KeyCloudSyncAPISecretLink:   "免费获取我的 API Secret: https://pc530.com/easystorage/",
+	KeyCloudSyncPassword:        "加密密码",
+	KeyCloudSyncPasswordHint:    "必填，长度不限（一位也可以）",
+	KeyCloudSyncPrivacyNote:     "上传前会对服务器配置与私钥内容加密，没有密码无法解密。易储 API Secret 与加密密码仅保存在本机，不会上传到云端。",
+	KeyCloudSyncQueryCloud:      "查询云端状态",
+	KeyCloudSyncLocalStatus:     "本机：",
+	KeyCloudSyncCloudStatus:     "云端：",
+	KeyCloudSyncLocalNever:      "未同步",
+	KeyCloudSyncLocalSyncedAt:   "上次同步：%s",
+	KeyCloudSyncCloudUnknown:    "未查询",
+	KeyCloudSyncCloudEmpty:      "云端无数据",
+	KeyCloudSyncCloudSavedAt:    "云端上次保存：%s",
+	KeyCloudSyncQuerying:        "查询中…",
+	KeyCloudSyncUpload:          "同步到云端",
+	KeyCloudSyncDownload:        "从云端同步",
+	KeyCloudSyncDeleteCloud:     "删除云端数据",
+	KeyCloudSyncDeleteTitle:     "删除云端数据",
+	KeyCloudSyncDeleteConfirm:   "将永久删除云端服务器数据，不可恢复。确定继续？",
+	KeyCloudSyncDeleteOK:        "云端数据已删除。",
+	KeyCloudSyncNeedSecret:      "请填写易储 API Secret。",
+	KeyCloudSyncNeedPassword:    "请填写加密密码（不能为空）。",
+	KeyCloudSyncNoLocalData:     "本地没有服务器数据库。",
+	KeyCloudSyncUploading:       "正在上传到云端…",
+	KeyCloudSyncUploadOK:        "已同步到云端。本机上次同步：%s",
+	KeyCloudSyncDownloadConfirm: "将从云端覆盖本地服务器数据，确定继续？",
+	KeyCloudSyncDownloadOK:      "已从云端同步 [%s]",
+	KeyCloudSyncCloudNoData:     "云端无数据。",
 }

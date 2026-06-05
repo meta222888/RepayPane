@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/relaypane/relaypane/internal/i18n"
 	"github.com/relaypane/relaypane/internal/remote"
@@ -15,48 +16,87 @@ import (
 )
 
 type EditorWindow struct {
-	app     *App
-	path    string
-	saveFn  func([]byte) error
-	content *widget.Entry
-	dirty   bool
-	window  fyne.Window
+	app        *App
+	path       string
+	saveFn     func([]byte) error
+	loadFn     func() (string, error)
+	content    *widget.Entry
+	statusLbl  *widget.Label
+	hintText   string
+	dirty      bool
+	saving     bool
+	window     fyne.Window
 }
 
 func ShowEditor(app *App, entry remote.FileInfo, text string) {
-	showTextEditor(app, i18n.Tf(i18n.KeyEditTitle, entry.Name), entry.Path, text, i18n.T(i18n.KeyCtrlSSave), func(data []byte) error {
-		client := app.activeClient()
-		if client == nil {
-			return fmt.Errorf(i18n.T(i18n.KeyNotConnectedErr))
-		}
-		return client.WriteFile(entry.Path, data)
-	})
+	path := entry.Path
+	showTextEditor(app, i18n.Tf(i18n.KeyEditTitle, entry.Name), path, text, i18n.T(i18n.KeyCtrlSSave),
+		func(data []byte) error {
+			client := app.activeClient()
+			if client == nil {
+				return fmt.Errorf(i18n.T(i18n.KeyNotConnectedErr))
+			}
+			return client.WriteFile(path, data)
+		},
+		func() (string, error) {
+			client := app.activeClient()
+			if client == nil {
+				return "", fmt.Errorf(i18n.T(i18n.KeyNotConnectedErr))
+			}
+			data, err := client.ReadFile(path)
+			if err != nil {
+				return "", err
+			}
+			return string(data), nil
+		},
+	)
 }
 
 func ShowLocalEditor(app *App, path, name, text string) {
-	showTextEditor(app, i18n.Tf(i18n.KeyEditTitle, name), path, text, i18n.T(i18n.KeyCtrlSSaveLocal), func(data []byte) error {
-		return os.WriteFile(path, data, 0o644)
-	})
+	showTextEditor(app, i18n.Tf(i18n.KeyEditTitle, name), path, text, i18n.T(i18n.KeyCtrlSSaveLocal),
+		func(data []byte) error {
+			return os.WriteFile(path, data, 0o644)
+		},
+		func() (string, error) {
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return "", err
+			}
+			return string(data), nil
+		},
+	)
 }
 
-func showTextEditor(app *App, title, path, text, saveHint string, saveFn func([]byte) error) {
-	e := &EditorWindow{app: app, path: path, saveFn: saveFn}
+func showTextEditor(app *App, title, path, text, hint string, saveFn func([]byte) error, loadFn func() (string, error)) {
+	e := &EditorWindow{
+		app:      app,
+		path:     path,
+		saveFn:   saveFn,
+		loadFn:   loadFn,
+		hintText: hint,
+	}
 	e.content = widget.NewMultiLineEntry()
 	e.content.SetText(text)
 	e.content.Wrapping = fyne.TextWrapWord
 	e.content.OnChanged = func(string) { e.dirty = true }
 
+	e.statusLbl = widget.NewLabel(hint)
+
+	revertBtn := widget.NewButton(i18n.T(i18n.KeyEditorRevert), func() { e.revert() })
+	saveBtn := newAccentButton(i18n.T(i18n.KeySave), func() { e.save() })
+	bottomRight := container.NewHBox(revertBtn, saveBtn)
+	bottom := container.NewBorder(nil, nil, e.statusLbl, bottomRight, nil)
+
 	e.window = app.fyneApp.NewWindow(title)
 	e.window.Resize(fyne.NewSize(900, 600))
 	e.window.SetContent(container.NewBorder(
 		widget.NewLabel(path),
-		widget.NewLabel(saveHint),
+		bottom,
 		nil, nil,
 		container.NewScroll(e.content),
 	))
 
-	ctrlS := &desktop.CustomShortcut{KeyName: fyne.KeyS, Modifier: desktop.ControlModifier}
-	e.window.Canvas().AddShortcut(ctrlS, func(fyne.Shortcut) { e.save() })
+	e.registerSaveShortcut()
 
 	e.window.SetCloseIntercept(func() {
 		if e.dirty {
@@ -72,17 +112,64 @@ func showTextEditor(app *App, title, path, text, saveHint string, saveFn func([]
 	e.window.Show()
 }
 
+func (e *EditorWindow) registerSaveShortcut() {
+	ctrlS := &desktop.CustomShortcut{KeyName: fyne.KeyS, Modifier: desktop.ControlModifier}
+	save := func() { e.save() }
+	e.window.Canvas().AddShortcut(ctrlS, func(fyne.Shortcut) { save() })
+	saveItem := fyne.NewMenuItem(i18n.T(i18n.KeySave), save)
+	saveItem.Shortcut = ctrlS
+	e.window.SetMainMenu(fyne.NewMainMenu(fyne.NewMenu("File", saveItem)))
+}
+
+func (e *EditorWindow) setStatus(text string) {
+	e.statusLbl.SetText(text)
+}
+
 func (e *EditorWindow) save() {
+	if e.saving {
+		return
+	}
+	e.saving = true
+	e.setStatus(i18n.T(i18n.KeyEditorSaving))
 	data := []byte(e.content.Text)
 	go func() {
 		err := e.saveFn(data)
 		fyne.Do(func() {
+			e.saving = false
+			ts := time.Now().Format("2006-01-02 15:04:05")
 			if err != nil {
-				dialog.ShowError(fmt.Errorf(i18n.Tf(i18n.KeySaveFailed, err.Error())), e.window)
+				e.setStatus(i18n.Tf(i18n.KeySaveFailedAt, err.Error(), ts))
 				return
 			}
 			e.dirty = false
-			dialog.ShowInformation(i18n.T(i18n.KeySaved), i18n.Tf(i18n.KeySavedMsg, e.path), e.window)
+			e.setStatus(i18n.Tf(i18n.KeySaveSuccessAt, ts))
 		})
 	}()
+}
+
+func (e *EditorWindow) revert() {
+	doReload := func() {
+		e.setStatus(i18n.T(i18n.KeyEditorSaving))
+		go func() {
+			text, err := e.loadFn()
+			fyne.Do(func() {
+				if err != nil {
+					e.setStatus(i18n.Tf(i18n.KeyEditorRevertFailed, err.Error()))
+					return
+				}
+				e.content.SetText(text)
+				e.dirty = false
+				e.setStatus(e.hintText)
+			})
+		}()
+	}
+	if !e.dirty {
+		doReload()
+		return
+	}
+	dialog.ShowConfirm(i18n.T(i18n.KeyEditorRevert), i18n.T(i18n.KeyEditorRevertConfirm), func(ok bool) {
+		if ok {
+			doReload()
+		}
+	}, e.window)
 }
