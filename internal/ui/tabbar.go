@@ -147,8 +147,8 @@ func (t *TabBar) buildTab(idx int, tab *TabSession, active bool) fyne.CanvasObje
 	}
 	nameT := canvas.NewText(name, nameColor)
 	nameT.TextSize = 10
-	hostT := canvas.NewText(tab.addr(), colorMuted)
-	hostT.TextSize = 8
+	hostT := canvas.NewText(tab.tabAddrShort(), colorMuted)
+	hostT.TextSize = 9
 	serverIcon := canvas.NewText("🖥", colorAccent)
 	serverIcon.TextSize = 9
 	selectArea := container.NewHBox(

@@ -46,6 +46,24 @@ func (s *TabSession) addr() string {
 	return fmt.Sprintf("%s:%d", s.server.Host, port)
 }
 
+// tabAddrShort returns a compact host label for tab chips (full addr stays in status bar).
+func (s *TabSession) tabAddrShort() string {
+	host := s.server.Host
+	port := s.server.Port
+	if port == 0 {
+		port = 22
+	}
+	label := host
+	if port != 22 {
+		label = fmt.Sprintf("%s:%d", host, port)
+	}
+	const maxLen = 12
+	if len(label) <= maxLen {
+		return label
+	}
+	return label[:maxLen-1] + "…"
+}
+
 func (a *App) activeSession() *TabSession {
 	if a.activeTab < 0 || a.activeTab >= len(a.tabs) {
 		return nil
