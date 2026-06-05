@@ -4,12 +4,8 @@ package ui
 
 import "fyne.io/fyne/v2"
 
-func fyneMoveWindowBy(fyne.Window, int, int) bool { return false }
+func winStartCaptionDrag(fyne.Window) bool { return false }
 
-func winBeginDrag(fyne.Window) bool { return false }
-func winContinueDrag(*dragRegion)    {}
-func winEndDrag()                     {}
-func winLeftButtonDown() bool         { return false }
 func winMinimizeWindows(fyne.Window) {}
 func winMaximizeWindows(fyne.Window) {}
 func winRestoreWindows(fyne.Window)  {}

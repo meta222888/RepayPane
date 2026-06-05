@@ -8,9 +8,8 @@ import (
 
 type dragRegion struct {
 	widget.BaseWidget
-	win      fyne.Window
-	inner    fyne.CanvasObject
-	dragging bool
+	win   fyne.Window
+	inner fyne.CanvasObject
 }
 
 func newDragRegion(win fyne.Window, inner fyne.CanvasObject) *dragRegion {
@@ -27,27 +26,11 @@ func (d *dragRegion) MouseDown(e *desktop.MouseEvent) {
 	if e.Button != desktop.MouseButtonPrimary {
 		return
 	}
-	d.dragging = winBeginDrag(d.win)
+	winStartCaptionDrag(d.win)
 }
 
-func (d *dragRegion) MouseUp(*desktop.MouseEvent) {
-	d.dragging = false
-}
-
-func (d *dragRegion) Dragged(e *fyne.DragEvent) {
-	if !d.dragging {
-		return
-	}
-	fyne.Do(func() {
-		fyneMoveWindowBy(d.win, int(e.Dragged.DX), int(e.Dragged.DY))
-	})
-}
-
-func (d *dragRegion) DragEnd() {
-	d.dragging = false
-}
-
-func (d *dragRegion) MouseIn(*desktop.MouseEvent) {}
+func (d *dragRegion) MouseUp(*desktop.MouseEvent)   {}
+func (d *dragRegion) MouseIn(*desktop.MouseEvent)   {}
 func (d *dragRegion) MouseOut()                     {}
 
 func (d *dragRegion) DoubleTapped(*fyne.PointEvent) {
@@ -55,5 +38,4 @@ func (d *dragRegion) DoubleTapped(*fyne.PointEvent) {
 }
 
 var _ desktop.Mouseable = (*dragRegion)(nil)
-var _ fyne.Draggable = (*dragRegion)(nil)
 var _ fyne.DoubleTappable = (*dragRegion)(nil)
