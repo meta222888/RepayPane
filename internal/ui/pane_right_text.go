@@ -13,8 +13,8 @@ import (
 const (
 	paneFileSizeColWidth     float32 = 76
 	paneFileModifiedColWidth float32 = 138
-	paneFileEdgeRightGap     float32 = 6
-	paneFileListScrollGutter float32 = 12
+	paneFileEdgeRightGap     float32 = 8
+	paneFileListScrollGutter float32 = 24
 )
 
 func paneFileListRightPad() float32 {
@@ -24,13 +24,22 @@ func paneFileListRightPad() float32 {
 // paneRightText right-aligns a single-line canvas.Text within its width.
 type paneRightText struct {
 	widget.BaseWidget
-	text *canvas.Text
+	text       *canvas.Text
+	rightInset float32
 }
 
 func newPaneRightText(text string, c color.Color, size float32) *paneRightText {
+	return newPaneRightTextInset(text, c, size, 0)
+}
+
+func newPaneModifiedText(text string, c color.Color, size float32) *paneRightText {
+	return newPaneRightTextInset(text, c, size, 4)
+}
+
+func newPaneRightTextInset(text string, c color.Color, size float32, rightInset float32) *paneRightText {
 	t := canvas.NewText(text, c)
 	t.TextSize = size
-	p := &paneRightText{text: t}
+	p := &paneRightText{text: t, rightInset: rightInset}
 	p.ExtendBaseWidget(p)
 	return p
 }
@@ -63,7 +72,7 @@ func (r *paneRightTextRenderer) Layout(size fyne.Size) {
 	if sz.Height < r.text.TextSize {
 		sz.Height = r.text.TextSize
 	}
-	x := size.Width - sz.Width
+	x := size.Width - sz.Width - r.box.rightInset
 	if x < 0 {
 		x = 0
 	}
@@ -97,7 +106,7 @@ func paneFileMetaColumns(sizeCol, modifiedCol fyne.CanvasObject) fyne.CanvasObje
 
 func paneFileMetaHeader(sizeLabel, modifiedLabel string) fyne.CanvasObject {
 	sizeCol := newPaneRightText(sizeLabel, colorMuted, paneRowMetaSize)
-	modifiedCol := newPaneRightText(modifiedLabel, colorMuted, paneRowMetaSize)
+	modifiedCol := newPaneModifiedText(modifiedLabel, colorMuted, paneRowMetaSize)
 	return paneFileMetaColumns(sizeCol, modifiedCol)
 }
 
