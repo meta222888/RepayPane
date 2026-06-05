@@ -131,6 +131,11 @@ const (
 
 	KeyCheckUpdateTitle = "about.check_update_title"
 	KeyCheckUpdateMsg   = "about.check_update_msg"
+	KeyCheckUpdateChecking = "about.check_update_checking"
+	KeyCheckUpdateLatest   = "about.check_update_latest"
+	KeyCheckUpdateAvailable = "about.check_update_available"
+	KeyCheckUpdateDownload  = "about.check_update_download"
+	KeyCheckUpdateFailed    = "about.check_update_failed"
 	KeyAboutTitle       = "about.title"
 	KeyAboutIntro       = "about.intro"
 	KeyAboutVersion     = "about.version"
@@ -357,6 +362,11 @@ var enStrings = map[string]string{
 
 	KeyCheckUpdateTitle: "Check for Updates",
 	KeyCheckUpdateMsg:   "Automatic update will be available in a future release.",
+	KeyCheckUpdateChecking: "Checking for updates…",
+	KeyCheckUpdateLatest:   "You are on the latest version (%s).",
+	KeyCheckUpdateAvailable: "A new version is available: %s (current: %s)",
+	KeyCheckUpdateDownload:  "Download update",
+	KeyCheckUpdateFailed:    "Update check failed: %s",
 	KeyAboutTitle:       "About RelayPane",
 	KeyAboutIntro:       "RelayPane is a lightweight SFTP client for transferring and editing files between your computer and remote servers.",
 	KeyAboutVersion:     "Version %s",
@@ -583,6 +593,11 @@ var zhStrings = map[string]string{
 
 	KeyCheckUpdateTitle: "检查更新",
 	KeyCheckUpdateMsg:   "自动更新功能将在后续版本中提供。",
+	KeyCheckUpdateChecking: "正在检查更新…",
+	KeyCheckUpdateLatest:   "当前已是最新版本（%s）。",
+	KeyCheckUpdateAvailable: "发现新版本：%s（当前：%s）",
+	KeyCheckUpdateDownload:  "立即下载更新",
+	KeyCheckUpdateFailed:    "检查更新失败：%s",
 	KeyAboutTitle:       "关于 RelayPane",
 	KeyAboutIntro:       "RelayPane 是一款轻量级 SFTP 客户端，用于在本地与远程服务器之间传输和编辑文件。",
 	KeyAboutVersion:     "版本 %s",

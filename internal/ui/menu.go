@@ -7,10 +7,12 @@ import (
 
 	"github.com/relaypane/relaypane/internal/config"
 	"github.com/relaypane/relaypane/internal/i18n"
+	"github.com/relaypane/relaypane/internal/update"
 	"github.com/relaypane/relaypane/internal/version"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -29,7 +31,54 @@ func (a *App) showFeaturesSoon() {
 }
 
 func (a *App) showCheckUpdate() {
-	dialogShow(a, i18n.T(i18n.KeyCheckUpdateTitle), i18n.T(i18n.KeyCheckUpdateMsg))
+	title := i18n.T(i18n.KeyCheckUpdateTitle)
+	var dlg *modalDialog
+
+	status := widget.NewLabel(i18n.T(i18n.KeyCheckUpdateChecking))
+	status.Wrapping = fyne.TextWrapWord
+	btnBox := container.NewHBox()
+	body := container.NewBorder(nil, btnBox, nil, nil, status)
+	dlg = newModalDialog(a, title, fyne.NewSize(460, 180), body)
+
+	go func() {
+		rel, err := update.FetchLatestRelease()
+		fyne.Do(func() {
+			a.presentCheckUpdateResult(dlg, rel, err, status, btnBox)
+		})
+	}()
+}
+
+func (a *App) presentCheckUpdateResult(dlg *modalDialog, rel *update.Release, err error, status *widget.Label, btnBox *fyne.Container) {
+	btnBox.Objects = nil
+
+	if err != nil {
+		status.SetText(i18n.Tf(i18n.KeyCheckUpdateFailed, err.Error()))
+		closeBtn := newAccentButton(i18n.T(i18n.KeyOK), func() { dlg.Close() })
+		btnBox.Add(closeBtn)
+		btnBox.Refresh()
+		return
+	}
+
+	current := version.Version
+	if update.IsNewer(current, rel.Version) {
+		status.SetText(i18n.Tf(i18n.KeyCheckUpdateAvailable, rel.Version, current))
+		downloadBtn := newAccentButton(i18n.T(i18n.KeyCheckUpdateDownload), func() {
+			if u, parseErr := url.Parse(rel.HTMLURL); parseErr == nil {
+				_ = a.fyneApp.OpenURL(u)
+			}
+		})
+		closeBtn := widget.NewButton(i18n.T(i18n.KeyOK), func() { dlg.Close() })
+		btnBox.Add(layout.NewSpacer())
+		btnBox.Add(closeBtn)
+		btnBox.Add(downloadBtn)
+		btnBox.Refresh()
+		return
+	}
+
+	status.SetText(i18n.Tf(i18n.KeyCheckUpdateLatest, current))
+	closeBtn := newAccentButton(i18n.T(i18n.KeyOK), func() { dlg.Close() })
+	btnBox.Add(closeBtn)
+	btnBox.Refresh()
 }
 
 func (a *App) showAboutUs() {
