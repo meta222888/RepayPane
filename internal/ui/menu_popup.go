@@ -14,15 +14,19 @@ import (
 // InnerPadding for both axes, so we only widen via min width, not theme padding.
 const menuItemInnerPadding float32 = 14
 
-func newWideMenu(menu *fyne.Menu) (*widget.Menu, fyne.CanvasObject) {
+func newWideMenu(menu *fyne.Menu, overlay fyne.Theme) (*widget.Menu, fyne.CanvasObject) {
 	m := widget.NewMenu(menu)
+	content := fyne.CanvasObject(m)
+	if overlay != nil {
+		content = container.NewThemeOverride(m, overlay)
+	}
 	basePad := fyne.CurrentApp().Settings().Theme().Size(theme.SizeNameInnerPadding)
 	extraW := (menuItemInnerPadding - basePad) * 2
 	if extraW < 1 {
-		return m, m
+		return m, content
 	}
 	minW := m.MinSize().Width + extraW
-	return m, minMenuWidth(minW, m)
+	return m, minMenuWidth(minW, content)
 }
 
 func minMenuWidth(minW float32, obj fyne.CanvasObject) fyne.CanvasObject {
@@ -32,7 +36,7 @@ func minMenuWidth(minW float32, obj fyne.CanvasObject) fyne.CanvasObject {
 }
 
 func showWidePopUpMenu(c fyne.Canvas, menu *fyne.Menu, at fyne.Position) *widget.PopUp {
-	_, content := newWideMenu(menu)
+	_, content := newWideMenu(menu, newCompactToolbarTheme())
 	size := content.MinSize()
 	pos := adjustMenuPosition(at, size, c)
 	pop := widget.NewPopUp(content, c)
