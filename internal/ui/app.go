@@ -137,6 +137,18 @@ func (a *App) onNewTab() {
 	a.showAddServer()
 }
 
+func (a *App) reconnectActiveTab() {
+	tab := a.activeSession()
+	if tab == nil {
+		a.onNewTab()
+		return
+	}
+	if tab.state == tabConnecting {
+		return
+	}
+	a.connectTab(tab)
+}
+
 func (a *App) activateTab(index int) {
 	if index < 0 || index >= len(a.tabs) {
 		return

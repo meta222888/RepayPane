@@ -71,10 +71,11 @@ func (p *slimProgressBar) CreateRenderer() fyne.WidgetRenderer {
 }
 
 type StatusBar struct {
-	app      *App
-	connDot  *canvas.Circle
-	conn     *widget.Label
-	syncLabel  *widget.Label
+	app         *App
+	connDot     *canvas.Circle
+	conn        *widget.Label
+	reconnectBtn *widget.Button
+	syncLabel   *widget.Label
 	speed      *widget.Label
 	progress   *slimProgressBar
 	percent    *widget.Label
@@ -87,6 +88,11 @@ func NewStatusBar(app *App) *StatusBar {
 	s := &StatusBar{app: app}
 	s.connDot = canvas.NewCircle(colorDisconnected)
 	s.conn = widget.NewLabel(i18n.T(i18n.KeyDisconnected))
+	s.reconnectBtn = widget.NewButton(i18n.T(i18n.KeyReconnect), func() {
+		s.app.reconnectActiveTab()
+	})
+	s.reconnectBtn.Importance = widget.LowImportance
+	s.reconnectBtn.Hide()
 	s.syncLabel = widget.NewLabel("")
 	s.syncLabel.Hide()
 	s.speed = widget.NewLabel(i18n.T(i18n.KeyTransferIdle))
@@ -110,9 +116,15 @@ func (s *StatusBar) Refresh() {
 	if sess == nil || sess.state != tabConnected {
 		s.connDot.FillColor = colorDisconnected
 		s.conn.SetText(i18n.T(i18n.KeyDisconnected))
+		if sess != nil && sess.state == tabConnecting {
+			s.reconnectBtn.Hide()
+		} else {
+			s.reconnectBtn.Show()
+		}
 	} else {
 		s.connDot.FillColor = colorConnected
 		s.conn.SetText(i18n.T(i18n.KeyStatusConnected) + " " + sess.addr())
+		s.reconnectBtn.Hide()
 	}
 	canvas.Refresh(s.connDot)
 	s.RefreshTransfer()
@@ -133,5 +145,6 @@ func (s *StatusBar) RefreshTransfer() {
 }
 
 func (s *StatusBar) ApplyLanguage() {
+	s.reconnectBtn.SetText(i18n.T(i18n.KeyReconnect))
 	s.Refresh()
 }

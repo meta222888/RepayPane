@@ -147,6 +147,7 @@ const (
 	KeyCloseTab      = "action.close_tab"
 	KeyNewTab        = "action.new_tab"
 	KeyNewTabConnect = "action.new_tab_connect"
+	KeyReconnect     = "action.reconnect"
 
 	KeySidebarPlaces   = "sidebar.places"
 	KeySidebarDrive    = "sidebar.drive"
@@ -325,6 +326,7 @@ var enStrings = map[string]string{
 	KeyCloseTab:       "Close session",
 	KeyNewTab:         "New connection",
 	KeyNewTabConnect:  "+ Connect",
+	KeyReconnect:      "Reconnect",
 
 	KeySidebarPlaces:  "Places",
 	KeySidebarDrive:   "Drive",
@@ -503,6 +505,7 @@ var zhStrings = map[string]string{
 	KeyCloseTab:       "关闭会话",
 	KeyNewTab:         "新建连接",
 	KeyNewTabConnect:  "+连接",
+	KeyReconnect:      "重新连接",
 
 	KeySidebarPlaces:  "常用目录",
 	KeySidebarDrive:   "磁盘",
