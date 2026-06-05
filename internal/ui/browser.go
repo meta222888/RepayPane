@@ -53,6 +53,8 @@ type FilePane struct {
 	root       fyne.CanvasObject
 
 	selectedRow int
+	lastDragAbs fyne.Position
+	dragReady   bool
 
 	localNav *LocalNav
 }
@@ -93,6 +95,7 @@ func (p *FilePane) build() {
 	}
 	p.ApplyLanguage()
 	p.refreshPathDisplay()
+	p.refreshBlankRowHeight()
 }
 
 func (p *FilePane) buildLocalListHeader() fyne.CanvasObject {
@@ -188,12 +191,33 @@ func (p *FilePane) rowCount() int {
 	if p.hasParentRow() {
 		n++
 	}
+	n++ // blank filler row for empty-area context menu
 	return n
+}
+
+func (p *FilePane) isBlankRow(row int) bool {
+	return row == p.rowCount()-1
 }
 
 func (p *FilePane) updateListRow(i widget.ListItemID, obj fyne.CanvasObject) {
 	idx := int(i)
 	row := obj.(*paneFileListRow)
+	selected := idx == p.selectedRow
+
+	if p.isBlankRow(idx) {
+		p.refreshBlankRowHeight()
+		row.showBlank(selected)
+		row.onPrimary = func() { p.clearSelection() }
+		row.onDouble = nil
+		row.onSecondary = func(ev *fyne.PointEvent) {
+			p.clearSelection()
+			p.showContextMenu(ev.AbsolutePosition)
+		}
+		row.onDragged = nil
+		row.onDragEnd = nil
+		return
+	}
+
 	row.onPrimary = func() { p.selectRow(idx) }
 	row.onDouble = func() {
 		p.selectRow(idx)
@@ -203,9 +227,25 @@ func (p *FilePane) updateListRow(i widget.ListItemID, obj fyne.CanvasObject) {
 		p.selectRow(idx)
 		p.showContextMenu(ev.AbsolutePosition)
 	}
+	row.onDragged = func(e *fyne.DragEvent) {
+		if !p.dragReady {
+			if !p.setClipboardFromRow(idx) {
+				return
+			}
+			p.dragReady = true
+		}
+		p.lastDragAbs = e.AbsolutePosition
+	}
+	row.onDragEnd = func() {
+		p.dragReady = false
+		if p.app.clipboard != nil {
+			p.app.completePaneDrop(p, p.lastDragAbs)
+		}
+	}
 
-	selected := idx == p.selectedRow
 	if p.isParentRow(idx) {
+		row.onDragged = nil
+		row.onDragEnd = nil
 		if p.kind == PaneLocal {
 			row.updateLocal(idx, "..", "—", "—", true, true, selected)
 		} else {
@@ -340,6 +380,7 @@ func (p *FilePane) RefreshListing() {
 		}
 		p.local = entries
 		p.list.Refresh()
+		p.refreshBlankRowHeight()
 		return
 	}
 	if !p.connected || p.app.activeClient() == nil {
@@ -358,6 +399,37 @@ func (p *FilePane) RefreshListing() {
 	})
 	p.remote = entries
 	p.list.Refresh()
+	p.refreshBlankRowHeight()
+}
+
+func (p *FilePane) refreshBlankRowHeight() {
+	if p.list == nil {
+		return
+	}
+	blankID := widget.ListItemID(p.rowCount() - 1)
+	viewH := p.list.Size().Height
+	if viewH < paneRowMinHeight*2 {
+		viewH = paneRowMinHeight * 4
+	}
+	dataRows := p.rowCount() - 1
+	contentH := float32(dataRows) * paneRowMinHeight
+	filler := viewH - contentH
+	if filler < paneRowMinHeight {
+		filler = paneRowMinHeight
+	}
+	p.list.SetItemHeight(blankID, filler)
+}
+
+func (p *FilePane) clearSelection() {
+	prev := p.selectedRow
+	p.selectedRow = -1
+	p.list.UnselectAll()
+	if prev >= 0 {
+		p.list.RefreshItem(widget.ListItemID(prev))
+	}
+	if blank := p.rowCount() - 1; blank >= 0 {
+		p.list.RefreshItem(widget.ListItemID(blank))
+	}
 }
 
 func (p *FilePane) selectRow(row int) {
@@ -421,11 +493,18 @@ func (p *FilePane) showContextMenu(at fyne.Position) {
 		deleteItem.Disabled = true
 	}
 	clip := p.app.clipboard
-	if clip == nil || clip.Kind != p.kind {
+	if clip == nil {
 		pasteItem.Disabled = true
+	} else if clip.Kind == PaneLocal && p.kind == PaneRemote {
+		if !p.connected || p.app.activeClient() == nil {
+			pasteItem.Disabled = true
+		}
+	} else if clip.Kind == PaneRemote && p.kind == PaneLocal {
+		if !p.connected || p.app.activeClient() == nil {
+			pasteItem.Disabled = true
+		}
 	}
 	if p.kind == PaneRemote && (!p.connected || p.app.activeClient() == nil) {
-		pasteItem.Disabled = true
 		newFolderItem.Disabled = true
 		newFileItem.Disabled = true
 		deleteItem.Disabled = true
@@ -496,21 +575,41 @@ func (p *FilePane) selectedIsDir() bool {
 }
 
 func (p *FilePane) ctxCopy() {
-	path := p.selectedFullPath()
-	if path == "" {
-		return
+	_ = p.setClipboardFromRow(p.selectedRow)
+}
+
+func (p *FilePane) setClipboardFromRow(row int) bool {
+	if row < 0 || p.isParentRow(row) || p.isBlankRow(row) {
+		return false
+	}
+	path := p.fullPathForRow(row)
+	name := p.nameForRow(row)
+	if path == "" || name == "" {
+		return false
 	}
 	p.app.clipboard = &PaneClipboard{
 		Kind:  p.kind,
 		Path:  path,
-		Name:  p.selectedName(),
-		IsDir: p.selectedIsDir(),
+		Name:  name,
+		IsDir: p.isDirForRow(row),
 	}
+	return true
 }
 
 func (p *FilePane) ctxPaste() {
 	clip := p.app.clipboard
-	if clip == nil || clip.Kind != p.kind {
+	if clip == nil {
+		return
+	}
+	if clip.Kind != p.kind {
+		p.app.transferClipboardToPane(clip, p)
+		return
+	}
+	p.pasteClipboard(clip)
+}
+
+func (p *FilePane) pasteClipboard(clip *PaneClipboard) {
+	if clip == nil {
 		return
 	}
 	dst := p.joinPath(clip.Name)
@@ -535,6 +634,57 @@ func (p *FilePane) ctxPaste() {
 		return
 	}
 	p.RefreshListing()
+}
+
+func (p *FilePane) fullPathForRow(row int) string {
+	if p.isParentRow(row) || p.isBlankRow(row) {
+		return ""
+	}
+	dataIdx := p.dataRowIndex(row)
+	if p.kind == PaneLocal {
+		if dataIdx < 0 || dataIdx >= len(p.local) {
+			return ""
+		}
+		return p.local[dataIdx].path
+	}
+	if dataIdx < 0 || dataIdx >= len(p.remote) {
+		return ""
+	}
+	return p.remote[dataIdx].Path
+}
+
+func (p *FilePane) nameForRow(row int) string {
+	if p.isParentRow(row) || p.isBlankRow(row) {
+		return ""
+	}
+	dataIdx := p.dataRowIndex(row)
+	if p.kind == PaneLocal {
+		if dataIdx < 0 || dataIdx >= len(p.local) {
+			return ""
+		}
+		return p.local[dataIdx].name
+	}
+	if dataIdx < 0 || dataIdx >= len(p.remote) {
+		return ""
+	}
+	return p.remote[dataIdx].Name
+}
+
+func (p *FilePane) isDirForRow(row int) bool {
+	if p.isParentRow(row) || p.isBlankRow(row) {
+		return false
+	}
+	dataIdx := p.dataRowIndex(row)
+	if p.kind == PaneLocal {
+		if dataIdx < 0 || dataIdx >= len(p.local) {
+			return false
+		}
+		return p.local[dataIdx].isDir
+	}
+	if dataIdx < 0 || dataIdx >= len(p.remote) {
+		return false
+	}
+	return p.remote[dataIdx].IsDir
 }
 
 func (p *FilePane) ctxDelete() {
