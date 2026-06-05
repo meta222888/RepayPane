@@ -11,10 +11,13 @@ import (
 )
 
 const (
-	paneFileSizeColWidth     float32 = 76
-	paneFileModifiedColWidth float32 = 138
-	paneFileEdgeRightGap     float32 = 8
-	paneFileListScrollGutter float32 = 24
+	paneFileSizeColWidth        float32 = 76
+	paneFileModifiedColWidth    float32 = 138
+	paneFileEdgeRightGap        float32 = 8
+	paneFileListScrollGutter    float32 = 24
+	paneFileListLeftPad         float32 = 0
+	paneFileListLeftNudge       float32 = 16
+	paneModifiedColRightInset   float32 = 8
 )
 
 func paneFileListRightPad() float32 {
@@ -33,7 +36,7 @@ func newPaneRightText(text string, c color.Color, size float32) *paneRightText {
 }
 
 func newPaneModifiedText(text string, c color.Color, size float32) *paneRightText {
-	return newPaneRightTextInset(text, c, size, 4)
+	return newPaneRightTextInset(text, c, size, paneModifiedColRightInset)
 }
 
 func newPaneRightTextInset(text string, c color.Color, size float32, rightInset float32) *paneRightText {
@@ -112,9 +115,31 @@ func paneFileMetaHeader(sizeLabel, modifiedLabel string) fyne.CanvasObject {
 
 func paneFileListHeaderRow(nameCol, metaCols fyne.CanvasObject) fyne.CanvasObject {
 	row := container.NewBorder(nil, nil, nil, metaCols, nameCol)
-	extra := paneFileListRightPad() - paneRowPadH
+	extra := paneFileListRightPad() - paneFileListLeftPad
 	if extra > 0 {
 		row = container.New(layout.NewCustomPaddedLayout(0, 0, extra, 0), row)
 	}
 	return row
+}
+
+type paneFileListNudgeLayout struct{}
+
+func (paneFileListNudgeLayout) MinSize(objects []fyne.CanvasObject) fyne.Size {
+	if len(objects) == 0 {
+		return fyne.NewSize(0, 0)
+	}
+	return objects[0].MinSize()
+}
+
+func (paneFileListNudgeLayout) Layout(objects []fyne.CanvasObject, size fyne.Size) {
+	if len(objects) == 0 {
+		return
+	}
+	child := objects[0]
+	child.Resize(fyne.NewSize(size.Width+paneFileListLeftNudge, size.Height))
+	child.Move(fyne.NewPos(-paneFileListLeftNudge, 0))
+}
+
+func paneFileListNudgeWrap(obj fyne.CanvasObject) fyne.CanvasObject {
+	return container.New(paneFileListNudgeLayout{}, obj)
 }

@@ -9,11 +9,13 @@ import (
 // paneRowBand fixes chrome/header rows to PaneRowHeight (same as file list rows).
 type paneRowBand struct {
 	widget.BaseWidget
-	content fyne.CanvasObject
+	content  fyne.CanvasObject
+	padLeft  float32
+	padRight float32
 }
 
-func newPaneRowBand(content fyne.CanvasObject) *paneRowBand {
-	b := &paneRowBand{content: content}
+func newPaneRowBand(content fyne.CanvasObject, padLeft, padRight float32) *paneRowBand {
+	b := &paneRowBand{content: content, padLeft: padLeft, padRight: padRight}
 	b.ExtendBaseWidget(b)
 	return b
 }
@@ -82,5 +84,9 @@ func (b *paneRowBand) CreateRenderer() fyne.WidgetRenderer {
 }
 
 func paneBand(content fyne.CanvasObject) fyne.CanvasObject {
-	return newPaneRowBand(content)
+	return newPaneRowBand(content, paneRowPadH, paneRowPadH)
+}
+
+func paneFileListBand(content fyne.CanvasObject) fyne.CanvasObject {
+	return newPaneRowBand(content, paneFileListLeftPad, paneRowPadH)
 }

@@ -110,14 +110,14 @@ func (p *FilePane) build() {
 		p.listPaneArea = newPaneListArea(p, p.list)
 		p.listArea = p.listPaneArea
 		p.root = container.NewBorder(p.buildLocalChrome(), nil, nil, nil,
-			container.NewBorder(p.listHeader, nil, nil, nil, p.listArea))
+			paneFileListNudgeWrap(container.NewBorder(p.listHeader, nil, nil, nil, p.listArea)))
 	} else {
 		p.listHeader = p.buildRemoteListHeader()
 		p.listLoadingHint = newPaneLoadingHint()
 		p.listPaneArea = newPaneListArea(p, p.list)
 		p.listArea = p.listPaneArea
 		p.root = container.NewBorder(p.buildRemoteChrome(), nil, nil, nil,
-			container.NewBorder(p.listHeader, nil, nil, nil, p.listArea))
+			paneFileListNudgeWrap(container.NewBorder(p.listHeader, nil, nil, nil, p.listArea)))
 	}
 	p.ApplyLanguage()
 	p.refreshPathDisplay()
@@ -157,7 +157,7 @@ func (p *FilePane) buildLocalChrome() fyne.CanvasObject {
 func (p *FilePane) buildRemoteListHeader() fyne.CanvasObject {
 	nameCol := labelCBandText(i18n.T(i18n.KeyColName), colorMuted, paneRowMetaSize)
 	row := paneFileListHeaderRow(nameCol, paneFileMetaHeader(i18n.T(i18n.KeyColSize), i18n.T(i18n.KeyColModified)))
-	return paneBand(row)
+	return paneFileListBand(row)
 }
 
 func (p *FilePane) buildRemoteChrome() fyne.CanvasObject {
