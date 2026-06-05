@@ -52,7 +52,7 @@ Right-click, context menus, list refresh, overlays, and programmatic `w.Resize()
 1. `widget.NewPopUpMenu` steals focus → `widget.List.FocusLost()` → `RefreshItem()` → **full list renderer refresh** → layout/`MinSize` churn → window shrinks (sometimes to GLFW minimum).
 2. `w.Resize()` guards (`restoreWindowSizeIfShrunk`) masked this as ~13 px jitter and broke edge resize while the menu was open.
 
-**Fix (in-tree menu):** file-browser context menu is `paneFloatingMenu` inside `pane_list_area` stack — **not** `PopUpMenu` / canvas overlay. No focus steal, no `w.Resize()` guards.
+**File context menu:** standard Fyne `widget.NewPopUpMenu` (`context_menu.go`). Dismiss any open overlay before show (singleton). Defer list `RefreshItem` until menu closes. No `w.Resize()` guards.
 
 ### Root cause: menu open + edge resize
 

@@ -35,7 +35,6 @@ func (b *paneListUnderlay) Tapped(*fyne.PointEvent) {
 }
 
 func (b *paneListUnderlay) TappedSecondary(ev *fyne.PointEvent) {
-	b.pane.dismissContextMenu()
 	b.pane.showContextMenu(ev.AbsolutePosition, -1)
 }
 
@@ -44,14 +43,12 @@ var _ fyne.SecondaryTappable = (*paneListUnderlay)(nil)
 
 type paneListStackLayout struct {
 	pane *FilePane
-	menu *paneFloatingMenu
 }
 
 func (l paneListStackLayout) MinSize(objects []fyne.CanvasObject) fyne.Size {
 	if len(objects) == 0 {
 		return fyne.NewSize(0, 0)
 	}
-	// List scrolls internally; never report full row count as minimum height.
 	return objects[0].MinSize()
 }
 
@@ -67,21 +64,13 @@ func (l paneListStackLayout) Layout(objects []fyne.CanvasObject, size fyne.Size)
 	gap := size.Height - contentH
 	if gap < 1 {
 		underlay.Hide()
-	} else {
-		underlay.Show()
-		underlay.Resize(fyne.NewSize(size.Width, gap))
-		underlay.Move(fyne.NewPos(0, contentH))
+		return
 	}
-
-	if len(objects) >= 3 && l.menu != nil {
-		l.menu.layoutIn(size)
-	}
+	underlay.Show()
+	underlay.Resize(fyne.NewSize(size.Width, gap))
+	underlay.Move(fyne.NewPos(0, contentH))
 }
 
 func newPaneListArea(p *FilePane, list *widget.List) fyne.CanvasObject {
-	menu := newPaneFloatingMenu(nil)
-	area := container.New(&paneListStackLayout{pane: p, menu: menu}, list, newPaneListUnderlay(p), menu)
-	menu.parent = area
-	p.ctxMenu = menu
-	return area
+	return container.New(&paneListStackLayout{pane: p}, list, newPaneListUnderlay(p))
 }
