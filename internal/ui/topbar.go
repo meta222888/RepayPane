@@ -40,23 +40,8 @@ func NewTopBar(app *App) *TopBar {
 	t.btnFeat.Importance = widget.LowImportance
 	t.btnAbout.Importance = widget.LowImportance
 
-	minBtn := widget.NewButtonWithIcon("", theme.WindowMinimizeIcon(), func() {
-		minimizeWindow(t.app.window)
-	})
-	maxBtn := widget.NewButtonWithIcon("", theme.WindowMaximizeIcon(), func() {
-		toggleMaximizeWindow(t.app.window)
-	})
-	closeBtn := widget.NewButtonWithIcon("", theme.WindowCloseIcon(), func() {
-		closeWindow(t.app.window)
-	})
-	for _, b := range []*widget.Button{minBtn, maxBtn, closeBtn} {
-		b.Importance = widget.LowImportance
-	}
-	winControls := container.NewHBox(minBtn, maxBtn, closeBtn)
-
-	titleDrag := newDragRegion(t.app.window, layout.NewSpacer())
-	right := container.NewHBox(t.btnSet, t.btnFeat, t.btnAbout, winControls)
-	barContent := container.NewBorder(nil, nil, logo, right, titleDrag)
+	right := container.NewHBox(t.btnSet, t.btnFeat, t.btnAbout)
+	barContent := container.NewBorder(nil, nil, logo, right, layout.NewSpacer())
 	wrapped := withPanelHeader(barContent)
 	t.root = wrapped
 	return t

@@ -88,7 +88,7 @@ func NewApp(a fyne.App, w fyne.Window) *App {
 	body := container.NewBorder(header, appUI.statusBar.Container(), nil, nil, panes)
 	bg := canvas.NewRectangle(colorBG)
 	w.SetPadded(false)
-	w.SetContent(container.NewStack(bg, wrapWindowResize(w, body)))
+	w.SetContent(container.NewStack(bg, body))
 	w.SetOnDropped(appUI.onWindowDropped)
 	w.SetCloseIntercept(func() {
 		appUI.saveActiveServerLocalPath()
@@ -99,21 +99,7 @@ func NewApp(a fyne.App, w fyne.Window) *App {
 	appUI.tabBar.Refresh()
 	appUI.statusBar.Refresh()
 	appUI.registerShellShortcut()
-	go appUI.installWindowFrame()
 	return appUI
-}
-
-func (a *App) installWindowFrame() {
-	for i := 0; i < 80; i++ {
-		time.Sleep(50 * time.Millisecond)
-		var ready bool
-		fyne.Do(func() {
-			ready = winInstallResizeHook(a.window)
-		})
-		if ready {
-			return
-		}
-	}
 }
 
 func defaultRemoteRoot(s *config.Server) string {
