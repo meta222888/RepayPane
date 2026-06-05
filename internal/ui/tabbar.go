@@ -34,7 +34,7 @@ func (t *TabBar) Container() fyne.CanvasObject {
 	scroll.SetMinSize(fyne.NewSize(0, tabBarHeight))
 	tabBg := canvas.NewRectangle(colorTabInactive)
 	stack := container.NewStack(tabBg, container.New(
-		layout.NewCustomPaddedLayout(1, 1, 4, 4),
+		layout.NewCustomPaddedLayout(0, 1, 4, 4),
 		scroll,
 	))
 	return container.NewVBox(stack, separatorLine())
@@ -166,18 +166,90 @@ func (t *TabBar) buildTab(idx int, tab *TabSession, active bool) fyne.CanvasObje
 	if active {
 		bgColor = colorTabActive
 	}
+	if active {
+		return newTabActiveChip(bgColor, tabRow)
+	}
 	bg := canvas.NewRectangle(bgColor)
 	bg.SetMinSize(fyne.NewSize(tabChipMinWidth, tabChipHeight))
-	stack := container.NewStack(bg, container.New(
+	return container.NewStack(bg, container.New(
 		layout.NewCustomPaddedLayout(2, 1, 4, 2),
 		tabRow,
 	))
-	if active {
-		topLine := canvas.NewRectangle(colorAccent)
-		topLine.SetMinSize(fyne.NewSize(0, 2))
-		return container.NewBorder(topLine, nil, nil, nil, stack)
+}
+
+const tabAccentLineH float32 = 2
+
+type tabActiveChip struct {
+	widget.BaseWidget
+	bgColor color.Color
+	content fyne.CanvasObject
+}
+
+func newTabActiveChip(bgColor color.Color, content fyne.CanvasObject) *tabActiveChip {
+	c := &tabActiveChip{bgColor: bgColor, content: content}
+	c.ExtendBaseWidget(c)
+	return c
+}
+
+func (c *tabActiveChip) MinSize() fyne.Size {
+	return fyne.NewSize(tabChipMinWidth, tabChipHeight)
+}
+
+type tabActiveChipRenderer struct {
+	chip    *tabActiveChip
+	bg      *canvas.Rectangle
+	line    *canvas.Rectangle
+	padded  fyne.CanvasObject
+}
+
+func (r *tabActiveChipRenderer) Layout(size fyne.Size) {
+	size.Height = tabChipHeight
+	r.chip.Resize(size)
+
+	r.line.Resize(fyne.NewSize(size.Width, tabAccentLineH))
+	r.line.Move(fyne.NewPos(0, 0))
+
+	bodyH := size.Height - tabAccentLineH
+	r.bg.Resize(fyne.NewSize(size.Width, bodyH))
+	r.bg.Move(fyne.NewPos(0, tabAccentLineH))
+
+	padH := float32(4)
+	padV := float32(1)
+	innerW := size.Width - padH*2
+	innerH := bodyH - padV*2
+	if innerW < 0 {
+		innerW = 0
 	}
-	return stack
+	if innerH < 0 {
+		innerH = 0
+	}
+	r.padded.Resize(fyne.NewSize(innerW, innerH))
+	r.padded.Move(fyne.NewPos(padH, tabAccentLineH+padV))
+}
+
+func (r *tabActiveChipRenderer) MinSize() fyne.Size {
+	return r.chip.MinSize()
+}
+
+func (r *tabActiveChipRenderer) Refresh() {
+	r.bg.FillColor = r.chip.bgColor
+	canvas.Refresh(r.bg)
+	canvas.Refresh(r.line)
+}
+
+func (r *tabActiveChipRenderer) Objects() []fyne.CanvasObject {
+	return []fyne.CanvasObject{r.bg, r.line, r.padded}
+}
+
+func (r *tabActiveChipRenderer) Destroy() {}
+
+func (c *tabActiveChip) CreateRenderer() fyne.WidgetRenderer {
+	return &tabActiveChipRenderer{
+		chip:   c,
+		bg:     canvas.NewRectangle(c.bgColor),
+		line:   canvas.NewRectangle(colorAccent),
+		padded: c.content,
+	}
 }
 
 func compactTabText(t *canvas.Text) fyne.CanvasObject {
