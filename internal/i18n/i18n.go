@@ -279,6 +279,8 @@ const (
 	KeyCloudSyncNoLocalData     = "cloudsync.no_local_data"
 	KeyCloudSyncUploading       = "cloudsync.uploading"
 	KeyCloudSyncUploadOK        = "cloudsync.upload_ok"
+	KeyCloudSyncUploadFailPrefix = "cloudsync.upload_fail_prefix"
+	KeyCloudSyncUploadLogFail   = "cloudsync.upload_log_fail"
 	KeyCloudSyncDownloadConfirm = "cloudsync.download_confirm"
 	KeyCloudSyncDownloadOK      = "cloudsync.download_ok"
 	KeyCloudSyncCloudNoData     = "cloudsync.cloud_no_data"
@@ -521,6 +523,8 @@ var enStrings = map[string]string{
 	KeyCloudSyncNoLocalData:     "No local server database to upload.",
 	KeyCloudSyncUploading:       "Uploading to cloud…",
 	KeyCloudSyncUploadOK:        "Synced to cloud. Local last sync: %s",
+	KeyCloudSyncUploadFailPrefix: "Save failed. See log: ",
+	KeyCloudSyncUploadLogFail:   "Save failed (could not write log: %s)",
 	KeyCloudSyncDownloadConfirm: "This will overwrite local server data with the cloud copy. Continue?",
 	KeyCloudSyncDownloadOK:      "Synced from cloud at %s",
 	KeyCloudSyncCloudNoData:     "No data on cloud.",
@@ -763,6 +767,8 @@ var zhStrings = map[string]string{
 	KeyCloudSyncNoLocalData:     "本地没有服务器数据库。",
 	KeyCloudSyncUploading:       "正在上传到云端…",
 	KeyCloudSyncUploadOK:        "已同步到云端。本机上次同步：%s",
+	KeyCloudSyncUploadFailPrefix: "保存失败，详见日志：",
+	KeyCloudSyncUploadLogFail:   "保存失败（无法写入日志：%s）",
 	KeyCloudSyncDownloadConfirm: "将从云端覆盖本地服务器数据，确定继续？",
 	KeyCloudSyncDownloadOK:      "已从云端同步 [%s]",
 	KeyCloudSyncCloudNoData:     "云端无数据。",

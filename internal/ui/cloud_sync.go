@@ -6,6 +6,7 @@ import (
 
 	"github.com/relaypane/relaypane/internal/cloudsync"
 	"github.com/relaypane/relaypane/internal/config"
+	"github.com/relaypane/relaypane/internal/fileopen"
 	"github.com/relaypane/relaypane/internal/i18n"
 
 	"fyne.io/fyne/v2"
@@ -39,16 +40,35 @@ func (a *App) showCloudSync() {
 	privacyNote.Wrapping = fyne.TextWrapWord
 
 	cloudStatusLbl := widget.NewLabel(i18n.T(i18n.KeyCloudSyncCloudUnknown))
-	localStatusLbl := widget.NewLabel(cloudSyncLocalStatus(a.settings.CloudSyncLastSyncAt))
+	localStatusBox := container.NewHBox(widget.NewLabel(cloudSyncLocalStatus(a.settings.CloudSyncLastSyncAt)))
+
+	setLocalStatus := func(objs ...fyne.CanvasObject) {
+		localStatusBox.Objects = objs
+		localStatusBox.Refresh()
+	}
+
+	refreshLocalStatus := func() {
+		setLocalStatus(widget.NewLabel(cloudSyncLocalStatus(a.settings.CloudSyncLastSyncAt)))
+	}
+
+	showUploadError := func(err error) {
+		logPath, logErr := cloudsync.LogUploadError(err)
+		if logErr != nil {
+			setLocalStatus(widget.NewLabel(i18n.Tf(i18n.KeyCloudSyncUploadLogFail, logErr.Error())))
+			return
+		}
+		link := widget.NewButton(logPath, func() { _ = fileopen.OpenPath(logPath) })
+		link.Importance = widget.LowImportance
+		setLocalStatus(
+			widget.NewLabel(i18n.T(i18n.KeyCloudSyncUploadFailPrefix)),
+			link,
+		)
+	}
 
 	saveLocalConfig := func() {
 		a.settings.CloudSyncAPISecret = apiSecret.Text
 		a.settings.CloudSyncPassword = encPass.Text
 		_ = config.SaveSettings(a.settings)
-	}
-
-	refreshLocalStatus := func() {
-		localStatusLbl.SetText(cloudSyncLocalStatus(a.settings.CloudSyncLastSyncAt))
 	}
 
 	saveKeysBtn := widget.NewButton(i18n.T(i18n.KeyCloudSyncSaveLocal), func() {
@@ -94,13 +114,12 @@ func (a *App) showCloudSync() {
 			dialogShowOn(parent(), i18n.T(i18n.KeyCloudSyncTitle), i18n.T(i18n.KeyCloudSyncNoLocalData))
 			return
 		}
-		localStatusLbl.SetText(i18n.T(i18n.KeyCloudSyncUploading))
+		setLocalStatus(widget.NewLabel(i18n.T(i18n.KeyCloudSyncUploading)))
 		go func() {
 			updatedAt, err := cloudsync.Upload(a.store, apiSecret.Text, encPass.Text)
 			fyne.Do(func() {
 				if err != nil {
-					refreshLocalStatus()
-					dialogShowErrorOn(parent(), err)
+					showUploadError(err)
 					return
 				}
 				now := time.Now().Format("2006-01-02 15:04:05")
@@ -214,7 +233,7 @@ func (a *App) showCloudSync() {
 
 	statusSection := container.NewVBox(
 		widget.NewLabel(i18n.T(i18n.KeyCloudSyncStatusSection)),
-		container.NewHBox(widget.NewLabel(i18n.T(i18n.KeyCloudSyncLocalStatus)), localStatusLbl),
+		container.NewHBox(widget.NewLabel(i18n.T(i18n.KeyCloudSyncLocalStatus)), localStatusBox),
 		container.NewHBox(widget.NewLabel(i18n.T(i18n.KeyCloudSyncCloudStatus)), cloudStatusLbl),
 	)
 

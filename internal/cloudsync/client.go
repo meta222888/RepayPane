@@ -149,19 +149,19 @@ func (c *Client) SetEncryptedValue(value string) (updatedAt string, err error) {
 	}
 	var out apiResponse
 	if err := json.Unmarshal(body, &out); err != nil {
-		return "", fmt.Errorf("invalid response: %w", err)
+		return "", newResponseError(resp.StatusCode, body, fmt.Errorf("invalid response: %w", err))
 	}
 	if resp.StatusCode == http.StatusUnauthorized || out.Code == 401 {
-		return "", fmt.Errorf("unauthorized: check API secret")
+		return "", newResponseError(resp.StatusCode, body, fmt.Errorf("unauthorized: check API secret"))
 	}
 	if resp.StatusCode == http.StatusTooManyRequests || out.Code == 429 {
-		return "", fmt.Errorf("rate limited, try again later")
+		return "", newResponseError(resp.StatusCode, body, fmt.Errorf("rate limited, try again later"))
 	}
 	if out.Code != 200 {
 		if out.Message != "" {
-			return "", fmt.Errorf("%s", out.Message)
+			return "", newResponseError(resp.StatusCode, body, fmt.Errorf("%s", out.Message))
 		}
-		return "", fmt.Errorf("upload failed (HTTP %d)", resp.StatusCode)
+		return "", newResponseError(resp.StatusCode, body, fmt.Errorf("upload failed (HTTP %d)", resp.StatusCode))
 	}
 	if out.Data != nil {
 		return out.Data.UpdatedAt, nil
