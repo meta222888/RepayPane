@@ -1,70 +1,87 @@
 package walkui
 
 import (
-	"os"
-	"path/filepath"
+	"image"
 	"sync"
 	"syscall"
-	"unsafe"
 
 	"github.com/relaypane/relaypane/internal/assets"
 
+	"github.com/lxn/walk"
 	"github.com/lxn/win"
 )
 
-const (
-	imageCursor    = 2
-	lrLoadFromFile = 0x00000010
-	lrDefaultSize  = 0x00000040
-	idcArrow       = 32512
-)
+const vkLButton = 0x01
+
+var getAsyncKeyState = syscall.NewLazyDLL("user32.dll").NewProc("GetAsyncKeyState")
 
 var (
-	user32      = syscall.NewLazyDLL("user32.dll")
-	loadImageW  = user32.NewProc("LoadImageW")
-	setCursor   = user32.NewProc("SetCursor")
-	loadCursorW = user32.NewProc("LoadCursorW")
-
-	fileDragCursorHandle uintptr
-	fileDragCursorOnce   sync.Once
+	fileDragWalkCur     walk.Cursor
+	fileDragWalkCurOnce sync.Once
 )
 
-func initFileDragCursor() {
-	fileDragCursorOnce.Do(func() {
-		path := filepath.Join(os.TempDir(), "relaypane-file-drag.cur")
-		if err := os.WriteFile(path, assets.CopyCURBytes(), 0o644); err != nil {
-			return
-		}
-		pathW, err := syscall.UTF16PtrFromString(path)
+func fileDragWalkCursor() walk.Cursor {
+	fileDragWalkCurOnce.Do(func() {
+		img, hotX, hotY, err := assets.DecodeCursorImageForTest(assets.CopyCURBytes())
 		if err != nil {
 			return
 		}
-		h, _, _ := loadImageW.Call(
-			0,
-			uintptr(unsafe.Pointer(pathW)),
-			imageCursor,
-			0,
-			0,
-			lrLoadFromFile|lrDefaultSize,
-		)
-		if h != 0 {
-			fileDragCursorHandle = h
+		cur, err := walk.NewCursorFromImage(img, image.Pt(hotX, hotY))
+		if err != nil {
+			return
 		}
+		fileDragWalkCur = cur
 	})
+	return fileDragWalkCur
 }
 
-func applyFileDragCursor() {
-	initFileDragCursor()
-	if fileDragCursorHandle != 0 {
-		setCursor.Call(fileDragCursorHandle)
+func setFileDragCursor(a *App, active bool) {
+	var cur walk.Cursor
+	if active {
+		cur = fileDragWalkCursor()
+	}
+	if a == nil {
+		return
+	}
+	if a.mw != nil {
+		a.mw.SetCursor(cur)
+	}
+	if a.localTV != nil {
+		a.localTV.SetCursor(cur)
+	}
+	if a.remoteTV != nil {
+		a.remoteTV.SetCursor(cur)
 	}
 }
 
-func clearFileDragCursor() {
-	h, _, _ := loadCursorW.Call(0, idcArrow)
-	if h != 0 {
-		setCursor.Call(h)
+func isLeftButtonDown() bool {
+	r, _, _ := getAsyncKeyState.Call(vkLButton)
+	return r&0x8000 != 0
+}
+
+func hwndContainsCursor(hwnd win.HWND) bool {
+	if hwnd == 0 {
+		return false
 	}
+	var pt win.POINT
+	if !win.GetCursorPos(&pt) {
+		return false
+	}
+	var rect win.RECT
+	if !win.GetWindowRect(hwnd, &rect) {
+		return false
+	}
+	return pt.X >= rect.Left && pt.X < rect.Right && pt.Y >= rect.Top && pt.Y < rect.Bottom
+}
+
+func (a *App) dragTargetPaneAtCursor() (local bool, ok bool) {
+	if a.remoteTV != nil && hwndContainsCursor(a.remoteTV.Handle()) {
+		return false, true
+	}
+	if a.localTV != nil && hwndContainsCursor(a.localTV.Handle()) {
+		return true, true
+	}
+	return false, false
 }
 
 func setWindowOwner(child, owner win.HWND) {

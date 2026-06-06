@@ -9,6 +9,7 @@ import (
 	"github.com/lxn/walk"
 	"github.com/lxn/win"
 )
+
 type dragState struct {
 	active      bool
 	sourceLocal bool
@@ -33,6 +34,14 @@ func (a *App) selectedClipItems(local bool) []clipItem {
 	return out
 }
 
+func (a *App) cancelFileDrag() {
+	if !a.drag.active {
+		return
+	}
+	setFileDragCursor(a, false)
+	a.drag.reset()
+}
+
 func (a *App) attachPaneDrag(tv *walk.TableView, local bool) {
 	if tv == nil {
 		return
@@ -49,7 +58,14 @@ func (a *App) attachPaneDrag(tv *walk.TableView, local bool) {
 		startX, startY = x, y
 	})
 	tv.MouseMove().Attach(func(x, y int, button walk.MouseButton) {
-		if !down || a.drag.active {
+		if a.drag.active {
+			if !isLeftButtonDown() {
+				a.cancelFileDrag()
+				down = false
+			}
+			return
+		}
+		if !down {
 			return
 		}
 		dx, dy := x-startX, y-startY
@@ -63,19 +79,18 @@ func (a *App) attachPaneDrag(tv *walk.TableView, local bool) {
 		a.drag.active = true
 		a.drag.sourceLocal = local
 		a.drag.items = items
-		applyFileDragCursor()
-	})
-	tv.MouseMove().Attach(func(x, y int, button walk.MouseButton) {
-		if a.drag.active {
-			applyFileDragCursor()
-		}
+		setFileDragCursor(a, true)
 	})
 	tv.MouseUp().Attach(func(x, y int, button walk.MouseButton) {
-		if a.drag.active {
-			clearFileDragCursor()
+		if button != walk.LeftButton {
+			return
 		}
-		if a.drag.active && a.drag.sourceLocal != local {
-			a.completeDragDrop(local)
+		if a.drag.active {
+			setFileDragCursor(a, false)
+			targetLocal, onPane := a.dragTargetPaneAtCursor()
+			if onPane && a.drag.sourceLocal != targetLocal {
+				a.completeDragDrop(targetLocal)
+			}
 		}
 		down = false
 		a.drag.reset()
