@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/relaypane/relaypane/internal/config"
+	"github.com/relaypane/relaypane/internal/i18n"
 	"github.com/relaypane/relaypane/internal/remote"
 )
 
@@ -57,7 +58,7 @@ func (a *App) activeClient() *remote.Client {
 func (a *App) requireClient() (*remote.Client, bool) {
 	c := a.activeClient()
 	if c == nil {
-		a.showMsg("RelayPane", "Not connected.")
+		a.showMsg(i18n.T(i18n.KeyNotConnectedTitle), i18n.T(i18n.KeyNotConnectedFirst))
 		return nil, false
 	}
 	return c, true

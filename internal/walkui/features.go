@@ -34,26 +34,6 @@ echo "=== User ==="
 whoami; id 2>/dev/null
 `
 
-const netCombinedCmd = `echo "=== Interfaces (/proc/net/dev) ==="
-awk 'NR>2 {
-  iface=$1; gsub(":", "", iface)
-  if (iface=="lo") next
-  print iface "\t" $2 "\t" $10
-}' /proc/net/dev 2>/dev/null
-echo
-echo "=== Routes ==="
-(ip -o route show 2>/dev/null || ip route 2>/dev/null || route -n 2>/dev/null) | head -12
-echo
-echo "=== Listening Ports ==="
-(ss -tulnp 2>/dev/null || netstat -tulnp 2>/dev/null || netstat -tuln 2>/dev/null)
-`
-
-const resourcesCmd = `free -b 2>/dev/null | awk '/^Mem:/ {print "MEM_TOTAL="$2; print "MEM_USED="$3; print "MEM_FREE="$4}'
-grep '^cpu ' /proc/stat | awk '{idle=$5+$6; total=0; for(i=2;i<=NF;i++) total+=$i; print "CPU_IDLE=" idle; print "CPU_TOTAL=" total}'
-uptime
-ps -eo pid,user,comm,%cpu,%mem --sort=-%mem 2>/dev/null | head -10
-`
-
 func (a *App) showSystemInfo() {
 	client, ok := a.requireClient()
 	if !ok {
@@ -63,60 +43,6 @@ func (a *App) showSystemInfo() {
 		set(i18n.T(i18n.KeyFeatLoading))
 		go func() {
 			out, err := client.RunCombined(sysInfoCmd)
-			if err != nil && strings.TrimSpace(out) == "" {
-				set(err.Error())
-				return
-			}
-			set(strings.TrimSpace(out))
-		}()
-	})
-}
-
-func (a *App) showNetworkInfo() {
-	client, ok := a.requireClient()
-	if !ok {
-		return
-	}
-	a.showFeatureDialog(i18n.T(i18n.KeyFeatNetwork), func(set func(string)) {
-		set(i18n.T(i18n.KeyFeatLoading))
-		go func() {
-			out, err := client.RunCombined(netCombinedCmd)
-			if err != nil && strings.TrimSpace(out) == "" {
-				set(err.Error())
-				return
-			}
-			set(strings.TrimSpace(out))
-		}()
-	})
-}
-
-func (a *App) showDiskSpace() {
-	client, ok := a.requireClient()
-	if !ok {
-		return
-	}
-	a.showFeatureDialog(i18n.T(i18n.KeyFeatDisk), func(set func(string)) {
-		set(i18n.T(i18n.KeyFeatLoading))
-		go func() {
-			out, err := client.RunCombined(`df -hP 2>/dev/null || df -h 2>/dev/null`)
-			if err != nil && strings.TrimSpace(out) == "" {
-				set(err.Error())
-				return
-			}
-			set(strings.TrimSpace(out))
-		}()
-	})
-}
-
-func (a *App) showResourceUsage() {
-	client, ok := a.requireClient()
-	if !ok {
-		return
-	}
-	a.showFeatureDialog(i18n.T(i18n.KeyFeatResources), func(set func(string)) {
-		set(i18n.T(i18n.KeyFeatLoading))
-		go func() {
-			out, err := client.RunCombined(resourcesCmd)
 			if err != nil && strings.TrimSpace(out) == "" {
 				set(err.Error())
 				return

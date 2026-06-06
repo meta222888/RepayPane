@@ -202,6 +202,7 @@ const (
 	KeyFileExistsTitle    = "dialog.file_exists_title"
 	KeyFileExistsConflict = "dialog.file_exists_conflict"
 	KeyOverwrite          = "dialog.overwrite"
+	KeySkip                 = "dialog.skip"
 	KeyRename             = "dialog.rename"
 	KeyRenamePrompt       = "dialog.rename_prompt"
 	KeyRenameInvalidName  = "dialog.rename_invalid_name"
@@ -454,6 +455,7 @@ var enStrings = map[string]string{
 	KeyFileExistsTitle:   "File Already Exists",
 	KeyFileExistsConflict: "%q already exists.\nChoose an action:",
 	KeyOverwrite:         "Overwrite",
+	KeySkip:              "Skip",
 	KeyRename:            "Rename",
 	KeyRenamePrompt:      "Enter a new name:",
 	KeyRenameInvalidName: "Invalid file or folder name.",
@@ -706,6 +708,7 @@ var zhStrings = map[string]string{
 	KeyFileExistsTitle:   "文件已存在",
 	KeyFileExistsConflict: "%q 已存在。\n请选择操作：",
 	KeyOverwrite:         "覆盖",
+	KeySkip:              "跳过",
 	KeyRename:            "重命名",
 	KeyRenamePrompt:      "请输入新名称：",
 	KeyRenameInvalidName: "文件名或文件夹名无效。",

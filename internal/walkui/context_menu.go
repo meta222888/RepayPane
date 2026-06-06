@@ -35,6 +35,38 @@ func (a *App) populatePaneMenu(menu *walk.Menu, local bool) {
 	clip := a.clipboard
 	connected := a.activeClient() != nil
 
+	if !hasSel {
+		addMenuAction(menu, i18n.T(i18n.KeyRefresh), func() {
+			if local {
+				a.refreshLocal()
+			} else {
+				a.refreshRemote()
+			}
+		}, local || connected)
+		addMenuAction(menu, i18n.T(i18n.KeyCtxPaste), func() {
+			if local {
+				a.ctxPasteLocal()
+			} else {
+				a.ctxPasteRemote()
+			}
+		}, a.canPaste(local, clip, connected))
+		addMenuAction(menu, i18n.T(i18n.KeyCtxNewFolder), func() {
+			if local {
+				a.ctxNewFolderLocal()
+			} else {
+				a.ctxNewFolderRemote()
+			}
+		}, local || connected)
+		addMenuAction(menu, i18n.T(i18n.KeyCtxNewFile), func() {
+			if local {
+				a.ctxNewFileLocal()
+			} else {
+				a.ctxNewFileRemote()
+			}
+		}, local || connected)
+		return
+	}
+
 	addMenuAction(menu, i18n.T(i18n.KeyUpload), a.uploadSelected, local && hasSel && connected)
 	addMenuAction(menu, i18n.T(i18n.KeyDownload), a.downloadSelected, !local && hasSel && connected)
 	menu.Actions().Add(walk.NewSeparatorAction())
@@ -62,9 +94,9 @@ func (a *App) populatePaneMenu(menu *walk.Menu, local bool) {
 	}, single && !items[0].isDir)
 	addMenuAction(menu, i18n.T(i18n.KeyRename), func() {
 		if local {
-			a.ctxRenameLocal()
+			a.startInlineRename(true)
 		} else {
-			a.ctxRenameRemote()
+			a.startInlineRename(false)
 		}
 	}, single)
 	menu.Actions().Add(walk.NewSeparatorAction())

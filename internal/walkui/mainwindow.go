@@ -38,13 +38,13 @@ func Run() error {
 			},
 			ToolBar{
 				Items: []MenuItem{
-					Action{Text: i18n.T(i18n.KeyConnect), OnTriggered: app.showConnectDialog},
-					Action{Text: i18n.T(i18n.KeyRefresh), OnTriggered: func() {
+					Action{AssignTo: &app.toolbarConnect, Text: i18n.T(i18n.KeyConnect), OnTriggered: app.showConnectDialog},
+					Action{AssignTo: &app.toolbarRefresh, Text: i18n.T(i18n.KeyRefresh), OnTriggered: func() {
 						app.refreshLocal()
 						app.refreshRemote()
 					}},
-					Action{Text: i18n.T(i18n.KeyUpload), OnTriggered: app.uploadSelected},
-					Action{Text: i18n.T(i18n.KeyDownload), OnTriggered: app.downloadSelected},
+					Action{AssignTo: &app.toolbarUpload, Text: i18n.T(i18n.KeyUpload), OnTriggered: app.uploadSelected},
+					Action{AssignTo: &app.toolbarDownload, Text: i18n.T(i18n.KeyDownload), OnTriggered: app.downloadSelected},
 				},
 			},
 			HSplitter{
@@ -60,6 +60,12 @@ func Run() error {
 					Composite{
 						Layout: HBox{},
 						Children: []Widget{
+							Label{
+								AssignTo:  &app.connDot,
+								Text:      "●",
+								TextColor: walk.RGB(231, 76, 60),
+								Font:      Font{PointSize: 10, Bold: true},
+							},
 							Label{AssignTo: &app.statusLabel, Text: i18n.T(i18n.KeyNotConnected)},
 							HSpacer{},
 							Label{AssignTo: &app.transferLabel, Text: i18n.T(i18n.KeyTransferIdle)},
@@ -79,8 +85,11 @@ func Run() error {
 	}
 
 	app.mw = mw
+	app.setupRenameEdit(app.localRenameEdit, true)
+	app.setupRenameEdit(app.remoteRenameEdit, false)
 	app.attachPaneDrag(app.localTV, true)
 	app.attachPaneDrag(app.remoteTV, false)
+	app.registerShortcuts()
 	app.refreshLocal()
 	app.refreshTabBar()
 	app.updateStatusBar()
@@ -150,32 +159,38 @@ func tableColumns() []TableViewColumn {
 }
 
 func paneComposite(app *App, local bool) Widget {
-	title := i18n.T(i18n.KeyRemote)
-	if local {
-		title = i18n.T(i18n.KeyLocal)
-	}
-
+	var titleLabel **walk.Label
 	var pathEdit **walk.LineEdit
 	var tv **walk.TableView
 	var model *dirModel
+	var renamePanel **walk.Composite
+	var renameEdit **walk.LineEdit
+	var loadingLabel **walk.Label
 	var upFn, refreshFn, activatedFn func()
 	var onPathReturn func()
 	var driveCombo **walk.ComboBox
 	var placesCombo **walk.ComboBox
 
 	if local {
+		titleLabel = &app.localPaneTitle
 		pathEdit = &app.localPathEdit
 		tv = &app.localTV
 		model = app.localModel
+		renamePanel = &app.localRenamePanel
+		renameEdit = &app.localRenameEdit
 		upFn = app.localUp
 		refreshFn = app.refreshLocal
 		activatedFn = app.onLocalActivated
 		driveCombo = &app.localDriveCombo
 		onPathReturn = func() { app.navigateLocal(app.localPathEdit.Text()) }
 	} else {
+		titleLabel = &app.remotePaneTitle
 		pathEdit = &app.remotePathEdit
 		tv = &app.remoteTV
 		model = app.remoteModel
+		renamePanel = &app.remoteRenamePanel
+		renameEdit = &app.remoteRenameEdit
+		loadingLabel = &app.remoteLoadingLabel
 		upFn = app.remoteUp
 		refreshFn = app.refreshRemote
 		activatedFn = app.onRemoteActivated
@@ -232,15 +247,27 @@ func paneComposite(app *App, local bool) Widget {
 	})
 
 	prepCtx := app.prepareLocalContextMenu
+	paneTitle := i18n.T(i18n.KeyLocal)
 	if !local {
 		prepCtx = app.prepareRemoteContextMenu
+		paneTitle = i18n.T(i18n.KeyRemote)
 	}
 
 	return Composite{
 		Layout: VBox{Margins: Margins{4, 4, 4, 4}},
 		Children: []Widget{
-			Label{Text: title, Font: Font{Bold: true}},
+			Label{AssignTo: titleLabel, Text: paneTitle, Font: Font{Bold: true}},
 			Composite{Layout: HBox{MarginsZero: true}, Children: navRow},
+			Composite{
+				AssignTo: renamePanel,
+				Layout:   HBox{},
+				Visible:  false,
+				Children: []Widget{
+					Label{Text: i18n.T(i18n.KeyRename) + ":"},
+					LineEdit{AssignTo: renameEdit},
+				},
+			},
+			Label{AssignTo: loadingLabel, Text: i18n.T(i18n.KeyFeatLoading), Visible: false},
 			TableView{
 				AssignTo:           tv,
 				AlternatingRowBG:   true,

@@ -32,10 +32,25 @@ type App struct {
 	localModel      *dirModel
 	remoteModel     *dirModel
 
+	localPaneTitle  *walk.Label
+	remotePaneTitle *walk.Label
+	localRenamePanel  *walk.Composite
+	remoteRenamePanel *walk.Composite
+	localRenameEdit   *walk.LineEdit
+	remoteRenameEdit  *walk.LineEdit
+	localLoadingLabel *walk.Label
+	remoteLoadingLabel *walk.Label
+
+	connDot       *walk.Label
 	statusLabel    *walk.Label
 	transferLabel  *walk.Label
 	progressBar    *walk.ProgressBar
 	reconnectBtn   *walk.PushButton
+
+	toolbarConnect  *walk.Action
+	toolbarRefresh  *walk.Action
+	toolbarUpload   *walk.Action
+	toolbarDownload *walk.Action
 
 	localPath  string
 	remotePath string
@@ -44,6 +59,15 @@ type App struct {
 	server     config.Server
 	connected  bool
 	connecting bool
+
+	focusLocal bool
+
+	renamingLocal  bool
+	renamingRemote bool
+	localRenameRow  int
+	remoteRenameRow int
+	localClick      paneClickState
+	remoteClick     paneClickState
 
 	transfers *TransferQueue
 	clipboard *paneClipboard
@@ -59,6 +83,9 @@ func newApp(store *config.Store, settings *config.Settings) *App {
 		localPath:  defaultLocalDir(),
 		remotePath: "/",
 		activeTab:  -1,
+		localRenameRow:  -1,
+		remoteRenameRow: -1,
+		focusLocal:      true,
 	}
 }
 
@@ -143,6 +170,7 @@ func (a *App) updateStatusBar() {
 		text = i18n.T(i18n.KeyDisconnected)
 	}
 	a.setStatus(text)
+	a.updateConnDot()
 	if a.reconnectBtn != nil {
 		a.reconnectBtn.SetVisible(tab != nil && tab.state == tabDisconnected)
 	}
@@ -198,25 +226,40 @@ func (a *App) refreshLocal() {
 }
 
 func (a *App) refreshRemote() {
+	if a.remoteLoadingLabel != nil {
+		a.remoteLoadingLabel.SetVisible(a.connected && a.client != nil)
+	}
 	if !a.connected || a.client == nil {
 		a.remoteModel.setItems(nil)
 		if a.remotePathEdit != nil {
 			a.remotePathEdit.SetText(a.remotePath)
 		}
+		if a.remoteLoadingLabel != nil {
+			a.remoteLoadingLabel.SetVisible(false)
+		}
 		return
 	}
-	entries, err := listRemoteDir(a.client, a.remotePath)
-	if err != nil {
-		a.showError(i18n.T(i18n.KeyRemote), err)
-		return
-	}
-	a.remoteModel.setItems(entries)
-	if a.remotePathEdit != nil {
-		a.remotePathEdit.SetText(a.remotePath)
-	}
-	if tab := a.activeSession(); tab != nil {
-		tab.remotePath = a.remotePath
-	}
+	client := a.client
+	dir := a.remotePath
+	go func() {
+		entries, err := listRemoteDir(client, dir)
+		a.syncUI(func() {
+			if a.remoteLoadingLabel != nil {
+				a.remoteLoadingLabel.SetVisible(false)
+			}
+			if err != nil {
+				a.showError(i18n.T(i18n.KeyRemote), err)
+				return
+			}
+			a.remoteModel.setItems(entries)
+			if a.remotePathEdit != nil {
+				a.remotePathEdit.SetText(a.remotePath)
+			}
+			if tab := a.activeSession(); tab != nil {
+				tab.remotePath = a.remotePath
+			}
+		})
+	}()
 }
 
 func listLocalDir(dir string) ([]dirEntry, error) {
@@ -294,7 +337,5 @@ func (a *App) setLanguage(lang i18n.Lang) {
 	i18n.SetLanguage(lang)
 	a.settings.Language = string(lang)
 	_ = config.SaveSettings(a.settings)
-	if a.mw != nil {
-		a.mw.SetTitle(i18n.T(i18n.KeyAppTitle) + " (Win32)")
-	}
+	a.applyLanguage()
 }

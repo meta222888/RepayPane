@@ -3,14 +3,11 @@ package walkui
 import (
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 
 	"github.com/relaypane/relaypane/internal/i18n"
 	"github.com/relaypane/relaypane/internal/remote"
-
-	"github.com/lxn/walk"
 )
 
 func (a *App) navigateLocal(p string) {
@@ -305,45 +302,11 @@ func (a *App) ctxDeleteRemote() {
 }
 
 func (a *App) ctxRenameLocal() {
-	items := a.selectedLocalEntries()
-	if len(items) != 1 {
-		return
-	}
-	e := items[0]
-	name, ok := a.promptInput(i18n.T(i18n.KeyRename), i18n.T(i18n.KeyRenamePrompt), e.name)
-	if !ok || strings.TrimSpace(name) == "" || name == e.name {
-		return
-	}
-	dst := filepath.Join(filepath.Dir(e.fullPath), name)
-	if err := os.Rename(e.fullPath, dst); err != nil {
-		a.showError(i18n.T(i18n.KeyRename), err)
-		return
-	}
-	a.refreshLocal()
+	a.startInlineRename(true)
 }
 
 func (a *App) ctxRenameRemote() {
-	client := a.activeClient()
-	items := a.selectedRemoteEntries()
-	if client == nil || len(items) != 1 {
-		return
-	}
-	e := items[0]
-	name, ok := a.promptInput(i18n.T(i18n.KeyRename), i18n.T(i18n.KeyRenamePrompt), e.name)
-	if !ok || strings.TrimSpace(name) == "" || name == e.name {
-		return
-	}
-	dst := joinRemote(path.Dir(strings.ReplaceAll(e.fullPath, "\\", "/")), name)
-	go func() {
-		err := client.Rename(e.fullPath, dst)
-		a.syncUI(func() {
-			if err != nil {
-				a.showError(i18n.T(i18n.KeyRename), err)
-				return
-			}
-			a.refreshRemote()
-		})
-	}()
+	a.startInlineRename(false)
 }
 
 func (a *App) ctxNewFolderLocal() {
@@ -549,30 +512,6 @@ func relRemotePath(base, full string) string {
 	full = strings.TrimPrefix(full, base)
 	full = strings.TrimPrefix(full, "/")
 	return filepath.FromSlash(full)
-}
-
-func (a *App) resolveFileConflict(fileName string, exists func(string) bool, onProceed func(string)) {
-	msg := i18n.Tf(i18n.KeyFileExistsConflict, fileName)
-	a.syncUI(func() {
-		switch walk.MsgBox(a.mw, i18n.T(i18n.KeyFileExistsTitle), msg+"\n\nYes=Overwrite, No=Cancel, Cancel=Rename",
-			walk.MsgBoxYesNoCancel|walk.MsgBoxIconWarning) {
-		case walk.DlgCmdYes:
-			onProceed(fileName)
-		case walk.DlgCmdCancel:
-			name, ok := a.promptInput(i18n.T(i18n.KeyRename), i18n.T(i18n.KeyRenamePrompt), suggestCopyName(fileName, exists))
-			if ok && name != "" {
-				if exists(name) {
-					a.resolveFileConflict(name, exists, onProceed)
-					return
-				}
-				onProceed(name)
-			} else {
-				onProceed("")
-			}
-		default:
-			onProceed("")
-		}
-	})
 }
 
 func suggestCopyName(original string, exists func(string) bool) string {
