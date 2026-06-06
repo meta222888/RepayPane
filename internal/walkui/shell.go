@@ -26,9 +26,21 @@ func (a *App) showRemoteShell() {
 	history := append([]string(nil), a.settings.ShellHistory...)
 
 	setOutput := func(text string) {
-		if outEdit != nil {
-			outEdit.SetText(text)
+		setMultilineText(outEdit, text)
+	}
+
+	applyHistorySelection := func() {
+		if histBox == nil || cmdEdit == nil {
+			return
 		}
+		idx := histBox.CurrentIndex()
+		if idx < 0 || idx >= len(history) {
+			return
+		}
+		cmd := history[idx]
+		cmdEdit.SetText(cmd)
+		cmdEdit.SetFocus()
+		cmdEdit.SetTextSelection(0, len(cmd))
 	}
 
 	runCmd := func() {
@@ -75,7 +87,12 @@ func (a *App) showRemoteShell() {
 				Layout: HBox{},
 				Children: []Widget{
 					Label{Text: i18n.T(i18n.KeyFeatShellHistory)},
-					ComboBox{AssignTo: &histBox, Model: history, Editable: true},
+					ComboBox{
+						AssignTo:             &histBox,
+						Model:                history,
+						Editable:             true,
+						OnCurrentIndexChanged: func() { applyHistorySelection() },
+					},
 					PushButton{Text: i18n.T(i18n.KeyFeatShellDelOne), OnClicked: func() {
 						sel := histBox.Text()
 						if sel != "" {

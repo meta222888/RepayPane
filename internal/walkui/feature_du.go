@@ -2,7 +2,6 @@ package walkui
 
 import (
 	"path"
-	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -150,7 +149,7 @@ func parseDuRows(out, parent string, err error) []duRow {
 		}
 		isDir := parts[0] == "D"
 		sizeKB, _ := strconv.ParseInt(strings.TrimSpace(parts[1]), 10, 64)
-		p := strings.TrimSpace(parts[2])
+		p := normalizeRemotePath(strings.TrimSpace(parts[2]))
 		name := path.Base(p)
 		rows = append(rows, duRow{
 			name: name, size: formatKBHuman(sizeKB), sizeKB: sizeKB,
@@ -174,26 +173,20 @@ func formatKBHuman(kb int64) string {
 }
 
 func duListCmd(dir string) string {
-	quoted := `"` + strings.ReplaceAll(dir, `"`, `\"`) + `"`
+	dir = normalizeRemotePath(dir)
 	tab := "\t"
-	return `du -sk ` + quoted + `/* 2>/dev/null | sort -rn | while read sz p; do
+	body := `while read sz p; do
   [ -z "$p" ] && continue
   if [ -d "$p" ]; then t=D; else t=F; fi
   printf "%s` + tab + `%s` + tab + `%s\n" "$t" "$sz" "$p"
 done`
+	if dir == "/" {
+		return `du -sk /* 2>/dev/null | sort -rn | ` + body
+	}
+	quoted := `"` + strings.ReplaceAll(dir, `"`, `\"`) + `"`
+	return `du -sk ` + quoted + `/* 2>/dev/null | sort -rn | ` + body
 }
 
 func normalizeDuPath(p string) string {
-	p = strings.ReplaceAll(p, "\\", "/")
-	if p == "" {
-		return "/"
-	}
-	if !strings.HasPrefix(p, "/") {
-		p = "/" + p
-	}
-	cleaned := filepath.ToSlash(filepath.Clean(p))
-	if cleaned == "." {
-		return "/"
-	}
-	return cleaned
+	return normalizeRemotePath(p)
 }

@@ -10,6 +10,7 @@ func (a *App) registerShortcuts() {
 	}
 	a.attachPaneKeys(a.localTV, true)
 	a.attachPaneKeys(a.remoteTV, false)
+	a.registerGlobalShortcut(walk.ModControl, walk.KeyE, a.showRemoteShell)
 	a.mw.KeyDown().Attach(func(key walk.Key) {
 		if a.handleRenameKey(key) {
 			return
@@ -28,6 +29,18 @@ func (a *App) registerShortcuts() {
 			a.showRemoteShell()
 		}
 	})
+}
+
+func (a *App) registerGlobalShortcut(mods walk.Modifiers, key walk.Key, fn func()) {
+	if a.mw == nil || fn == nil {
+		return
+	}
+	action := walk.NewAction()
+	action.SetShortcut(walk.Shortcut{Modifiers: mods, Key: key})
+	action.SetVisible(true)
+	action.SetEnabled(true)
+	action.Triggered().Attach(fn)
+	a.mw.Menu().Actions().Add(action)
 }
 
 func (a *App) attachPaneKeys(tv *walk.TableView, local bool) {
@@ -56,6 +69,8 @@ func (a *App) attachPaneKeys(tv *walk.TableView, local bool) {
 			} else {
 				a.ctxDeleteRemote()
 			}
+		case key == walk.KeyE && mods&walk.ModControl != 0:
+			a.showRemoteShell()
 		}
 	})
 	tv.MouseDown().Attach(func(x, y int, button walk.MouseButton) {

@@ -165,7 +165,7 @@ func (a *App) showResourceUsage() {
 					addLabel(content, uptimeLine)
 				}
 				addTitleLabel(content, i18n.T(i18n.KeyFeatResProcesses))
-				addLabel(content, extractProcessTable(out))
+				addReadOnlyTextBlock(content, extractProcessTable(out))
 			})
 		}()
 	}
@@ -212,6 +212,7 @@ func (a *App) showNetworkInfo() {
 	var portsEdit *walk.TextEdit
 	var autoCheck *walk.CheckBox
 	var stopCh chan struct{}
+	panel := (*netTrafficPanel)(nil)
 
 	refreshTraffic := func(full bool) {
 		go func() {
@@ -221,7 +222,34 @@ func (a *App) showNetworkInfo() {
 				routeOut, _ = client.RunCombined(netRouteCmd)
 			}
 			a.syncUI(func() {
-				a.renderNetTrafficUI(trafficBox, summaryLbl, bootLbl, ifaceOut, routeOut, ifaceErr, autoCheck != nil && autoCheck.Checked())
+				if panel == nil {
+					return
+				}
+				stats := parseNetIfaces(ifaceOut)
+				if len(stats) == 0 {
+					msg := i18n.T(i18n.KeyFeatNoData)
+					if ifaceErr != nil && strings.TrimSpace(ifaceOut) == "" {
+						msg = ifaceErr.Error()
+					}
+					if full {
+						clearComposite(trafficBox)
+						addLabel(trafficBox, msg)
+					}
+					return
+				}
+				var bootRx, bootTx int64
+				for _, s := range stats {
+					bootRx += s.rx
+					bootTx += s.tx
+				}
+				if bootLbl != nil {
+					bootLbl.SetText(i18n.Tf(i18n.KeyFeatNetBootTotals, formatBytes(bootRx), formatBytes(bootTx)))
+				}
+				if full {
+					panel.update(stats, routeOut, true)
+				} else {
+					panel.updateInPlace(stats)
+				}
 			})
 		}()
 	}
@@ -234,10 +262,10 @@ func (a *App) showNetworkInfo() {
 					return
 				}
 				if err != nil && strings.TrimSpace(out) == "" {
-					portsEdit.SetText(err.Error())
+					setMultilineText(portsEdit, err.Error())
 					return
 				}
-				portsEdit.SetText(strings.TrimSpace(out))
+				setMultilineText(portsEdit, strings.TrimSpace(out))
 			})
 		}()
 	}
@@ -248,23 +276,34 @@ func (a *App) showNetworkInfo() {
 		MinSize:  Size{720, 560},
 		Layout:   VBox{},
 		Children: []Widget{
-			Label{AssignTo: &summaryLbl, Text: i18n.T(i18n.KeyFeatNetRatePending)},
-			Label{AssignTo: &bootLbl, Text: ""},
-			CheckBox{
-				AssignTo: &autoCheck,
-				Text:     i18n.T(i18n.KeyFeatNetAutoRefresh),
-				Checked:  true,
-				OnCheckedChanged: func() {
-					if stopCh != nil {
-						close(stopCh)
-						stopCh = nil
-					}
-					if autoCheck.Checked() {
-						stopCh = make(chan struct{})
-						go a.netAutoRefreshLoop(client, trafficBox, summaryLbl, bootLbl, autoCheck, stopCh)
-					} else if summaryLbl != nil {
-						summaryLbl.SetText(i18n.T(i18n.KeyFeatNetRateOff))
-					}
+			Composite{
+				Layout: HBox{},
+				Children: []Widget{
+					Composite{
+						Layout: VBox{},
+						Children: []Widget{
+							Label{AssignTo: &summaryLbl, Text: i18n.T(i18n.KeyFeatNetRatePending)},
+							Label{AssignTo: &bootLbl, Text: ""},
+						},
+					},
+					HSpacer{},
+					CheckBox{
+						AssignTo: &autoCheck,
+						Text:     i18n.T(i18n.KeyFeatNetAutoRefresh),
+						Checked:  true,
+						OnCheckedChanged: func() {
+							if stopCh != nil {
+								close(stopCh)
+								stopCh = nil
+							}
+							if autoCheck.Checked() {
+								stopCh = make(chan struct{})
+								go a.netAutoRefreshLoop(client, panel, summaryLbl, autoCheck, stopCh)
+							} else if summaryLbl != nil {
+								summaryLbl.SetText(i18n.T(i18n.KeyFeatNetRateOff))
+							}
+						},
+					},
 				},
 			},
 			ScrollView{
@@ -288,6 +327,7 @@ func (a *App) showNetworkInfo() {
 	}).Create(a.mw); err != nil {
 		return
 	}
+	panel = newNetTrafficPanel(trafficBox)
 	a.ownDialog(dlg)
 	dlg.Closing().Attach(func(canceled *bool, reason walk.CloseReason) {
 		if stopCh != nil {
@@ -296,13 +336,13 @@ func (a *App) showNetworkInfo() {
 		}
 	})
 	stopCh = make(chan struct{})
-	go a.netAutoRefreshLoop(client, trafficBox, summaryLbl, bootLbl, autoCheck, stopCh)
+	go a.netAutoRefreshLoop(client, panel, summaryLbl, autoCheck, stopCh)
 	refreshTraffic(true)
 	refreshPorts()
 	dlg.Run()
 }
 
-func (a *App) netAutoRefreshLoop(client *remote.Client, box *walk.Composite, summary, boot *walk.Label, auto *walk.CheckBox, stopCh chan struct{}) {
+func (a *App) netAutoRefreshLoop(client *remote.Client, panel *netTrafficPanel, summary *walk.Label, auto *walk.CheckBox, stopCh chan struct{}) {
 	prev := map[string]netIfaceStat{}
 	var prevAt time.Time
 	for {
@@ -343,55 +383,10 @@ func (a *App) netAutoRefreshLoop(client *remote.Client, box *walk.Composite, sum
 				prev[s.name] = s
 			}
 			prevAt = now
-			var bootRx, bootTx int64
-			for _, s := range stats {
-				bootRx += s.rx
-				bootTx += s.tx
+			if panel != nil {
+				panel.updateInPlace(stats)
 			}
-			if boot != nil {
-				boot.SetText(i18n.Tf(i18n.KeyFeatNetBootTotals, formatBytes(bootRx), formatBytes(bootTx)))
-			}
-			a.renderNetTrafficUI(box, nil, nil, out, "", nil, true)
 		})
-	}
-}
-
-func (a *App) renderNetTrafficUI(box *walk.Composite, summary, boot *walk.Label, ifaceOut, routeOut string, ifaceErr error, showRates bool) {
-	if box == nil {
-		return
-	}
-	stats := parseNetIfaces(ifaceOut)
-	clearComposite(box)
-	if len(stats) == 0 {
-		msg := i18n.T(i18n.KeyFeatNoData)
-		if ifaceErr != nil && strings.TrimSpace(ifaceOut) == "" {
-			msg = ifaceErr.Error()
-		}
-		addLabel(box, msg)
-	} else {
-		var bootRx, bootTx int64
-		for _, s := range stats {
-			bootRx += s.rx
-			bootTx += s.tx
-			addNetCard(box, s, showRates)
-		}
-		if boot != nil {
-			boot.SetText(i18n.Tf(i18n.KeyFeatNetBootTotals, formatBytes(bootRx), formatBytes(bootTx)))
-		}
-	}
-	if strings.TrimSpace(routeOut) != "" {
-		addTitleLabel(box, i18n.T(i18n.KeyFeatNetRouting))
-		addLabel(box, strings.TrimSpace(routeOut))
-	}
-}
-
-func addNetCard(parent *walk.Composite, stat netIfaceStat, _ bool) {
-	addTitleLabel(parent, stat.name)
-	addLabel(parent, i18n.Tf(i18n.KeyFeatNetIfaceDetail, formatBytes(stat.rx), formatBytes(stat.tx)))
-	total := stat.rx + stat.tx
-	if total > 0 {
-		rxPct := float64(stat.rx) / float64(total) * 100
-		addUsageBar(parent, rxPct)
 	}
 }
 
@@ -418,6 +413,22 @@ func addUsageBar(parent *walk.Composite, pct float64) {
 	}
 	pb.SetValue(int(pct))
 	parent.Children().Add(pb)
+}
+
+func addReadOnlyTextBlock(parent *walk.Composite, text string) {
+	if parent == nil {
+		return
+	}
+	te, err := walk.NewTextEdit(parent)
+	if err != nil {
+		return
+	}
+	_ = te.SetReadOnly(true)
+	font, _ := walk.NewFont("Consolas", 9, 0)
+	if font != nil {
+		te.SetFont(font)
+	}
+	setMultilineText(te, text)
 }
 
 func addLabel(parent *walk.Composite, text string) {

@@ -47,9 +47,7 @@ func (a *App) showFeatureDialog(title string, load func(setText func(string))) {
 		}
 		load(func(text string) {
 			a.syncUI(func() {
-				if te != nil {
-					te.SetText(text)
-				}
+				setMultilineText(te, text)
 			})
 		})
 	}
