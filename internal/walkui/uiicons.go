@@ -6,54 +6,53 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/relaypane/relaypane/internal/assets"
+
 	"github.com/lxn/walk"
-)
-
-// Segoe MDL2 Assets (built into Windows 10+).
-const (
-	glyphRefresh = "\uE72C"
-	glyphUp      = "\uE70E"
-	glyphAdd     = "\uE710"
-	glyphClose   = "\uE711"
-	glyphDisk    = "\uEDA2"
-	glyphHeart   = "\uEB51"
-)
-
-var (
-	mdl2Font      *walk.Font
-	mdl2FontOnce  sync.Once
-	iconCacheDir  string
-	iconCacheOnce sync.Once
-	folderIconDir string
-	folderIconOnce sync.Once
 )
 
 const tabBarRowHeight = 24
 
-func mdl2IconFont() *walk.Font {
-	mdl2FontOnce.Do(func() {
-		mdl2Font, _ = walk.NewFont("Segoe MDL2 Assets", 9, walk.FontBold)
+var (
+	uiBmpOnce sync.Once
+	bmpClose  *walk.Bitmap
+	bmpNew    *walk.Bitmap
+	bmpUp     *walk.Bitmap
+	bmpRefresh *walk.Bitmap
+	bmpDisk   *walk.Bitmap
+	bmpLike   *walk.Bitmap
+)
+
+func InitUIBitmaps(dpi int) {
+	uiBmpOnce.Do(func() {
+		bmpClose, _ = assets.CloseBitmap(dpi)
+		bmpNew, _ = assets.NewTabBitmap(dpi)
+		bmpUp, _ = assets.UpBitmap(dpi)
+		bmpRefresh, _ = assets.RefreshBitmap(dpi)
+		bmpDisk, _ = assets.DiskBitmap(dpi)
+		bmpLike, _ = assets.LikeBitmap(dpi)
 	})
-	return mdl2Font
 }
 
-func applyMDL2Font(w walk.Widget) {
-	if f := mdl2IconFont(); f != nil {
-		w.SetFont(f)
-	}
+func UIBmpClose() *walk.Bitmap   { return bmpClose }
+func UIBmpNew() *walk.Bitmap     { return bmpNew }
+func UIBmpUp() *walk.Bitmap      { return bmpUp }
+func UIBmpRefresh() *walk.Bitmap { return bmpRefresh }
+func UIBmpDisk() *walk.Bitmap    { return bmpDisk }
+func UIBmpLike() *walk.Bitmap    { return bmpLike }
+
+func newPNGToolButton(parent walk.Container, bmp *walk.Bitmap, tooltip string, fn func()) (*walk.ToolButton, error) {
+	return newPNGToolButtonSize(parent, bmp, tooltip, fn, tabBarRowHeight-2)
 }
 
-func newMDL2ToolButton(parent walk.Container, glyph, tooltip string, fn func()) (*walk.ToolButton, error) {
-	return newMDL2ToolButtonSize(parent, glyph, tooltip, fn, tabBarRowHeight-2)
-}
-
-func newMDL2ToolButtonSize(parent walk.Container, glyph, tooltip string, fn func(), size int) (*walk.ToolButton, error) {
+func newPNGToolButtonSize(parent walk.Container, bmp *walk.Bitmap, tooltip string, fn func(), size int) (*walk.ToolButton, error) {
 	tb, err := walk.NewToolButton(parent)
 	if err != nil {
 		return nil, err
 	}
-	applyMDL2Font(tb)
-	tb.SetText(glyph)
+	if bmp != nil {
+		_ = tb.SetImage(bmp)
+	}
 	if tooltip != "" {
 		tb.SetToolTipText(tooltip)
 	}
@@ -65,17 +64,6 @@ func newMDL2ToolButtonSize(parent walk.Container, glyph, tooltip string, fn func
 	}
 	_ = tb.SetMinMaxSize(walk.Size{Width: size, Height: size}, walk.Size{Width: size, Height: size})
 	return tb, nil
-}
-
-func newMDL2Label(parent walk.Container, glyph string) (*walk.Label, error) {
-	lbl, err := walk.NewLabel(parent)
-	if err != nil {
-		return nil, err
-	}
-	applyMDL2Font(lbl)
-	lbl.SetText(glyph)
-	_ = lbl.SetMinMaxSize(walk.Size{Width: 20, Height: 0}, walk.Size{Width: 20, Height: 0})
-	return lbl, nil
 }
 
 func truncateRunes(s string, max int) string {
@@ -110,6 +98,13 @@ func iconCacheRoot() string {
 	})
 	return iconCacheDir
 }
+
+var (
+	iconCacheDir   string
+	iconCacheOnce  sync.Once
+	folderIconDir  string
+	folderIconOnce sync.Once
+)
 
 func genericFolderShellPath() string {
 	folderIconOnce.Do(func() {

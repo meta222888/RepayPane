@@ -58,7 +58,7 @@ func (a *App) refreshTabBar() {
 				tabBtn.Clicked().Attach(func() { a.activateTab(idx) })
 			}
 
-			_, err = newMDL2ToolButton(wrap, glyphClose, i18n.T(i18n.KeyCloseTab), func() {
+			_, err = newPNGToolButton(wrap, UIBmpClose(), i18n.T(i18n.KeyCloseTab), func() {
 				a.closeTab(idx)
 			})
 			if err != nil {
@@ -69,7 +69,7 @@ func (a *App) refreshTabBar() {
 			setTabCompositeActive(wrap, active)
 		}
 
-		_, _ = newMDL2ToolButton(a.tabBar, glyphAdd, i18n.T(i18n.KeyNewTabConnect), a.onNewTab)
+		_, _ = newPNGToolButton(a.tabBar, UIBmpNew(), i18n.T(i18n.KeyNewTabConnect), a.onNewTab)
 
 		a.tabBar.RequestLayout()
 	})

@@ -19,6 +19,7 @@ func Run() error {
 	}
 	initLanguage(settings)
 	initFileIcons()
+	InitUIBitmaps(96)
 
 	app := newApp(store, settings)
 	app.initTransfers()
@@ -199,16 +200,14 @@ func paneComposite(app *App, local bool) Widget {
 		onPathReturn = func() { app.navigateRemote(app.remotePathEdit.Text()) }
 	}
 
-	mdl2 := Font{Family: "Segoe MDL2 Assets", PointSize: 9, Bold: true}
-
 	navRow := []Widget{
-		ToolButton{Text: glyphUp, Font: mdl2, ToolTipText: i18n.T(i18n.KeyUp), OnClicked: upFn, MaxSize: Size{24, 24}},
-		ToolButton{Text: glyphRefresh, Font: mdl2, ToolTipText: i18n.T(i18n.KeyRefresh), OnClicked: refreshFn, MaxSize: Size{24, 24}},
+		ToolButton{Image: UIBmpUp(), ToolTipText: i18n.T(i18n.KeyUp), OnClicked: upFn, MinSize: Size{24, 24}, MaxSize: Size{24, 24}},
+		ToolButton{Image: UIBmpRefresh(), ToolTipText: i18n.T(i18n.KeyRefresh), OnClicked: refreshFn, MinSize: Size{24, 24}, MaxSize: Size{24, 24}},
 	}
 	if local {
 		drives := listWindowsDrives()
 		navRow = append(navRow,
-			Label{Text: glyphDisk, Font: mdl2, MaxSize: Size{20, 0}},
+			ImageView{Image: UIBmpDisk(), Mode: ImageViewModeShrink, MinSize: Size{20, 20}, MaxSize: Size{20, 20}},
 			ComboBox{
 			AssignTo: driveCombo,
 			Model:    drives,
@@ -229,7 +228,7 @@ func paneComposite(app *App, local bool) Widget {
 			placeLabels[i] = p.label
 		}
 		navRow = append(navRow,
-			Label{Text: glyphHeart, Font: mdl2, MaxSize: Size{20, 0}},
+			ImageView{Image: UIBmpLike(), Mode: ImageViewModeShrink, MinSize: Size{20, 20}, MaxSize: Size{20, 20}},
 			ComboBox{
 			AssignTo: placesCombo,
 			Model:    placeLabels,
