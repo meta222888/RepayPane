@@ -19,6 +19,7 @@ func (a *App) navigateLocal(p string) {
 	}
 	a.localPath = p
 	a.refreshLocal()
+	a.saveLocalPathForActiveServer()
 }
 
 func (a *App) navigateRemote(p string) {
@@ -647,38 +648,4 @@ func commonPlaces() []placeEntry {
 		out = append(out, placeEntry{label: i18n.T(c.key), path: p})
 	}
 	return out
-}
-
-func (a *App) refreshTabBar() {
-	if a.tabBar == nil {
-		return
-	}
-	a.syncUI(func() {
-		a.tabBar.Children().Clear()
-		for i, tab := range a.tabs {
-			idx := i
-			btn, _ := walk.NewPushButton(a.tabBar)
-			btn.SetText(tab.tabLabel())
-			if i == a.activeTab {
-				btn.SetEnabled(true)
-			}
-			btn.Clicked().Attach(func() { a.activateTab(idx) })
-			closeBtn, _ := walk.NewPushButton(a.tabBar)
-			closeBtn.SetText("×")
-			closeBtn.SetMinMaxSize(walk.Size{Width: 28, Height: 0}, walk.Size{Width: 28, Height: 0})
-			closeBtn.Clicked().Attach(func() { a.closeTab(idx) })
-			switch tab.state {
-			case tabConnected:
-				// default
-			case tabConnecting:
-				btn.SetText(tab.tabLabel() + " …")
-			default:
-				btn.SetText(tab.tabLabel() + " !")
-			}
-			_ = tab
-		}
-		addBtn, _ := walk.NewPushButton(a.tabBar)
-		addBtn.SetText(i18n.T(i18n.KeyNewTabConnect))
-		addBtn.Clicked().Attach(a.onNewTab)
-	})
 }

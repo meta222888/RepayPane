@@ -47,6 +47,7 @@ type App struct {
 
 	transfers *TransferQueue
 	clipboard *paneClipboard
+	drag      dragState
 }
 
 func newApp(store *config.Store, settings *config.Settings) *App {

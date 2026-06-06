@@ -29,6 +29,7 @@ func Run() error {
 		MinSize:  Size{960, 600},
 		Size:     Size{1280, 760},
 		Layout:   VBox{MarginsZero: true},
+		OnDropFiles: app.handleDropFiles,
 		MenuItems: buildMainMenus(app, mw),
 		Children: []Widget{
 			Composite{
@@ -78,6 +79,8 @@ func Run() error {
 	}
 
 	app.mw = mw
+	app.attachPaneDrag(app.localTV, true)
+	app.attachPaneDrag(app.remoteTV, false)
 	app.refreshLocal()
 	app.refreshTabBar()
 	app.updateStatusBar()
@@ -147,11 +150,9 @@ func tableColumns() []TableViewColumn {
 }
 
 func paneComposite(app *App, local bool) Widget {
-	var title string
+	title := i18n.T(i18n.KeyRemote)
 	if local {
 		title = i18n.T(i18n.KeyLocal)
-	} else {
-		title = i18n.T(i18n.KeyRemote)
 	}
 
 	var pathEdit **walk.LineEdit
@@ -159,8 +160,8 @@ func paneComposite(app *App, local bool) Widget {
 	var model *dirModel
 	var upFn, refreshFn, activatedFn func()
 	var onPathReturn func()
-	var ctxItems []MenuItem
 	var driveCombo **walk.ComboBox
+	var placesCombo **walk.ComboBox
 
 	if local {
 		pathEdit = &app.localPathEdit
@@ -171,17 +172,6 @@ func paneComposite(app *App, local bool) Widget {
 		activatedFn = app.onLocalActivated
 		driveCombo = &app.localDriveCombo
 		onPathReturn = func() { app.navigateLocal(app.localPathEdit.Text()) }
-		ctxItems = []MenuItem{
-			Action{Text: i18n.T(i18n.KeyUpload), OnTriggered: app.uploadSelected},
-			Action{Text: "Copy", OnTriggered: app.ctxCopyLocal},
-			Action{Text: "Paste", OnTriggered: app.ctxPasteLocal},
-			Separator{},
-			Action{Text: i18n.T(i18n.KeyRename), OnTriggered: app.ctxRenameLocal},
-			Action{Text: i18n.T(i18n.KeyDelete), OnTriggered: app.ctxDeleteLocal},
-			Separator{},
-			Action{Text: i18n.T(i18n.KeyNewFolder), OnTriggered: app.ctxNewFolderLocal},
-			Action{Text: i18n.T(i18n.KeyRefresh), OnTriggered: app.refreshLocal},
-		}
 	} else {
 		pathEdit = &app.remotePathEdit
 		tv = &app.remoteTV
@@ -190,21 +180,6 @@ func paneComposite(app *App, local bool) Widget {
 		refreshFn = app.refreshRemote
 		activatedFn = app.onRemoteActivated
 		onPathReturn = func() { app.navigateRemote(app.remotePathEdit.Text()) }
-		ctxItems = []MenuItem{
-			Action{Text: i18n.T(i18n.KeyDownload), OnTriggered: app.downloadSelected},
-			Action{Text: "Copy", OnTriggered: app.ctxCopyRemote},
-			Action{Text: "Paste", OnTriggered: app.ctxPasteRemote},
-			Separator{},
-			Action{Text: i18n.T(i18n.KeyRename), OnTriggered: app.ctxRenameRemote},
-			Action{Text: i18n.T(i18n.KeyDelete), OnTriggered: app.ctxDeleteRemote},
-			Separator{},
-			Action{Text: i18n.T(i18n.KeyNewFolder), OnTriggered: app.ctxNewFolderRemote},
-			Action{Text: i18n.T(i18n.KeyRefresh), OnTriggered: app.refreshRemote},
-		}
-	}
-
-	children := []Widget{
-		Label{Text: title, Font: Font{Bold: true}},
 	}
 
 	navRow := []Widget{
@@ -213,13 +188,9 @@ func paneComposite(app *App, local bool) Widget {
 	}
 	if local {
 		drives := listWindowsDrives()
-		labels := make([]string, len(drives))
-		for i, d := range drives {
-			labels[i] = d
-		}
 		navRow = append(navRow, ComboBox{
 			AssignTo: driveCombo,
-			Model:    labels,
+			Model:    drives,
 			MaxSize:  Size{56, 0},
 			OnCurrentIndexChanged: func() {
 				if app.localDriveCombo == nil {
@@ -228,6 +199,25 @@ func paneComposite(app *App, local bool) Widget {
 				idx := app.localDriveCombo.CurrentIndex()
 				if idx >= 0 && idx < len(drives) {
 					app.navigateLocal(drives[idx])
+				}
+			},
+		})
+		places := commonPlaces()
+		placeLabels := make([]string, len(places))
+		for i, p := range places {
+			placeLabels[i] = p.label
+		}
+		navRow = append(navRow, ComboBox{
+			AssignTo: placesCombo,
+			Model:    placeLabels,
+			MaxSize:  Size{100, 0},
+			OnCurrentIndexChanged: func() {
+				if placesCombo == nil || *placesCombo == nil {
+					return
+				}
+				idx := (*placesCombo).CurrentIndex()
+				if idx >= 0 && idx < len(places) {
+					app.navigateLocal(places[idx].path)
 				}
 			},
 		})
@@ -240,19 +230,30 @@ func paneComposite(app *App, local bool) Widget {
 			}
 		},
 	})
-	children = append(children, Composite{Layout: HBox{MarginsZero: true}, Children: navRow})
-	children = append(children, TableView{
-		AssignTo:           tv,
-		AlternatingRowBG:   true,
-		MultiSelection:     true,
-		Columns:            tableColumns(),
-		Model:              model,
-		OnItemActivated:    activatedFn,
-		ContextMenuItems:   ctxItems,
-	})
+
+	prepCtx := app.prepareLocalContextMenu
+	if !local {
+		prepCtx = app.prepareRemoteContextMenu
+	}
 
 	return Composite{
 		Layout: VBox{Margins: Margins{4, 4, 4, 4}},
-		Children: children,
+		Children: []Widget{
+			Label{Text: title, Font: Font{Bold: true}},
+			Composite{Layout: HBox{MarginsZero: true}, Children: navRow},
+			TableView{
+				AssignTo:           tv,
+				AlternatingRowBG:   true,
+				MultiSelection:     true,
+				Columns:            tableColumns(),
+				Model:              model,
+				OnItemActivated:    activatedFn,
+				OnMouseDown: func(x, y int, button walk.MouseButton) {
+					if button == walk.RightButton {
+						prepCtx()
+					}
+				},
+			},
+		},
 	}
 }

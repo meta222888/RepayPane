@@ -156,7 +156,12 @@ func (a *App) showCloudSync() {
 							updatedAt, err := cloudsync.Upload(a.store, apiEdit.Text(), passEdit.Text())
 							a.syncUI(func() {
 								if err != nil {
-									a.showError(i18n.T(i18n.KeyCloudSyncTitle), err)
+									logPath, logErr := cloudsync.LogUploadError(err)
+									if logErr != nil {
+										a.showError(i18n.T(i18n.KeyCloudSyncTitle), err)
+										return
+									}
+									a.showMsg(i18n.T(i18n.KeyCloudSyncTitle), i18n.T(i18n.KeyCloudSyncUploadFailPrefix)+"\n"+logPath)
 									return
 								}
 								now := time.Now().Format("2006-01-02 15:04:05")

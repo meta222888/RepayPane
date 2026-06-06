@@ -32,7 +32,7 @@ func (a *App) showEditServer(idx int) {
 
 func (a *App) showServerForm(initial config.Server, editMode bool, editIdx int) {
 	var dlg *walk.Dialog
-	var nameEdit, hostEdit, portEdit, userEdit, passEdit, rootEdit, hbEdit *walk.LineEdit
+	var nameEdit, hostEdit, portEdit, userEdit, passEdit, rootEdit, localRootEdit, hbEdit *walk.LineEdit
 	var autoKeyCheck *walk.CheckBox
 	autoSSH := initial.AutoSSHKey
 	keyPath := initial.PrivateKey
@@ -81,7 +81,7 @@ func (a *App) showServerForm(initial config.Server, editMode bool, editIdx int) 
 			AutoSSHKey:   autoSSH,
 			PrivateKey:   kp,
 			RemoteRoot:   strings.TrimSpace(rootEdit.Text()),
-			LocalRoot:    initial.LocalRoot,
+			LocalRoot:    strings.TrimSpace(localRootEdit.Text()),
 			HeartbeatSec: heartbeat,
 		}
 		if s.Host == "" || s.Username == "" {
@@ -134,6 +134,8 @@ func (a *App) showServerForm(initial config.Server, editMode bool, editIdx int) 
 		},
 		Label{Text: i18n.T(i18n.KeyFormRemoteRoot)},
 		LineEdit{AssignTo: &rootEdit, Text: initial.RemoteRoot},
+		Label{Text: "Local root"},
+		LineEdit{AssignTo: &localRootEdit, Text: initial.LocalRoot},
 		Label{Text: i18n.T(i18n.KeyFormHeartbeat)},
 		LineEdit{AssignTo: &hbEdit, Text: strconv.Itoa(hb)},
 	}
@@ -220,6 +222,12 @@ func (a *App) showMyServers() {
 				Model:    names,
 				OnCurrentIndexChanged: func() {
 					selected = lb.CurrentIndex()
+				},
+				OnItemActivated: func() {
+					if selected >= 0 && selected < len(a.store.Servers) {
+						dlg.Cancel()
+						a.openServerTab(a.store.Servers[selected])
+					}
 				},
 			},
 			Composite{

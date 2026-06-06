@@ -58,6 +58,12 @@ func (a *App) showConnectDialog() {
 				OnCurrentIndexChanged: func() {
 					selected = lb.CurrentIndex()
 				},
+				OnItemActivated: func() {
+					if selected >= 0 && selected < len(a.store.Servers) {
+						dlg.Cancel()
+						a.openServerTab(a.store.Servers[selected])
+					}
+				},
 			},
 			Composite{
 				Layout: HBox{},

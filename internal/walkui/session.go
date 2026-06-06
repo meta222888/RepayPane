@@ -2,6 +2,7 @@ package walkui
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/relaypane/relaypane/internal/config"
 	"github.com/relaypane/relaypane/internal/remote"
@@ -62,16 +63,21 @@ func (a *App) requireClient() (*remote.Client, bool) {
 	return c, true
 }
 
+func resolveTabLocalPath(s config.Server) string {
+	if p := strings.TrimSpace(s.LocalRoot); p != "" {
+		return p
+	}
+	return defaultLocalDir()
+}
+
 func (a *App) openServerTab(s config.Server) {
 	tab := &TabSession{
 		server:     s,
 		state:      tabDisconnected,
 		remotePath: defaultRemoteRoot(&s),
-		localPath:  a.localPath,
+		localPath:  resolveTabLocalPath(s),
 	}
-	if s.LocalRoot != "" {
-		tab.localPath = s.LocalRoot
-	}
+	a.localPath = tab.localPath
 	a.tabs = append(a.tabs, tab)
 	a.activeTab = len(a.tabs) - 1
 	a.refreshTabBar()
@@ -145,6 +151,22 @@ func (a *App) applySessionToUI() {
 	a.refreshLocal()
 	a.refreshRemote()
 	a.updateStatusBar()
+}
+
+func (a *App) saveLocalPathForActiveServer() {
+	tab := a.activeSession()
+	if tab == nil {
+		return
+	}
+	tab.localPath = a.localPath
+	tab.server.LocalRoot = a.localPath
+	for i := range a.store.Servers {
+		if a.store.Servers[i].ID == tab.server.ID {
+			a.store.Servers[i].LocalRoot = a.localPath
+			_ = a.saveServers()
+			return
+		}
+	}
 }
 
 func (a *App) connectTab(tab *TabSession) {
