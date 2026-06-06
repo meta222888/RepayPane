@@ -168,6 +168,20 @@ func setTabCompositeActive(c *walk.Composite, active bool) {
 }
 
 func measureTabTextWidth(text string) int {
-	_ = text
-	return 120
+	const (
+		btnPad   = 20
+		maxWidth = 160
+	)
+	w := btnPad
+	for _, r := range text {
+		if r > 0xFF {
+			w += 14
+		} else {
+			w += 8
+		}
+	}
+	if w > maxWidth {
+		return maxWidth
+	}
+	return w
 }

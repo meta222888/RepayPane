@@ -33,7 +33,7 @@ func (a *App) refreshTabBar() {
 			}
 			hl := walk.NewHBoxLayout()
 			hl.SetMargins(walk.Margins{})
-			hl.SetSpacing(2)
+			hl.SetSpacing(0)
 			if err := wrap.SetLayout(hl); err != nil {
 				wrap.Dispose()
 				continue
@@ -47,9 +47,10 @@ func (a *App) refreshTabBar() {
 			}
 			tabBtn.SetText(truncateRunes(label, 18))
 			tabBtn.SetToolTipText(label)
+			tabW := measureTabTextWidth(truncateRunes(label, 18))
 			_ = tabBtn.SetMinMaxSize(
-				walk.Size{Width: 0, Height: tabBarRowHeight - 4},
-				walk.Size{Width: measureTabTextWidth(label), Height: tabBarRowHeight - 2},
+				walk.Size{Width: tabW, Height: tabBarRowHeight - 4},
+				walk.Size{Width: tabW, Height: tabBarRowHeight - 2},
 			)
 			if active {
 				tabBtn.SetEnabled(false)
