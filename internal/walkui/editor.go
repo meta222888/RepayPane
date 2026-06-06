@@ -242,6 +242,9 @@ func (a *App) showTextEditor(title, path, text string, enc textencoding.Info, sa
 		},
 	}.Create()
 
+	if a.mw != nil {
+		setWindowOwner(mw.Handle(), a.mw.Handle())
+	}
 	a.applyWindowIcon(mw)
 	mw.Closing().Attach(func(canceled *bool, reason walk.CloseReason) {
 		if dirty {

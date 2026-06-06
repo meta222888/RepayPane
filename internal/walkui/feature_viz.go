@@ -114,6 +114,7 @@ func (a *App) showDiskSpace() {
 	}).Create(a.mw); err != nil {
 		return
 	}
+	a.ownDialog(dlg)
 	refresh()
 	dlg.Run()
 }
@@ -194,6 +195,7 @@ func (a *App) showResourceUsage() {
 	}).Create(a.mw); err != nil {
 		return
 	}
+	a.ownDialog(dlg)
 	refresh()
 	dlg.Run()
 }
@@ -286,6 +288,7 @@ func (a *App) showNetworkInfo() {
 	}).Create(a.mw); err != nil {
 		return
 	}
+	a.ownDialog(dlg)
 	dlg.Closing().Attach(func(canceled *bool, reason walk.CloseReason) {
 		if stopCh != nil {
 			close(stopCh)

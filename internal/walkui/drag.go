@@ -63,8 +63,17 @@ func (a *App) attachPaneDrag(tv *walk.TableView, local bool) {
 		a.drag.active = true
 		a.drag.sourceLocal = local
 		a.drag.items = items
+		applyFileDragCursor()
+	})
+	tv.MouseMove().Attach(func(x, y int, button walk.MouseButton) {
+		if a.drag.active {
+			applyFileDragCursor()
+		}
 	})
 	tv.MouseUp().Attach(func(x, y int, button walk.MouseButton) {
+		if a.drag.active {
+			clearFileDragCursor()
+		}
 		if a.drag.active && a.drag.sourceLocal != local {
 			a.completeDragDrop(local)
 		}

@@ -127,6 +127,7 @@ func (a *App) showDuDialog(dir string) {
 	}).Create(a.mw); err != nil {
 		return
 	}
+	a.ownDialog(dlg)
 	a.applyWindowIcon(dlg)
 	load(dir)
 	dlg.Run()

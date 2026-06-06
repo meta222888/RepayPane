@@ -43,6 +43,7 @@ func (a *App) showCheckUpdate() {
 	}).Create(a.mw); err != nil {
 		return
 	}
+	a.ownDialog(dlg)
 
 	go func() {
 		rel, err := update.FetchLatestRelease()

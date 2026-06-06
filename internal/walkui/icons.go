@@ -1,33 +1,16 @@
 package walkui
 
 import (
-	"os"
-	"path/filepath"
-
 	"github.com/relaypane/relaypane/internal/assets"
 
 	"github.com/lxn/walk"
 )
 
-type paneFileIcons struct {
-	remoteFolder string
-	remoteFile   string
-}
+type paneFileIcons struct{}
 
 var fileIcons paneFileIcons
 
-func initFileIcons() {
-	home, err := os.UserHomeDir()
-	if err != nil || home == "" {
-		home = `C:\`
-	}
-	winDir := os.Getenv("WINDIR")
-	if winDir == "" {
-		winDir = `C:\Windows`
-	}
-	fileIcons.remoteFolder = home
-	fileIcons.remoteFile = filepath.Join(winDir, "notepad.exe")
-}
+func initFileIcons() {}
 
 func (a *App) ensureAppIcon() *walk.Icon {
 	if a.appIcon != nil {
@@ -64,14 +47,10 @@ func paneStyleCell(local bool, model *dirModel) func(style *walk.CellStyle) {
 			return
 		}
 		if local {
-			style.Image = e.fullPath
+			style.Image = iconPathForEntry(e, true)
 			return
 		}
-		if e.isDir {
-			style.Image = fileIcons.remoteFolder
-		} else {
-			style.Image = fileIcons.remoteFile
-		}
+		style.Image = iconPathForEntry(e, false)
 	}
 }
 
@@ -84,10 +63,6 @@ func duStyleCell(model *duTableModel) func(style *walk.CellStyle) {
 			return
 		}
 		r := model.rows[style.Row()]
-		if r.isDir {
-			style.Image = fileIcons.remoteFolder
-		} else {
-			style.Image = fileIcons.remoteFile
-		}
+		style.Image = shellIconPath(r.name, r.isDir)
 	}
 }

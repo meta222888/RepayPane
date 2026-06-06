@@ -52,6 +52,7 @@ func (a *App) resolveFileConflict(fileName string, exists func(string) bool, onP
 			onProceed("")
 			return
 		}
+		a.ownDialog(dlg)
 		dlg.Run()
 	})
 }

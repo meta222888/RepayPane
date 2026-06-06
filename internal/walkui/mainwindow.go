@@ -199,13 +199,17 @@ func paneComposite(app *App, local bool) Widget {
 		onPathReturn = func() { app.navigateRemote(app.remotePathEdit.Text()) }
 	}
 
+	mdl2 := Font{Family: "Segoe MDL2 Assets", PointSize: 11, Bold: true}
+
 	navRow := []Widget{
-		PushButton{Text: i18n.T(i18n.KeyUp), OnClicked: upFn, MaxSize: Size{48, 0}},
-		PushButton{Text: i18n.T(i18n.KeyRefresh), OnClicked: refreshFn, MaxSize: Size{56, 0}},
+		ToolButton{Text: glyphUp, Font: mdl2, ToolTipText: i18n.T(i18n.KeyUp), OnClicked: upFn, MaxSize: Size{28, 28}},
+		ToolButton{Text: glyphRefresh, Font: mdl2, ToolTipText: i18n.T(i18n.KeyRefresh), OnClicked: refreshFn, MaxSize: Size{28, 28}},
 	}
 	if local {
 		drives := listWindowsDrives()
-		navRow = append(navRow, ComboBox{
+		navRow = append(navRow,
+			Label{Text: glyphDisk, Font: mdl2, MaxSize: Size{20, 0}},
+			ComboBox{
 			AssignTo: driveCombo,
 			Model:    drives,
 			MaxSize:  Size{56, 0},
@@ -224,7 +228,9 @@ func paneComposite(app *App, local bool) Widget {
 		for i, p := range places {
 			placeLabels[i] = p.label
 		}
-		navRow = append(navRow, ComboBox{
+		navRow = append(navRow,
+			Label{Text: glyphHeart, Font: mdl2, MaxSize: Size{20, 0}},
+			ComboBox{
 			AssignTo: placesCombo,
 			Model:    placeLabels,
 			MaxSize:  Size{100, 0},

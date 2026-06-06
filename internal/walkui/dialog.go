@@ -7,6 +7,13 @@ import (
 	. "github.com/lxn/walk/declarative"
 )
 
+func (a *App) ownDialog(dlg *walk.Dialog) {
+	if a.mw == nil || dlg == nil {
+		return
+	}
+	setWindowOwner(dlg.Handle(), a.mw.Handle())
+}
+
 func (a *App) showMsg(title, msg string) {
 	a.syncUI(func() {
 		walk.MsgBox(a.mw, title, msg, walk.MsgBoxIconInformation)
@@ -71,6 +78,7 @@ func (a *App) showFeatureDialog(title string, load func(setText func(string))) {
 	}).Create(a.mw); err != nil {
 		return
 	}
+	a.ownDialog(dlg)
 	te.SetText(i18n.T(i18n.KeyFeatLoading))
 	go refresh()
 	dlg.Run()
