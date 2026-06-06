@@ -20,10 +20,12 @@ const (
 )
 
 var (
-	mdl2Font     *walk.Font
-	mdl2FontOnce sync.Once
-	iconCacheDir string
+	mdl2Font      *walk.Font
+	mdl2FontOnce  sync.Once
+	iconCacheDir  string
 	iconCacheOnce sync.Once
+	folderIconDir string
+	folderIconOnce sync.Once
 )
 
 func mdl2IconFont() *walk.Font {
@@ -100,14 +102,18 @@ func iconCacheRoot() string {
 	return iconCacheDir
 }
 
+func genericFolderShellPath() string {
+	folderIconOnce.Do(func() {
+		folderIconDir = filepath.Join(iconCacheRoot(), "__folder__")
+		_ = os.MkdirAll(folderIconDir, 0o755)
+	})
+	return folderIconDir
+}
+
 // shellIconPath returns a local path suitable for Windows SHGetFileInfo icons.
 func shellIconPath(name string, isDir bool) string {
 	if isDir {
-		home, err := os.UserHomeDir()
-		if err != nil || home == "" {
-			return `C:\`
-		}
-		return home
+		return genericFolderShellPath()
 	}
 	safe := strings.Map(func(r rune) rune {
 		if r < 32 || r == '"' || r == '*' || r == '?' || r == '<' || r == '>' || r == '|' {

@@ -199,11 +199,11 @@ func paneComposite(app *App, local bool) Widget {
 		onPathReturn = func() { app.navigateRemote(app.remotePathEdit.Text()) }
 	}
 
-	mdl2 := Font{Family: "Segoe MDL2 Assets", PointSize: 11, Bold: true}
+	mdl2 := Font{Family: "Segoe MDL2 Assets", PointSize: 9, Bold: true}
 
 	navRow := []Widget{
-		ToolButton{Text: glyphUp, Font: mdl2, ToolTipText: i18n.T(i18n.KeyUp), OnClicked: upFn, MaxSize: Size{28, 28}},
-		ToolButton{Text: glyphRefresh, Font: mdl2, ToolTipText: i18n.T(i18n.KeyRefresh), OnClicked: refreshFn, MaxSize: Size{28, 28}},
+		ToolButton{Text: glyphUp, Font: mdl2, ToolTipText: i18n.T(i18n.KeyUp), OnClicked: upFn, MaxSize: Size{24, 24}},
+		ToolButton{Text: glyphRefresh, Font: mdl2, ToolTipText: i18n.T(i18n.KeyRefresh), OnClicked: refreshFn, MaxSize: Size{24, 24}},
 	}
 	if local {
 		drives := listWindowsDrives()
