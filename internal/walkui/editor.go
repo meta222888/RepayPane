@@ -170,7 +170,18 @@ func (a *App) showTextEditor(title, path, text string, enc textencoding.Info, sa
 	var mw *walk.MainWindow
 	var te *walk.TextEdit
 	var status *walk.Label
+	var pathLbl *walk.Label
 	dirty := false
+
+	updateTitle := func() {
+		t := title
+		if dirty {
+			t += " *"
+		}
+		if mw != nil {
+			mw.SetTitle(t)
+		}
+	}
 
 	save := func() {
 		data, err := textencoding.Encode(te.Text(), enc)
@@ -184,6 +195,7 @@ func (a *App) showTextEditor(title, path, text string, enc textencoding.Info, sa
 		}
 		dirty = false
 		status.SetText(i18n.Tf(i18n.KeySaveSuccessAt, time.Now().Format("2006-01-02 15:04:05")))
+		updateTitle()
 	}
 
 	revert := func() {
@@ -203,6 +215,7 @@ func (a *App) showTextEditor(title, path, text string, enc textencoding.Info, sa
 				te.SetText(t)
 				dirty = false
 				status.SetText(i18n.Tf(i18n.KeyEditorEncoding, enc.Label()))
+				updateTitle()
 			})
 		}()
 	}
@@ -210,8 +223,9 @@ func (a *App) showTextEditor(title, path, text string, enc textencoding.Info, sa
 	_ = MainWindow{
 		AssignTo: &mw,
 		Title:    title,
-		MinSize:  Size{720, 520},
-		Layout:   VBox{},
+		MinSize:  Size{720, 480},
+		Font:     uiFont(),
+		Layout:   VBox{MarginsZero: true},
 		MenuItems: []MenuItem{
 			Menu{
 				Text: "File",
@@ -222,25 +236,39 @@ func (a *App) showTextEditor(title, path, text string, enc textencoding.Info, sa
 			},
 		},
 		Children: []Widget{
-			Label{Text: path},
-			TextEdit{
-				AssignTo: &te,
-				Text:     text,
-				VScroll:  true,
-				Font:     Font{Family: "Consolas", PointSize: 10},
-				OnTextChanged: func() { dirty = true },
-			},
 			Composite{
-				Layout: HBox{},
+				Layout: HBox{Margins: Margins{Left: 8, Top: 8, Right: 8, Bottom: 0}, Spacing: 6},
 				Children: []Widget{
-					Label{AssignTo: &status, Text: i18n.Tf(i18n.KeyEditorEncoding, enc.Label())},
+					Label{AssignTo: &pathLbl, Text: path, Font: monoFont()},
 					HSpacer{},
 					PushButton{Text: i18n.T(i18n.KeyEditorRevert), OnClicked: revert},
 					PushButton{Text: i18n.T(i18n.KeySave), OnClicked: save},
 				},
 			},
+			TextEdit{
+				AssignTo: &te,
+				Text:     text,
+				VScroll:  true,
+				HScroll:  true,
+				Font:     monoFont(),
+				OnTextChanged: func() {
+					dirty = true
+					updateTitle()
+				},
+			},
+			Composite{
+				Layout: HBox{Margins: Margins{Left: 8, Top: 6, Right: 8, Bottom: 8}, Spacing: 6},
+				Children: []Widget{
+					Label{AssignTo: &status, Text: i18n.Tf(i18n.KeyEditorEncoding, enc.Label()), TextColor: colorTextMuted},
+					HSpacer{},
+				},
+			},
 		},
 	}.Create()
+
+	if pathLbl != nil {
+		pathLbl.SetText(path)
+	}
 
 	if a.mw != nil {
 		setWindowOwner(mw.Handle(), a.mw.Handle())

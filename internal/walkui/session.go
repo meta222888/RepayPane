@@ -26,18 +26,7 @@ type TabSession struct {
 }
 
 func (s *TabSession) tabLabel() string {
-	name := s.server.Name
-	if name == "" {
-		name = s.server.Host
-	}
-	if len(name) > 12 {
-		name = name[:10] + "…"
-	}
-	host := s.server.Host
-	if len(host) > 10 {
-		host = host[:8] + "…"
-	}
-	return name + " @ " + host
+	return serverDisplayName(s.server)
 }
 
 func (a *App) activeSession() *TabSession {

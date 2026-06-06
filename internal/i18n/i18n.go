@@ -228,6 +228,7 @@ const (
 	KeyFeatShellRun       = "feat.shell_run"
 	KeyFeatShellDelOne    = "feat.shell_del_one"
 	KeyFeatShellDelAll      = "feat.shell_del_all"
+	KeyFeatShellPin         = "feat.shell_pin"
 	KeyFeatShellInteractive = "feat.shell_interactive"
 	KeyFeatShellExitCode    = "feat.shell_exit_code"
 	KeyFeatShellTimeout     = "feat.shell_timeout"
@@ -481,6 +482,7 @@ var enStrings = map[string]string{
 	KeyFeatShellRun:       "Run",
 	KeyFeatShellDelOne:    "Delete selected",
 	KeyFeatShellDelAll:      "Clear all",
+	KeyFeatShellPin:         "Pin",
 	KeyFeatShellInteractive: "Interactive commands (vim, top, less, etc.) are not supported in this window. Try: cat, head, tail, sed -n, grep.",
 	KeyFeatShellExitCode:    "exit code",
 	KeyFeatShellTimeout:     "command timed out (90s); interactive programs may hang",
@@ -734,6 +736,7 @@ var zhStrings = map[string]string{
 	KeyFeatShellRun:       "执行",
 	KeyFeatShellDelOne:    "删除选中",
 	KeyFeatShellDelAll:      "全部删除",
+	KeyFeatShellPin:         "保存置顶",
 	KeyFeatShellInteractive: "不支持交互式命令（vim、top、less 等）。可改用：cat、head、tail、sed -n、grep。",
 	KeyFeatShellExitCode:    "退出码",
 	KeyFeatShellTimeout:     "命令超时（90 秒）；交互程序可能会卡住",

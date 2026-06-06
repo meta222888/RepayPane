@@ -8,7 +8,7 @@ func (a *App) applyLanguage() {
 	if a.mw == nil {
 		return
 	}
-	a.mw.SetTitle(i18n.T(i18n.KeyAppTitle) + " (Win32)")
+	a.mw.SetTitle(i18n.T(i18n.KeyAppTitle))
 	if a.localPaneTitle != nil {
 		a.localPaneTitle.SetText(i18n.T(i18n.KeyLocal))
 	}
@@ -33,6 +33,10 @@ func (a *App) applyLanguage() {
 	if a.remoteLoadingLabel != nil {
 		a.remoteLoadingLabel.SetText(i18n.T(i18n.KeyFeatLoading))
 	}
+	if a.remoteEmptyLabel != nil {
+		a.remoteEmptyLabel.SetText(i18n.T(i18n.KeyNotConnected))
+	}
+	a.updateWindowTitle()
 	a.refreshTabBar()
 	a.updateStatusBar()
 	a.refreshMainMenuLabels()

@@ -2,6 +2,7 @@ package walkui
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -32,6 +33,14 @@ type App struct {
 	localModel      *dirModel
 	remoteModel     *dirModel
 
+	connDot       *walk.Label
+	statusLabel    *walk.Label
+	transferLabel  *walk.Label
+	transferFileLabel *walk.Label
+	transferPctLabel  *walk.Label
+	progressBar    *walk.ProgressBar
+	reconnectBtn   *walk.PushButton
+
 	localPaneTitle  *walk.Label
 	remotePaneTitle *walk.Label
 	localRenamePanel  *walk.Composite
@@ -40,12 +49,7 @@ type App struct {
 	remoteRenameEdit  *walk.LineEdit
 	localLoadingLabel *walk.Label
 	remoteLoadingLabel *walk.Label
-
-	connDot       *walk.Label
-	statusLabel    *walk.Label
-	transferLabel  *walk.Label
-	progressBar    *walk.ProgressBar
-	reconnectBtn   *walk.PushButton
+	remoteEmptyLabel   *walk.Label
 
 	toolbarConnect  *walk.Action
 	toolbarRefresh  *walk.Action
@@ -173,6 +177,7 @@ func (a *App) updateStatusBar() {
 	}
 	a.setStatus(text)
 	a.updateConnDot()
+	a.updateWindowTitle()
 	if a.reconnectBtn != nil {
 		a.reconnectBtn.SetVisible(tab != nil && tab.state == tabDisconnected)
 	}
@@ -184,11 +189,22 @@ func (a *App) setStatus(text string) {
 	}
 }
 
+func (a *App) updateWindowTitle() {
+	if a.mw == nil {
+		return
+	}
+	title := i18n.T(i18n.KeyAppTitle)
+	if tab := a.activeSession(); tab != nil {
+		title += " — " + serverDisplayName(tab.server)
+	}
+	a.mw.SetTitle(title)
+}
+
 func (a *App) refreshTransferUI() {
 	if a.transfers == nil {
 		return
 	}
-	active, progress, speed, queue := a.transfers.Snapshot()
+	active, progress, speed, queue, fileName := a.transfers.Snapshot()
 	a.syncUI(func() {
 		if a.progressBar != nil {
 			if active {
@@ -197,6 +213,24 @@ func (a *App) refreshTransferUI() {
 			} else {
 				a.progressBar.SetVisible(false)
 				a.progressBar.SetValue(0)
+			}
+		}
+		if a.transferPctLabel != nil {
+			if active {
+				a.transferPctLabel.SetVisible(true)
+				a.transferPctLabel.SetText(fmt.Sprintf("%d%%", int(progress)))
+			} else {
+				a.transferPctLabel.SetVisible(false)
+				a.transferPctLabel.SetText("")
+			}
+		}
+		if a.transferFileLabel != nil {
+			if active && fileName != "" {
+				a.transferFileLabel.SetVisible(true)
+				a.transferFileLabel.SetText(fileName)
+			} else {
+				a.transferFileLabel.SetVisible(false)
+				a.transferFileLabel.SetText("")
 			}
 		}
 		if a.transferLabel != nil {
@@ -228,6 +262,9 @@ func (a *App) refreshLocal() {
 }
 
 func (a *App) refreshRemote() {
+	if a.remoteEmptyLabel != nil {
+		a.remoteEmptyLabel.SetVisible(!a.connected || a.client == nil)
+	}
 	if a.remoteLoadingLabel != nil {
 		a.remoteLoadingLabel.SetVisible(a.connected && a.client != nil)
 	}
@@ -239,6 +276,9 @@ func (a *App) refreshRemote() {
 		if a.remoteLoadingLabel != nil {
 			a.remoteLoadingLabel.SetVisible(false)
 		}
+		if a.remoteEmptyLabel != nil {
+			a.remoteEmptyLabel.SetVisible(true)
+		}
 		return
 	}
 	client := a.client
@@ -248,6 +288,9 @@ func (a *App) refreshRemote() {
 		a.syncUI(func() {
 			if a.remoteLoadingLabel != nil {
 				a.remoteLoadingLabel.SetVisible(false)
+			}
+			if a.remoteEmptyLabel != nil {
+				a.remoteEmptyLabel.SetVisible(false)
 			}
 			if err != nil {
 				a.showError(i18n.T(i18n.KeyRemote), err)

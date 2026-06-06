@@ -11,8 +11,6 @@ import (
 	"github.com/lxn/walk"
 )
 
-const tabBarRowHeight = 24
-
 var (
 	uiBmpOnce sync.Once
 	bmpClose  *walk.Bitmap
@@ -42,7 +40,7 @@ func UIBmpDisk() *walk.Bitmap    { return bmpDisk }
 func UIBmpLike() *walk.Bitmap    { return bmpLike }
 
 func newPNGToolButton(parent walk.Container, bmp *walk.Bitmap, tooltip string, fn func()) (*walk.ToolButton, error) {
-	return newPNGToolButtonSize(parent, bmp, tooltip, fn, tabBarRowHeight-2)
+	return newPNGToolButtonSize(parent, bmp, tooltip, fn, tabBarHeight-2)
 }
 
 func newPNGToolButtonSize(parent walk.Container, bmp *walk.Bitmap, tooltip string, fn func(), size int) (*walk.ToolButton, error) {
@@ -60,7 +58,7 @@ func newPNGToolButtonSize(parent walk.Container, bmp *walk.Bitmap, tooltip strin
 		tb.Clicked().Attach(fn)
 	}
 	if size <= 0 {
-		size = tabBarRowHeight - 2
+		size = tabBarHeight - 2
 	}
 	_ = tb.SetMinMaxSize(walk.Size{Width: size, Height: size}, walk.Size{Width: size, Height: size})
 	return tb, nil
@@ -145,17 +143,13 @@ func iconPathForEntry(e dirEntry, local bool) string {
 	return shellIconPath(e.name, e.isDir)
 }
 
-func tabCompositeMaxWidth() walk.Size {
-	return walk.Size{Width: 160, Height: 0}
-}
-
 func setTabCompositeActive(c *walk.Composite, active bool) {
 	if c == nil {
 		return
 	}
-	color := walk.RGB(240, 240, 240)
+	color := colorTabInactive
 	if active {
-		color = walk.RGB(220, 235, 252)
+		color = colorTabActive
 	}
 	if brush, err := walk.NewSolidColorBrush(color); err == nil {
 		c.SetBackground(brush)
@@ -163,10 +157,8 @@ func setTabCompositeActive(c *walk.Composite, active bool) {
 }
 
 func measureTabTextWidth(text string) int {
-	const (
-		btnPad   = 20
-		maxWidth = 160
-	)
+	const btnPad = 20
+	maxWidth := tabMaxWidth
 	w := btnPad
 	for _, r := range text {
 		if r > 0xFF {

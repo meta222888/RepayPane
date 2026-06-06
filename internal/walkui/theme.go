@@ -8,7 +8,6 @@ var (
 	colorConnected    = walk.RGB(46, 204, 113)
 	colorDisconnected = walk.RGB(231, 76, 60)
 	colorConnecting   = walk.RGB(241, 196, 15)
-	colorStatusMuted  = walk.RGB(120, 120, 120)
 )
 
 func (a *App) updateConnDot() {

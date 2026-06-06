@@ -22,31 +22,28 @@ func (a *App) resolveFileConflict(fileName string, exists func(string) bool, onP
 		if err := (Dialog{
 			AssignTo: &dlg,
 			Title:    i18n.T(i18n.KeyFileExistsTitle),
-			MinSize:  Size{420, 160},
-			Layout:   VBox{},
+			MinSize:  Size{420, 180},
+			Font:     uiFont(),
+			Layout:   VBox{MarginsZero: true},
 			Children: []Widget{
-				Label{Text: msg},
-				Composite{
-					Layout: HBox{},
-					Children: []Widget{
-						makeBtn(i18n.T(i18n.KeyCancel), func() { onProceed("") }),
-						HSpacer{},
-						makeBtn(i18n.T(i18n.KeySkip), func() { onProceed("") }),
-						makeBtn(i18n.T(i18n.KeyRename), func() {
-							name, ok := a.promptInput(i18n.T(i18n.KeyRename), i18n.T(i18n.KeyRenamePrompt), suggestCopyName(fileName, exists))
-							if !ok || name == "" {
-								onProceed("")
-								return
-							}
-							if exists(name) {
-								a.resolveFileConflict(name, exists, onProceed)
-								return
-							}
-							onProceed(name)
-						}),
-						makeBtn(i18n.T(i18n.KeyOverwrite), func() { onProceed(fileName) }),
-					},
-				},
+				dlgBody(Label{Text: msg}),
+				dlgFooter(
+					makeBtn(i18n.T(i18n.KeyCancel), func() { onProceed("") }),
+					makeBtn(i18n.T(i18n.KeySkip), func() { onProceed("") }),
+					makeBtn(i18n.T(i18n.KeyRename), func() {
+						name, ok := a.promptInput(i18n.T(i18n.KeyRename), i18n.T(i18n.KeyRenamePrompt), suggestCopyName(fileName, exists))
+						if !ok || name == "" {
+							onProceed("")
+							return
+						}
+						if exists(name) {
+							a.resolveFileConflict(name, exists, onProceed)
+							return
+						}
+						onProceed(name)
+					}),
+					makeBtn(i18n.T(i18n.KeyOverwrite), func() { onProceed(fileName) }),
+				),
 			},
 		}).Create(a.mw); err != nil {
 			onProceed("")

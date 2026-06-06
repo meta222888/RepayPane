@@ -191,10 +191,11 @@ func (a *App) showServerForm(initial config.Server, editMode bool, editIdx int) 
 		AssignTo: &dlg,
 		Title:    i18n.T(i18n.KeyServerFormTitle),
 		MinSize:  Size{480, 520},
-		Layout:   VBox{},
-		Children: append(children, Composite{
-			Layout: HBox{},
-			Children: append([]Widget{HSpacer{}}, buttons...),
+		Font:     uiFont(),
+		Layout:   VBox{MarginsZero: true},
+		Children: append([]Widget{
+			dlgBody(children...),
+			dlgFooter(buttons...),
 		}),
 	}.Run(a.mw)
 
@@ -214,56 +215,55 @@ func (a *App) showMyServers() {
 		AssignTo: &dlg,
 		Title:    i18n.T(i18n.KeyMyServersTitle),
 		MinSize:  Size{520, 420},
-		Layout:   VBox{},
+		Font:     uiFont(),
+		Layout:   VBox{MarginsZero: true},
 		Children: []Widget{
-			Label{Text: i18n.T(i18n.KeyMyServersHint)},
-			ListBox{
-				AssignTo: &lb,
-				Model:    names,
-				OnCurrentIndexChanged: func() {
-					selected = lb.CurrentIndex()
+			dlgBody(
+				Label{Text: i18n.T(i18n.KeyMyServersHint)},
+				ListBox{
+					AssignTo: &lb,
+					Model:    names,
+					OnCurrentIndexChanged: func() {
+						selected = lb.CurrentIndex()
+					},
+					OnItemActivated: func() {
+						if selected >= 0 && selected < len(a.store.Servers) {
+							dlg.Cancel()
+							a.openServerTab(a.store.Servers[selected])
+						}
+					},
 				},
-				OnItemActivated: func() {
-					if selected >= 0 && selected < len(a.store.Servers) {
-						dlg.Cancel()
-						a.openServerTab(a.store.Servers[selected])
+			),
+			dlgFooter(
+				PushButton{Text: i18n.T(i18n.KeyAddServer), OnClicked: func() {
+					dlg.Cancel()
+					a.showAddServer()
+				}},
+				PushButton{Text: i18n.T(i18n.KeyEdit), OnClicked: func() {
+					if selected < 0 {
+						a.showMsg(i18n.T(i18n.KeySelectServer), i18n.T(i18n.KeyChooseEdit))
+						return
 					}
-				},
-			},
-			Composite{
-				Layout: HBox{},
-				Children: []Widget{
-					PushButton{Text: i18n.T(i18n.KeyAddServer), OnClicked: func() {
-						dlg.Cancel()
-						a.showAddServer()
-					}},
-					PushButton{Text: i18n.T(i18n.KeyEdit), OnClicked: func() {
-						if selected < 0 {
-							a.showMsg(i18n.T(i18n.KeySelectServer), i18n.T(i18n.KeyChooseEdit))
-							return
-						}
-						dlg.Cancel()
-						a.showEditServer(selected)
-					}},
-					PushButton{Text: i18n.T(i18n.KeyDelete), OnClicked: func() {
-						if selected < 0 {
-							a.showMsg(i18n.T(i18n.KeySelectServer), i18n.T(i18n.KeyChooseDelete))
-							return
-						}
-						dlg.Cancel()
-						a.deleteServer(selected)
-					}},
-					HSpacer{},
-					PushButton{Text: i18n.T(i18n.KeyConnect), OnClicked: func() {
-						if selected < 0 {
-							return
-						}
-						dlg.Cancel()
-						a.openServerTab(a.store.Servers[selected])
-					}},
-					PushButton{Text: i18n.T(i18n.KeyCancel), OnClicked: func() { dlg.Cancel() }},
-				},
-			},
+					dlg.Cancel()
+					a.showEditServer(selected)
+				}},
+				PushButton{Text: i18n.T(i18n.KeyDelete), OnClicked: func() {
+					if selected < 0 {
+						a.showMsg(i18n.T(i18n.KeySelectServer), i18n.T(i18n.KeyChooseDelete))
+						return
+					}
+					dlg.Cancel()
+					a.deleteServer(selected)
+				}},
+				PushButton{Text: i18n.T(i18n.KeyConnect), OnClicked: func() {
+					if selected < 0 {
+						return
+					}
+					dlg.Cancel()
+					a.openServerTab(a.store.Servers[selected])
+				}},
+				PushButton{Text: i18n.T(i18n.KeyCancel), OnClicked: func() { dlg.Cancel() }},
+			),
 		},
 	}.Run(a.mw)
 }

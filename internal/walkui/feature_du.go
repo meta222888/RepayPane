@@ -79,49 +79,46 @@ func (a *App) showDuDialog(dir string) {
 		AssignTo: &dlg,
 		Title:    i18n.T(i18n.KeyFeatDu),
 		MinSize:  Size{640, 520},
-		Layout:   VBox{},
+		Font:     uiFont(),
+		Layout:   VBox{MarginsZero: true},
 		Children: []Widget{
-			Composite{
-				Layout: HBox{},
-				Children: []Widget{
-					PushButton{Text: i18n.T(i18n.KeyUp), OnClicked: func() {
-						if curPath == "/" {
+			dlgBody(
+				Composite{
+					Layout: HBox{Spacing: 4},
+					Children: []Widget{
+						navIconButton(UIBmpUp(), i18n.T(i18n.KeyUp), func() {
+							if curPath == "/" {
+								return
+							}
+							load(path.Dir(curPath))
+						}),
+						navIconButton(UIBmpRefresh(), i18n.T(i18n.KeyRefresh), func() { load(curPath) }),
+						Label{AssignTo: &pathLbl, Text: curPath, Font: monoFont()},
+					},
+				},
+				TableView{
+					AssignTo:         &tv,
+					AlternatingRowBG: true,
+					Columns: []TableViewColumn{
+						{Title: "Name", Width: 200},
+						{Title: "Size", Width: 80},
+						{Title: "Path", Width: 280},
+					},
+					Model:     model,
+					StyleCell: duStyleCell(model),
+					OnItemActivated: func() {
+						idx := tv.CurrentIndex()
+						if idx < 0 || idx >= len(model.rows) {
 							return
 						}
-						load(path.Dir(curPath))
-					}},
-					PushButton{Text: i18n.T(i18n.KeyRefresh), OnClicked: func() { load(curPath) }},
-					Label{AssignTo: &pathLbl, Text: curPath},
+						r := model.rows[idx]
+						if r.isDir {
+							load(r.path)
+						}
+					},
 				},
-			},
-			TableView{
-				AssignTo:         &tv,
-				AlternatingRowBG: true,
-				Columns: []TableViewColumn{
-					{Title: "Name", Width: 200},
-					{Title: "Size", Width: 80},
-					{Title: "Path", Width: 280},
-				},
-				Model:     model,
-				StyleCell: duStyleCell(model),
-				OnItemActivated: func() {
-					idx := tv.CurrentIndex()
-					if idx < 0 || idx >= len(model.rows) {
-						return
-					}
-					r := model.rows[idx]
-					if r.isDir {
-						load(r.path)
-					}
-				},
-			},
-			Composite{
-				Layout: HBox{},
-				Children: []Widget{
-					HSpacer{},
-					PushButton{Text: i18n.T(i18n.KeyOK), OnClicked: func() { dlg.Cancel() }},
-				},
-			},
+			),
+			dlgFooter(PushButton{Text: i18n.T(i18n.KeyOK), OnClicked: func() { dlg.Cancel() }}),
 		},
 	}).Create(a.mw); err != nil {
 		return

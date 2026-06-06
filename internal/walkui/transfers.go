@@ -3,6 +3,7 @@ package walkui
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -34,6 +35,7 @@ type TransferQueue struct {
 
 	active      bool
 	activeKind  transferKind
+	activeName  string
 	progress    float64
 	speedText   string
 	queueRemain int
@@ -108,6 +110,10 @@ func (q *TransferQueue) pump() {
 	job := q.jobs[0]
 	q.jobs = q.jobs[1:]
 	q.activeKind = job.kind
+	q.activeName = filepath.Base(job.localPath)
+	if job.kind == transferDownload {
+		q.activeName = filepath.Base(job.remotePath)
+	}
 	q.queueRemain = len(q.jobs)
 	q.bytesDone = 0
 	if q.batchTotal > 0 {
@@ -168,6 +174,7 @@ func (q *TransferQueue) pump() {
 		q.batchDone += q.bytesDone
 	}
 	q.active = false
+	q.activeName = ""
 	if len(q.jobs) == 0 {
 		q.progress = 0
 		q.speedText = i18n.T(i18n.KeyTransferIdle)
@@ -179,14 +186,14 @@ func (q *TransferQueue) pump() {
 	q.pump()
 }
 
-func (q *TransferQueue) Snapshot() (active bool, progress float64, speed string, queue int) {
+func (q *TransferQueue) Snapshot() (active bool, progress float64, speed string, queue int, fileName string) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	queue = q.queueRemain
 	if q.active {
 		queue++
 	}
-	return q.active, q.progress, q.speedText, queue
+	return q.active, q.progress, q.speedText, queue, q.activeName
 }
 
 func formatSpeed(bps float64) string {

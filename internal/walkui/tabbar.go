@@ -12,7 +12,7 @@ func (a *App) refreshTabBar() {
 	}
 	a.syncUI(func() {
 		clearContainerChildren(a.tabBar)
-		_ = a.tabBar.SetMinMaxSize(walk.Size{Width: 0, Height: 0}, walk.Size{Width: 0, Height: tabBarRowHeight})
+		_ = a.tabBar.SetMinMaxSize(walk.Size{Width: 0, Height: 0}, walk.Size{Width: 0, Height: tabBarHeight})
 
 		for i, tab := range a.tabs {
 			idx := i
@@ -33,12 +33,23 @@ func (a *App) refreshTabBar() {
 			}
 			hl := walk.NewHBoxLayout()
 			hl.SetMargins(walk.Margins{})
-			hl.SetSpacing(0)
+			hl.SetSpacing(2)
 			if err := wrap.SetLayout(hl); err != nil {
 				wrap.Dispose()
 				continue
 			}
-			_ = wrap.SetMinMaxSize(walk.Size{Width: 0, Height: 0}, walk.Size{Width: tabCompositeMaxWidth().Width, Height: tabBarRowHeight})
+			_ = wrap.SetMinMaxSize(walk.Size{Width: 0, Height: 0}, walk.Size{Width: tabMaxWidth, Height: tabBarHeight})
+
+			dot, err := walk.NewLabel(wrap)
+			if err == nil {
+				dot.SetText("●")
+				dot.SetTextColor(tabStateColor(tab.state))
+				dotFont, _ := walk.NewFont("Segoe UI", 6, walk.FontBold)
+				if dotFont != nil {
+					dot.SetFont(dotFont)
+				}
+				_ = dot.SetMinMaxSize(walk.Size{Width: statusDotTab, Height: statusDotTab}, walk.Size{Width: statusDotTab, Height: statusDotTab})
+			}
 
 			tabBtn, err := walk.NewPushButton(wrap)
 			if err != nil {
@@ -49,8 +60,8 @@ func (a *App) refreshTabBar() {
 			tabBtn.SetToolTipText(label)
 			tabW := measureTabTextWidth(truncateRunes(label, 18))
 			_ = tabBtn.SetMinMaxSize(
-				walk.Size{Width: tabW, Height: tabBarRowHeight - 4},
-				walk.Size{Width: tabW, Height: tabBarRowHeight - 2},
+				walk.Size{Width: tabW, Height: tabBarHeight - 4},
+				walk.Size{Width: tabW, Height: tabBarHeight - 2},
 			)
 			if active {
 				tabBtn.SetEnabled(false)

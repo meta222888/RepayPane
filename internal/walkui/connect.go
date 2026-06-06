@@ -49,41 +49,41 @@ func (a *App) showConnectDialog() {
 		AssignTo: &dlg,
 		Title:    i18n.T(i18n.KeyConnectPickerTitle),
 		MinSize:  Size{480, 320},
-		Layout:   VBox{},
+		Font:     uiFont(),
+		Layout:   VBox{MarginsZero: true},
 		Children: []Widget{
-			Label{Text: i18n.T(i18n.KeyConnectPickerHint)},
-			ListBox{
-				AssignTo: &lb,
-				Model:    names,
-				OnCurrentIndexChanged: func() {
-					selected = lb.CurrentIndex()
-				},
-				OnItemActivated: func() {
-					if selected >= 0 && selected < len(a.store.Servers) {
-						dlg.Cancel()
-						a.openServerTab(a.store.Servers[selected])
-					}
-				},
-			},
-			Composite{
-				Layout: HBox{},
-				Children: []Widget{
-					PushButton{Text: i18n.T(i18n.KeyCancel), OnClicked: func() { dlg.Cancel() }},
-					PushButton{Text: i18n.T(i18n.KeyNewConnection), OnClicked: func() {
-						dlg.Cancel()
-						a.showAddServer()
-					}},
-					HSpacer{},
-					PushButton{Text: i18n.T(i18n.KeyConnect), OnClicked: func() {
-						if selected < 0 {
-							a.showMsg(i18n.T(i18n.KeyConnectPickerTitle), i18n.T(i18n.KeySelectServer))
-							return
+			dlgBody(
+				Label{Text: i18n.T(i18n.KeyConnectPickerHint)},
+				ListBox{
+					AssignTo: &lb,
+					MinSize:  Size{0, 180},
+					Model:    names,
+					OnCurrentIndexChanged: func() {
+						selected = lb.CurrentIndex()
+					},
+					OnItemActivated: func() {
+						if selected >= 0 && selected < len(a.store.Servers) {
+							dlg.Cancel()
+							a.openServerTab(a.store.Servers[selected])
 						}
-						dlg.Cancel()
-						a.openServerTab(a.store.Servers[selected])
-					}},
+					},
 				},
-			},
+			),
+			dlgFooter(
+				PushButton{Text: i18n.T(i18n.KeyCancel), OnClicked: func() { dlg.Cancel() }},
+				PushButton{Text: i18n.T(i18n.KeyNewConnection), OnClicked: func() {
+					dlg.Cancel()
+					a.showAddServer()
+				}},
+				PushButton{Text: i18n.T(i18n.KeyConnect), OnClicked: func() {
+					if selected < 0 {
+						a.showMsg(i18n.T(i18n.KeyConnectPickerTitle), i18n.T(i18n.KeySelectServer))
+						return
+					}
+					dlg.Cancel()
+					a.openServerTab(a.store.Servers[selected])
+				}},
+			),
 		},
 	}.Run(a.mw)
 }
@@ -98,26 +98,25 @@ func (a *App) askPassphrase() []byte {
 		AssignTo:      &dlg,
 		Title:         "SSH Passphrase",
 		DefaultButton: &acceptBtn,
-		MinSize:       Size{360, 120},
-		Layout:        VBox{},
+		MinSize:       Size{360, 140},
+		Font:          uiFont(),
+		Layout:        VBox{MarginsZero: true},
 		Children: []Widget{
-			Label{Text: "Enter passphrase for private key:"},
-			LineEdit{AssignTo: &edit, PasswordMode: true},
-			Composite{
-				Layout: HBox{},
-				Children: []Widget{
-					HSpacer{},
-					PushButton{
-						AssignTo: &acceptBtn,
-						Text:     "OK",
-						OnClicked: func() {
-							accepted = true
-							dlg.Accept()
-						},
+			dlgBody(
+				Label{Text: "Enter passphrase for private key:"},
+				LineEdit{AssignTo: &edit, PasswordMode: true},
+			),
+			dlgFooter(
+				PushButton{Text: i18n.T(i18n.KeyCancel), OnClicked: func() { dlg.Cancel() }},
+				PushButton{
+					AssignTo: &acceptBtn,
+					Text:     i18n.T(i18n.KeyOK),
+					OnClicked: func() {
+						accepted = true
+						dlg.Accept()
 					},
-					PushButton{Text: "Cancel", OnClicked: func() { dlg.Cancel() }},
 				},
-			},
+			),
 		},
 	}.Run(a.mw)
 	if !accepted {

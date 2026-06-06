@@ -56,22 +56,21 @@ func (a *App) showFeatureDialog(title string, load func(setText func(string))) {
 		AssignTo: &dlg,
 		Title:    title,
 		MinSize:  Size{640, 480},
-		Layout:   VBox{},
+		Font:     uiFont(),
+		Layout:   VBox{MarginsZero: true},
 		Children: []Widget{
-			TextEdit{
-				AssignTo: &te,
-				ReadOnly: true,
-				VScroll:  true,
-				Font:     Font{Family: "Consolas", PointSize: 9},
-			},
-			Composite{
-				Layout: HBox{},
-				Children: []Widget{
-					HSpacer{},
-					PushButton{Text: i18n.T(i18n.KeyRefresh), OnClicked: refresh},
-					PushButton{Text: i18n.T(i18n.KeyOK), OnClicked: func() { dlg.Cancel() }},
+			dlgBody(
+				TextEdit{
+					AssignTo: &te,
+					ReadOnly: true,
+					VScroll:  true,
+					Font:     monoFont(),
 				},
-			},
+			),
+			dlgFooter(
+				PushButton{Text: i18n.T(i18n.KeyRefresh), OnClicked: refresh},
+				PushButton{Text: i18n.T(i18n.KeyOK), OnClicked: func() { dlg.Cancel() }},
+			),
 		},
 	}).Create(a.mw); err != nil {
 		return
@@ -90,19 +89,18 @@ func (a *App) promptInput(title, label, initial string) (string, bool) {
 	_, err := Dialog{
 		AssignTo: &dlg,
 		Title:    title,
-		MinSize:  Size{360, 120},
-		Layout:   VBox{},
+		MinSize:  Size{360, 140},
+		Font:     uiFont(),
+		Layout:   VBox{MarginsZero: true},
 		Children: []Widget{
-			Label{Text: label},
-			LineEdit{AssignTo: &edit, Text: initial},
-			Composite{
-				Layout: HBox{},
-				Children: []Widget{
-					HSpacer{},
-					PushButton{Text: "OK", OnClicked: func() { ok = true; dlg.Accept() }},
-					PushButton{Text: "Cancel", OnClicked: func() { dlg.Cancel() }},
-				},
-			},
+			dlgBody(
+				Label{Text: label},
+				LineEdit{AssignTo: &edit, Text: initial},
+			),
+			dlgFooter(
+				PushButton{Text: i18n.T(i18n.KeyCancel), OnClicked: func() { dlg.Cancel() }},
+				PushButton{Text: i18n.T(i18n.KeyOK), OnClicked: func() { ok = true; dlg.Accept() }},
+			),
 		},
 	}.Run(a.mw)
 	if err != nil || !ok {

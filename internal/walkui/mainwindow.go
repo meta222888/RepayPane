@@ -27,24 +27,30 @@ func Run() error {
 
 	if err := (MainWindow{
 		AssignTo: &mw,
-		Title:    i18n.T(i18n.KeyAppTitle) + " (Win32)",
-		MinSize:  Size{960, 600},
-		Size:     Size{1280, 760},
+		Title:    i18n.T(i18n.KeyAppTitle),
+		MinSize:  Size{winMinW, winMinH},
+		Size:     Size{winDefaultW, winDefaultH},
 		Layout:   VBox{MarginsZero: true},
+		Font:     uiFont(),
 		OnDropFiles: app.handleDropFiles,
 		MenuItems: buildMainMenus(app, mw),
 		Children: []Widget{
 			Composite{
 				AssignTo: &app.tabBar,
-				Layout:   HBox{Margins: Margins{4, 2, 4, 0}, Spacing: 4},
+				MinSize:  fixedHeight(tabBarHeight),
+				MaxSize:  fixedHeight(tabBarHeight),
+				Layout:   HBox{Margins: Margins{Left: 4, Top: 2, Right: 4, Bottom: 0}, Spacing: 0},
 			},
 			ToolBar{
+				MinSize: fixedHeight(toolBarHeight),
+				MaxSize: fixedHeight(toolBarHeight),
 				Items: []MenuItem{
 					Action{AssignTo: &app.toolbarConnect, Text: i18n.T(i18n.KeyConnect), OnTriggered: app.showConnectDialog},
 					Action{AssignTo: &app.toolbarRefresh, Text: i18n.T(i18n.KeyRefresh), OnTriggered: func() {
 						app.refreshLocal()
 						app.refreshRemote()
 					}},
+					Separator{},
 					Action{AssignTo: &app.toolbarUpload, Text: i18n.T(i18n.KeyUpload), OnTriggered: app.uploadSelected},
 					Action{AssignTo: &app.toolbarDownload, Text: i18n.T(i18n.KeyDownload), OnTriggered: app.downloadSelected},
 				},
@@ -56,28 +62,48 @@ func Run() error {
 				},
 			},
 			Composite{
-				Layout: VBox{Margins: Margins{4, 4, 4, 4}},
+				MinSize: fixedHeight(statusBarH),
+				MaxSize: fixedHeight(statusBarH),
+				Layout:  HBox{Margins: Margins{Left: 6, Top: 4, Right: 6, Bottom: 4}, Spacing: 10},
 				Children: []Widget{
-					ProgressBar{AssignTo: &app.progressBar, Visible: false},
-					Composite{
-						Layout: HBox{},
-						Children: []Widget{
-							Label{
-								AssignTo:  &app.connDot,
-								Text:      "●",
-								TextColor: walk.RGB(231, 76, 60),
-								Font:      Font{PointSize: 10, Bold: true},
-							},
-							Label{AssignTo: &app.statusLabel, Text: i18n.T(i18n.KeyNotConnected)},
-							HSpacer{},
-							Label{AssignTo: &app.transferLabel, Text: i18n.T(i18n.KeyTransferIdle)},
-							PushButton{
-								AssignTo:  &app.reconnectBtn,
-								Text:      i18n.T(i18n.KeyReconnect),
-								Visible:   false,
-								OnClicked: app.reconnectActiveTab,
-							},
-						},
+					Label{
+						AssignTo:  &app.connDot,
+						Text:      "●",
+						TextColor: colorDisconnected,
+						Font:      Font{Family: "Segoe UI", PointSize: 8, Bold: true},
+						MinSize:   Size{statusDotBar, statusDotBar},
+						MaxSize:   Size{statusDotBar, statusDotBar},
+					},
+					Label{AssignTo: &app.statusLabel, Text: i18n.T(i18n.KeyNotConnected)},
+					Label{
+						AssignTo:  &app.transferFileLabel,
+						Text:      "",
+						TextColor: colorTextMuted,
+						Visible:   false,
+					},
+					ProgressBar{
+						AssignTo: &app.progressBar,
+						MinSize:  Size{progressBarW, progressBarH},
+						MaxSize:  Size{progressBarW, progressBarH},
+						Visible:  false,
+					},
+					Label{
+						AssignTo:  &app.transferPctLabel,
+						Text:      "",
+						TextColor: colorTextMuted,
+						Visible:   false,
+					},
+					HSpacer{},
+					Label{
+						AssignTo:  &app.transferLabel,
+						Text:      i18n.T(i18n.KeyTransferIdle),
+						Font:      monoFont(),
+					},
+					PushButton{
+						AssignTo:  &app.reconnectBtn,
+						Text:      i18n.T(i18n.KeyReconnect),
+						Visible:   false,
+						OnClicked: app.reconnectActiveTab,
 					},
 				},
 			},
@@ -153,14 +179,6 @@ func buildMainMenus(app *App, mw *walk.MainWindow) []MenuItem {
 	}
 }
 
-func tableColumns() []TableViewColumn {
-	return []TableViewColumn{
-		{Title: "Name", Width: 220},
-		{Title: "Size", Width: 80},
-		{Title: "Modified", Width: 140},
-	}
-}
-
 func paneComposite(app *App, local bool) Widget {
 	var titleLabel **walk.Label
 	var pathEdit **walk.LineEdit
@@ -169,6 +187,7 @@ func paneComposite(app *App, local bool) Widget {
 	var renamePanel **walk.Composite
 	var renameEdit **walk.LineEdit
 	var loadingLabel **walk.Label
+	var emptyLabel **walk.Label
 	var upFn, refreshFn, activatedFn func()
 	var onPathReturn func()
 	var driveCombo **walk.ComboBox
@@ -194,6 +213,7 @@ func paneComposite(app *App, local bool) Widget {
 		renamePanel = &app.remoteRenamePanel
 		renameEdit = &app.remoteRenameEdit
 		loadingLabel = &app.remoteLoadingLabel
+		emptyLabel = &app.remoteEmptyLabel
 		upFn = app.remoteUp
 		refreshFn = app.refreshRemote
 		activatedFn = app.onRemoteActivated
@@ -201,51 +221,58 @@ func paneComposite(app *App, local bool) Widget {
 	}
 
 	navRow := []Widget{
-		ToolButton{Image: UIBmpUp(), ToolTipText: i18n.T(i18n.KeyUp), OnClicked: upFn, MinSize: Size{24, 24}, MaxSize: Size{24, 24}},
-		ToolButton{Image: UIBmpRefresh(), ToolTipText: i18n.T(i18n.KeyRefresh), OnClicked: refreshFn, MinSize: Size{24, 24}, MaxSize: Size{24, 24}},
+		navIconButton(UIBmpUp(), i18n.T(i18n.KeyUp), upFn),
+		navIconButton(UIBmpRefresh(), i18n.T(i18n.KeyRefresh), refreshFn),
 	}
 	if local {
 		drives := listWindowsDrives()
 		navRow = append(navRow,
-			ImageView{Image: UIBmpDisk(), Mode: ImageViewModeShrink, MinSize: Size{20, 20}, MaxSize: Size{20, 20}},
+			markIconView(UIBmpDisk()),
 			ComboBox{
-			AssignTo: driveCombo,
-			Model:    drives,
-			MaxSize:  Size{56, 0},
-			OnCurrentIndexChanged: func() {
-				if app.localDriveCombo == nil {
-					return
-				}
-				idx := app.localDriveCombo.CurrentIndex()
-				if idx >= 0 && idx < len(drives) {
-					app.navigateLocal(drives[idx])
-				}
+				AssignTo: driveCombo,
+				Model:    drives,
+				MinSize:  Size{driveComboW, 0},
+				MaxSize:  Size{driveComboW, 0},
+				OnCurrentIndexChanged: func() {
+					if app.localDriveCombo == nil {
+						return
+					}
+					idx := app.localDriveCombo.CurrentIndex()
+					if idx >= 0 && idx < len(drives) {
+						app.navigateLocal(drives[idx])
+					}
+				},
 			},
-		})
+		)
 		places := commonPlaces()
 		placeLabels := make([]string, len(places))
 		for i, p := range places {
 			placeLabels[i] = p.label
 		}
 		navRow = append(navRow,
-			ImageView{Image: UIBmpLike(), Mode: ImageViewModeShrink, MinSize: Size{20, 20}, MaxSize: Size{20, 20}},
+			markIconView(UIBmpLike()),
 			ComboBox{
-			AssignTo: placesCombo,
-			Model:    placeLabels,
-			MaxSize:  Size{100, 0},
-			OnCurrentIndexChanged: func() {
-				if placesCombo == nil || *placesCombo == nil {
-					return
-				}
-				idx := (*placesCombo).CurrentIndex()
-				if idx >= 0 && idx < len(places) {
-					app.navigateLocal(places[idx].path)
-				}
+				AssignTo: placesCombo,
+				Model:    placeLabels,
+				MinSize:  Size{placesComboW, 0},
+				MaxSize:  Size{placesComboW, 0},
+				OnCurrentIndexChanged: func() {
+					if placesCombo == nil || *placesCombo == nil {
+						return
+					}
+					idx := (*placesCombo).CurrentIndex()
+					if idx >= 0 && idx < len(places) {
+						app.navigateLocal(places[idx].path)
+					}
+				},
 			},
-		})
+		)
+	} else {
+		navRow = append(navRow, remoteNavSpacer())
 	}
 	navRow = append(navRow, LineEdit{
 		AssignTo: pathEdit,
+		MinSize:  Size{0, 20},
 		OnKeyDown: func(key walk.Key) {
 			if key == walk.KeyReturn {
 				onPathReturn()
@@ -260,35 +287,61 @@ func paneComposite(app *App, local bool) Widget {
 		paneTitle = i18n.T(i18n.KeyRemote)
 	}
 
-	return Composite{
-		Layout: VBox{Margins: Margins{4, 4, 4, 4}},
-		Children: []Widget{
-			Label{AssignTo: titleLabel, Text: paneTitle, Font: Font{Bold: true}},
-			Composite{Layout: HBox{MarginsZero: true}, Children: navRow},
-			Composite{
-				AssignTo: renamePanel,
-				Layout:   HBox{},
-				Visible:  false,
-				Children: []Widget{
-					Label{Text: i18n.T(i18n.KeyRename) + ":"},
-					LineEdit{AssignTo: renameEdit},
-				},
-			},
-			Label{AssignTo: loadingLabel, Text: i18n.T(i18n.KeyFeatLoading), Visible: false},
-			TableView{
-				AssignTo:           tv,
-				AlternatingRowBG:   true,
-				MultiSelection:     true,
-				Columns:            tableColumns(),
-				Model:              model,
-				StyleCell:          paneStyleCell(local, model),
-				OnItemActivated:    activatedFn,
-				OnMouseDown: func(x, y int, button walk.MouseButton) {
-					if button == walk.RightButton {
-						prepCtx()
-					}
-				},
+	children := []Widget{
+		Label{
+			AssignTo: titleLabel,
+			Text:     paneTitle,
+			Font:     uiFontBold(),
+			MinSize:  fixedHeight(paneTitleH),
+			MaxSize:  fixedHeight(paneTitleH),
+		},
+		Composite{
+			MinSize:  fixedHeight(navRowHeight),
+			MaxSize:  fixedHeight(navRowHeight),
+			Layout:   HBox{Margins: Margins{Left: 2, Top: 0, Right: 2, Bottom: 0}, Spacing: 4},
+			Children: navRow,
+		},
+		Composite{
+			AssignTo: renamePanel,
+			Layout:   HBox{},
+			MinSize:  fixedHeight(navRowHeight),
+			MaxSize:  fixedHeight(navRowHeight),
+			Visible:  false,
+			Children: []Widget{
+				Label{Text: i18n.T(i18n.KeyRename) + ":"},
+				LineEdit{AssignTo: renameEdit},
 			},
 		},
+	}
+	if !local {
+		children = append(children,
+			Label{
+				AssignTo:  emptyLabel,
+				Text:      i18n.T(i18n.KeyNotConnected),
+				Font:      Font{Family: "Segoe UI", PointSize: 9, Italic: true},
+				TextColor: colorRemoteEmpty,
+				Visible:   true,
+			},
+			Label{AssignTo: loadingLabel, Text: i18n.T(i18n.KeyFeatLoading), Visible: false},
+		)
+	}
+	children = append(children, TableView{
+		AssignTo:         tv,
+		AlternatingRowBG: true,
+		MultiSelection:   true,
+		Columns:          tableColumns(),
+		Model:            model,
+		StyleCell:        paneStyleCell(local, model),
+		OnItemActivated:  activatedFn,
+		OnMouseDown: func(x, y int, button walk.MouseButton) {
+			if button == walk.RightButton {
+				prepCtx()
+			}
+		},
+	})
+
+	return Composite{
+		Layout:   VBox{Margins: paneMargins()},
+		Children: children,
 	}
 }
