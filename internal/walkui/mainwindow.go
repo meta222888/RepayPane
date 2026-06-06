@@ -35,7 +35,7 @@ func Run() error {
 		Children: []Widget{
 			Composite{
 				AssignTo: &app.tabBar,
-				Layout:   HBox{Margins: Margins{4, 4, 4, 0}},
+				Layout:   HBox{Margins: Margins{4, 2, 4, 0}, Spacing: 4},
 			},
 			ToolBar{
 				Items: []MenuItem{

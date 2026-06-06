@@ -28,9 +28,11 @@ var (
 	folderIconOnce sync.Once
 )
 
+const tabBarRowHeight = 24
+
 func mdl2IconFont() *walk.Font {
 	mdl2FontOnce.Do(func() {
-		mdl2Font, _ = walk.NewFont("Segoe MDL2 Assets", 11, walk.FontBold)
+		mdl2Font, _ = walk.NewFont("Segoe MDL2 Assets", 9, walk.FontBold)
 	})
 	return mdl2Font
 }
@@ -42,6 +44,10 @@ func applyMDL2Font(w walk.Widget) {
 }
 
 func newMDL2ToolButton(parent walk.Container, glyph, tooltip string, fn func()) (*walk.ToolButton, error) {
+	return newMDL2ToolButtonSize(parent, glyph, tooltip, fn, tabBarRowHeight-2)
+}
+
+func newMDL2ToolButtonSize(parent walk.Container, glyph, tooltip string, fn func(), size int) (*walk.ToolButton, error) {
 	tb, err := walk.NewToolButton(parent)
 	if err != nil {
 		return nil, err
@@ -54,7 +60,10 @@ func newMDL2ToolButton(parent walk.Container, glyph, tooltip string, fn func()) 
 	if fn != nil {
 		tb.Clicked().Attach(fn)
 	}
-	_ = tb.SetMinMaxSize(walk.Size{Width: 28, Height: 28}, walk.Size{Width: 28, Height: 28})
+	if size <= 0 {
+		size = tabBarRowHeight - 2
+	}
+	_ = tb.SetMinMaxSize(walk.Size{Width: size, Height: size}, walk.Size{Width: size, Height: size})
 	return tb, nil
 }
 

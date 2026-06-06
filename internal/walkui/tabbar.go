@@ -12,6 +12,7 @@ func (a *App) refreshTabBar() {
 	}
 	a.syncUI(func() {
 		clearContainerChildren(a.tabBar)
+		_ = a.tabBar.SetMinMaxSize(walk.Size{Width: 0, Height: 0}, walk.Size{Width: 0, Height: tabBarRowHeight})
 
 		for i, tab := range a.tabs {
 			idx := i
@@ -31,13 +32,13 @@ func (a *App) refreshTabBar() {
 				continue
 			}
 			hl := walk.NewHBoxLayout()
-			hl.SetMargins(walk.Margins{2, 2, 2, 2})
+			hl.SetMargins(walk.Margins{})
 			hl.SetSpacing(2)
 			if err := wrap.SetLayout(hl); err != nil {
 				wrap.Dispose()
 				continue
 			}
-			_ = wrap.SetMinMaxSize(walk.Size{Width: 0, Height: 0}, tabCompositeMaxWidth())
+			_ = wrap.SetMinMaxSize(walk.Size{Width: 0, Height: 0}, walk.Size{Width: tabCompositeMaxWidth().Width, Height: tabBarRowHeight})
 
 			tabBtn, err := walk.NewPushButton(wrap)
 			if err != nil {
@@ -46,29 +47,28 @@ func (a *App) refreshTabBar() {
 			}
 			tabBtn.SetText(truncateRunes(label, 18))
 			tabBtn.SetToolTipText(label)
-			_ = tabBtn.SetMinMaxSize(walk.Size{Width: 0, Height: 0}, walk.Size{Width: measureTabTextWidth(label), Height: 0})
+			_ = tabBtn.SetMinMaxSize(
+				walk.Size{Width: 0, Height: tabBarRowHeight - 4},
+				walk.Size{Width: measureTabTextWidth(label), Height: tabBarRowHeight - 2},
+			)
 			if active {
 				tabBtn.SetEnabled(false)
 			} else {
 				tabBtn.Clicked().Attach(func() { a.activateTab(idx) })
 			}
 
-			closeBtn, err := newMDL2ToolButton(wrap, glyphClose, i18n.T(i18n.KeyCloseTab), func() {
+			_, err = newMDL2ToolButton(wrap, glyphClose, i18n.T(i18n.KeyCloseTab), func() {
 				a.closeTab(idx)
 			})
 			if err != nil {
 				wrap.Dispose()
 				continue
 			}
-			_ = closeBtn.SetMinMaxSize(walk.Size{Width: 22, Height: 22}, walk.Size{Width: 22, Height: 22})
 
 			setTabCompositeActive(wrap, active)
 		}
 
-		addBtn, err := newMDL2ToolButton(a.tabBar, glyphAdd, i18n.T(i18n.KeyNewTabConnect), a.onNewTab)
-		if err == nil {
-			_ = addBtn.SetMinMaxSize(walk.Size{Width: 28, Height: 28}, walk.Size{Width: 28, Height: 28})
-		}
+		_, _ = newMDL2ToolButton(a.tabBar, glyphAdd, i18n.T(i18n.KeyNewTabConnect), a.onNewTab)
 
 		a.tabBar.RequestLayout()
 	})
