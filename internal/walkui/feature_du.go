@@ -34,9 +34,6 @@ func (m *duTableModel) Value(row, col int) interface{} {
 	r := m.rows[row]
 	switch col {
 	case 0:
-		if r.isDir {
-			return "[DIR] " + r.name
-		}
 		return r.name
 	case 1:
 		return r.size
@@ -106,7 +103,8 @@ func (a *App) showDuDialog(dir string) {
 					{Title: "Size", Width: 80},
 					{Title: "Path", Width: 280},
 				},
-				Model: model,
+				Model:     model,
+				StyleCell: duStyleCell(model),
 				OnItemActivated: func() {
 					idx := tv.CurrentIndex()
 					if idx < 0 || idx >= len(model.rows) {
@@ -129,6 +127,7 @@ func (a *App) showDuDialog(dir string) {
 	}).Create(a.mw); err != nil {
 		return
 	}
+	a.applyWindowIcon(dlg)
 	load(dir)
 	dlg.Run()
 }

@@ -26,6 +26,8 @@ if defined MINGW (
 :gcc_ok
 if not exist "dev" mkdir dev
 
+if exist logo.png copy /Y logo.png internal\assets\logo.png >nul
+
 echo.
 echo [run-win.bat] Building dev\RelayPane-walk-dev.exe ^(Win32 walk UI, console on for errors^)...
 if not exist "dev\RelayPane-walk-dev.exe" (

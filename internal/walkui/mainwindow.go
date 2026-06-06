@@ -18,6 +18,7 @@ func Run() error {
 		settings = &config.Settings{}
 	}
 	initLanguage(settings)
+	initFileIcons()
 
 	app := newApp(store, settings)
 	app.initTransfers()
@@ -85,6 +86,7 @@ func Run() error {
 	}
 
 	app.mw = mw
+	app.applyWindowIcon(mw)
 	app.setupRenameEdit(app.localRenameEdit, true)
 	app.setupRenameEdit(app.remoteRenameEdit, false)
 	app.attachPaneDrag(app.localTV, true)
@@ -274,6 +276,7 @@ func paneComposite(app *App, local bool) Widget {
 				MultiSelection:     true,
 				Columns:            tableColumns(),
 				Model:              model,
+				StyleCell:          paneStyleCell(local, model),
 				OnItemActivated:    activatedFn,
 				OnMouseDown: func(x, y int, button walk.MouseButton) {
 					if button == walk.RightButton {

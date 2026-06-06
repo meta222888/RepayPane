@@ -242,6 +242,7 @@ func (a *App) showTextEditor(title, path, text string, enc textencoding.Info, sa
 		},
 	}.Create()
 
+	a.applyWindowIcon(mw)
 	mw.Closing().Attach(func(canceled *bool, reason walk.CloseReason) {
 		if dirty {
 			*canceled = walk.MsgBox(mw, i18n.T(i18n.KeyUnsaved), i18n.T(i18n.KeyDiscard), walk.MsgBoxYesNo|walk.MsgBoxIconWarning) != walk.DlgCmdYes
