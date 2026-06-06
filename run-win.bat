@@ -4,6 +4,13 @@ cd /d "%~dp0"
 
 set CGO_ENABLED=1
 
+where go >nul 2>&1
+if errorlevel 1 (
+  echo [run-win.bat] Go not found in PATH.
+  pause
+  exit /b 1
+)
+
 where gcc >nul 2>&1
 if not errorlevel 1 goto :gcc_ok
 
@@ -28,16 +35,29 @@ if not exist "dev" mkdir dev
 
 if exist logo.png copy /Y logo.png internal\assets\logo.png >nul
 
+set "BUILD_ID=dev"
+set "GIT_BRANCH="
+for /f "delims=" %%B in ('git branch --show-current 2^>nul') do set "GIT_BRANCH=%%B"
+for /f "delims=" %%H in ('git rev-parse --short HEAD 2^>nul') do set "BUILD_ID=%%H"
+
 echo.
-echo [run-win.bat] Building dev\RelayPane-walk-dev.exe ^(Win32 walk UI, console on for errors^)...
-if not exist "dev\RelayPane-walk-dev.exe" (
-  echo [run-win.bat] First build may take a minute while CGO compiles walk.
-) else (
-  echo [run-win.bat] Rebuild usually finishes in seconds when only Go code changed.
-)
+echo ============================================================
+echo   RelayPane Win32 walk UI  ^(NOT Fyne — use run.bat for Fyne^)
+echo   Branch: %GIT_BRANCH%   Build: %BUILD_ID%
+echo   Output: dev\RelayPane-walk-dev.exe
+echo ============================================================
+echo.
+echo [run-win.bat] Tip: if UI still looks old, run: git pull
 echo.
 
-go build -v -o dev\RelayPane-walk-dev.exe ./cmd/relaypane-walk
+taskkill /IM RelayPane-walk-dev.exe /F >nul 2>&1
+
+if exist "dev\RelayPane-walk-dev.exe" del /F /Q "dev\RelayPane-walk-dev.exe"
+
+echo [run-win.bat] Building dev\RelayPane-walk-dev.exe ...
+echo.
+
+go build -v -ldflags="-X main.buildID=%BUILD_ID%" -o dev\RelayPane-walk-dev.exe ./cmd/relaypane-walk
 if errorlevel 1 (
   echo.
   echo [run-win.bat] Build failed.
@@ -45,8 +65,15 @@ if errorlevel 1 (
   exit /b 1
 )
 
+if not exist "dev\RelayPane-walk-dev.exe" (
+  echo [run-win.bat] Build reported success but exe was not created.
+  pause
+  exit /b 1
+)
+
 echo.
-echo [run-win.bat] Launching...
+echo [run-win.bat] Launching dev\RelayPane-walk-dev.exe ^(build %BUILD_ID%^) ...
+echo.
 dev\RelayPane-walk-dev.exe
 if errorlevel 1 (
   echo [run-win.bat] RelayPane-walk exited with error.

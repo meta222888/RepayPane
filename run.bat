@@ -27,6 +27,7 @@ if defined MINGW (
 if not exist "dev" mkdir dev
 
 echo.
+echo [run.bat] Fyne UI — for Win32 walk UI ^(Lovable design^) use run-win.bat instead.
 echo [run.bat] Building dev\RelayPane-dev.exe ^(incremental — code changes always apply^)...
 if not exist "dev\RelayPane-dev.exe" (
   echo [run.bat] First build: after "internal/ui" GCC may run 10-20 min with no output. Please wait.
