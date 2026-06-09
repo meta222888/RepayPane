@@ -268,7 +268,10 @@ func (a *App) tabsJSON() string {
 			HeartbeatSec: t.server.HeartbeatSec,
 		}
 	}
-	return mustJSON(out)
+	return mustJSON(map[string]any{
+		"active": a.activeTab,
+		"tabs":   out,
+	})
 }
 
 func (a *App) ServersJSON() string {
